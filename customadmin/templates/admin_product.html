@@ -1,0 +1,255 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        
+        <!-- Main Content -->
+        <div class="col py-3">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Products</li>
+                </ol>
+            </nav>
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="fw-bold">Products</h1>
+                <div class="d-flex">
+                    <div class="input-group me-2">
+                        <input type="text" class="form-control" placeholder="Search product..." aria-label="Search product">
+                    </div>
+                    <button class="btn btn-outline-secondary d-flex align-items-center me-2">
+                        <i class="bi bi-calendar me-1"></i>
+                        Select Dates
+                    </button>
+                    <a href="{%url 'customadmin:add_product'%}" class="btn btn-primary d-flex align-items-center" style="background-color: #1a237e;">
+                        Add New Product <i class="bi bi-plus-lg ms-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="d-flex border rounded">
+                        <div class="p-2 border-end">Filter By</div>
+                        <div class="dropdown p-2 border-end">
+                            <button class="btn dropdown-toggle" type="button" id="categoryFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                                Product Category
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="categoryFilter">
+                                <li><a class="dropdown-item" href="#">All Categories</a></li>
+                                <li><a class="dropdown-item" href="#">Puppy</a></li>
+                                <li><a class="dropdown-item" href="#">Adult Dog</a></li>
+                                <li><a class="dropdown-item" href="#">Senior</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown p-2">
+                            <button class="btn dropdown-toggle" type="button" id="priceFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                                Price
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="priceFilter">
+                                <li><a class="dropdown-item" href="#">All Prices</a></li>
+                                <li><a class="dropdown-item" href="#">Under ₹500</a></li>
+                                <li><a class="dropdown-item" href="#">₹500 - ₹1000</a></li>
+                                <li><a class="dropdown-item" href="#">Over ₹1000</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end border rounded">
+                        <div class="p-2">Sort</div>
+                        <button class="btn" type="button">Price High-Low</button>
+                        <button class="btn" type="button">Price Low-High</button>
+                        <button class="btn" type="button">Last added first</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover mb-0">
+                            <thead style="background-color: #1a237e; color: white;">
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>List</th>
+                                    <th>Action</th>
+                                    <th>Offer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr>
+                                    <td class="text-center">
+                                        <img src="{{ product.image.url }}" alt="{{ product.name }}" style="height: 60px; width: 60px; object-fit: contain;">
+                                    </td>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.category }}</td>
+                                    <td>₹ {{ product.price }}</td>
+                                    <td>{{ product.stock }}</td>
+                                    <td class="text-center">
+                                        <div class="form-check form-switch d-flex justify-content-center">
+                                            {% if product.is_listed %}
+                                            <label class="badge bg-success rounded-pill p-2" style="width: 80px;">
+                                                <input class="form-check-input" type="checkbox" id="list-{{ product.id }}" checked data-product-id="{{ product.id }}">
+                                                UNLIST
+                                            </label>
+                                            {% else %}
+                                            <label class="badge bg-danger rounded-pill p-2" style="width: 80px;">
+                                                <input class="form-check-input" type="checkbox" id="list-{{ product.id }}" data-product-id="{{ product.id }}">
+                                                LIST
+                                            </label>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{#}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if product.offer %}
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-danger fw-bold">{{ product.offer }}</span>
+                                            <div>
+                                                <a href="{#}" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                 <button class="btn btn-sm btn-outline-danger" >
+                                                  <!-- onclick="confirmDelete({{ product.id }})"> -->
+                                                   <!-- onclick="removeOffer({{ product.id }})"  -->
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <a href="#"  class = "btn btn-primary" style="background-color: #1a237e;">
+                                            Add Offer
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div>
+                    <p class="mb-0">Showing 1-5 from 25</p>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item"><a class="page-link" href="#">4</a></li>
+                        <li class="page-item"><a class="page-link" href="#">5</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this product?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(productId) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/products/delete/${productId}/`;
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        modal.show();
+    }
+
+    function removeOffer(productId) {
+        if (confirm('Are you sure you want to remove this offer?')) {
+            window.location.href = `/products/remove-offer/${productId}/`;
+        }
+    }
+
+    // Toggle list/unlist functionality
+    document.querySelectorAll('input[id^="list-"]').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const productId = this.dataset.productId;
+            const isListed = this.checked;
+            
+            fetch(`/products/toggle-list/${productId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ is_listed: isListed })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const label = this.closest('label');
+                    if (isListed) {
+                        label.classList.remove('bg-danger');
+                        label.classList.add('bg-success');
+                        label.textContent = 'UNLIST';
+                        label.prepend(this);
+                    } else {
+                        label.classList.remove('bg-success');
+                        label.classList.add('bg-danger');
+                        label.textContent = 'LIST';
+                        label.prepend(this);
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

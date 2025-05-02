@@ -1,0 +1,111 @@
+{% extends "admin_dashboard.html" %}
+{% block admin_side %}
+<div class="container mx-auto p-6">
+    <h2 class="text-2xl font-bold mb-4">Manage Brands</h2>
+
+    <!-- Brands Table -->
+    <div class="bg-white p-4 rounded-lg shadow-md">
+        <table class="w-full border-collapse border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="border p-2">#</th>
+                    <th class="border p-2">Name</th>
+                    <th class="border p-2">Offer (%)</th>
+                    <th class="border p-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brand in brands %}
+                <tr>
+                    <td class="border p-2">{{ forloop.counter }}</td>
+                    <td class="border p-2">{{ brand.name }}</td>
+                    <td class="border p-2">{{ brand.offer_percentage }}</td>
+                    <td class="border p-2">
+                        <button class="bg-blue-500 text-white px-2 py-1 rounded" onclick="openEditBrandModal('{{ brand.id }}', '{{ brand.name }}', '{{ brand.offer_percentage }}')">Edit</button>
+                        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="toggleBrandStatus('{{ brand.id }}')">
+                            {% if brand.is_blocked %}Unblock{% else %}Block{% endif %}
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Brand Modal -->
+<div id="editBrandModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center">
+    <div class="bg-white p-6 rounded shadow-lg w-96">
+        <h3 class="text-lg font-bold mb-2">Edit Brand</h3>
+        <input type="hidden" id="editBrandId">
+        <input type="text" id="editBrandName" class="w-full border p-2 rounded mb-2" placeholder="Brand Name">
+        <input type="number" id="editBrandOffer" class="w-full border p-2 rounded mb-2" placeholder="Offer Percentage">
+        <input type="file" id="editBrandImage" class="w-full border p-2 rounded mb-2" accept="image/*">
+        <div class="flex justify-end space-x-2">
+            <button class="bg-gray-500 text-white px-4 py-2 rounded" onclick="closeModal('editBrandModal')">Cancel</button>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="editBrand()">Update</button>
+        </div>
+    </div>
+</div>
+</div>
+<script>
+    function openEditBrandModal(id, name, offer, imageUrl) {
+        document.getElementById("editBrandId").value = id;
+        document.getElementById("editBrandName").value = name;
+        document.getElementById("editBrandOffer").value = offer;
+        // Assuming imageUrl is the URL to the current image, if any
+        document.getElementById("editBrandModal").classList.remove("hidden");
+    }
+    
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add("hidden");
+    }
+
+    function editBrand() {
+        const id = document.getElementById("editBrandId").value;
+        const name = document.getElementById("editBrandName").value;
+        const offer = document.getElementById("editBrandOffer").value;
+        const imageFile = document.getElementById("editBrandImage").files[0];
+    
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("offer_percentage", offer);
+        if (imageFile) {
+            formData.append("Brand_image", imageFile);
+        }
+    
+        fetch(`/admin-panel/brands/edit/${id}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert(data.message);
+                location.reload();
+            } else {
+                throw new Error("Invalid response from server");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Failed to update brand. Please try again.");
+        });
+    }
+    function toggleBrandStatus(id) {
+        fetch(`admin-panel/brands/toggle-status/${id}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+            }
+        })
+        .then(response => response.json())
+        .then(data => location.reload())
+        .catch(error => console.error("Error:", error));
+    }
+</script>
+{% endblock %}

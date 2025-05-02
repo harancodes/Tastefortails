@@ -1,0 +1,42 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+*.env
+
+# Django SQLite database
+db.sqlite3
+
+# Logs
+*.log
+
+# Static and media
+/static/
+/media/
+
+# Migrations (optional)
+/**/migrations/*.py
+!**/migrations/__init__.py
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.env

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Pet Care</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            color: #333;
+            background-color: #fafafa;
+        }
+        .section-padding {
+            padding: 5rem 0;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+        }
+        .about-heading {
+            margin-bottom: 1.5rem;
+            color: #222;
+        }
+        .about-text {
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+        .feature-image {
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            height: auto;
+        }
+        .breadcrumb {
+            background-color: transparent;
+            padding-left: 0;
+        }
+        .breadcrumb-item a {
+            color: #6c757d;
+            text-decoration: none;
+        }
+        .breadcrumb-item a:hover {
+            color: #0d6efd;
+        }
+        .breadcrumb-item.active {
+            color: #212529;
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .about-image-container {
+                margin-top: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container section-padding">
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">About</li>
+            </ol>
+        </nav>
+        
+        <div class="row align-items-center">
+            <!-- Left Column: Text Content -->
+            <div class="col-lg-6">
+                <h2 class="about-heading">Our Story</h2>
+                <p class="about-text">
+                    Our journey began with love for our pets and a desire to make their lives better. It's the wagging tails and content purrs that inspired us to create products and services that cater to every pet's needs. From nutritious pet food to fun toys and everything in between, we have got it all covered. Every single product is created with the same love and attention that our pets deserve.
+                </p>
+                <p class="about-text">
+                    At Tails for Tails, we are defined by the science and heart behind every action. We take pride in the blend of innovation, quality and hope of love in everything we offer. Being a team of passionate pet parents, we ensure top-notch research and continual upskilling behind our products. From collaborating with animal healthcare and nutrition experts to establishing state-of-the-art research and manufacturing facilities, we work every day to keep redefining the standards of pet care across the globe.
+                </p>
+            </div>
+            
+            <!-- Right Column: Image -->
+            <div class="col-lg-6 about-image-container">
+                <img src="https://images.unsplash.com/photo-1612956331286-cec478562654?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Dog sitting on a soft rug near a window" class="feature-image">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+
+
+
+{% endblock %}

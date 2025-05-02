@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP - Tastefortails</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/jpg" href="#">
+    <style>
+        body {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-image: url('https://images.unsplash.com/photo-1568640347023-a616a30bc3bd?q=80&w=2073&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+        }
+        .overlay {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, rgba(100, 100, 255, 0.8), rgba(30, 144, 255, 0.8));
+            transition: background 0.3s ease;
+        }
+        .gradient-bg:hover {
+            background: linear-gradient(135deg, rgba(70, 70, 255, 0.9), rgba(0, 102, 204, 0.9));
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+    <div class="overlay absolute inset-0"></div>
+
+    <div class="w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-8 relative z-10 border border-white/10">
+        <div class="flex justify-center mb-8">
+            <img src="#" alt="Taste for Tails Logo" class="w-24 h-24">
+        </div>
+
+        <h2 class="text-3xl font-bold text-center text-white mb-2">Verify OTP</h2>
+        <p class="text-center text-white/80 mb-6">Enter the OTP sent to your email</p>
+
+        {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                    <div class="px-4 py-2 text-sm rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-600{% else %}bg-green-50 text-green-600{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form action="{% url 'verify_reset_otp' %}" method="POST" class="space-y-6">
+            {% csrf_token %}
+            <div>
+                <label for="otp" class="block text-sm font-medium text-white mb-2">Enter OTP</label>
+                <input type="text" id="otp" name="otp" required maxlength="6"
+                       class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/50 transition-all"
+                       placeholder="Enter 6-digit OTP">
+            </div>
+
+            <button type="submit" class="w-full gradient-bg text-white text-lg font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all">
+                Verify OTP
+            </button>
+        </form>
+
+        <p class="text-sm text-center text-white/80 mt-6">
+            Didn't receive OTP? 
+            <a href="{% url 'resend_reset_otp' %}" class="text-blue-300 hover:text-blue-200 font-medium transition-colors">Resend OTP</a>
+        </p>
+    </div>
+</body>
+</html>

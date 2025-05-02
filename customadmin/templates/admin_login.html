@@ -1,0 +1,48 @@
+<html lang="en">
+<head>
+    <title>Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+    <div class="bg-white shadow-lg rounded-lg p-8 max-w-md w-full">
+        <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Admin Login</h2>
+        <form method="post" class="space-y-4" action="{% url 'admin_login' %}">
+            {% csrf_token %}
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                <input 
+                    type="text" 
+                    name="username" 
+                    id="username" 
+                    placeholder="Enter your username" 
+                    required 
+                    class="mt-1 block w-full p-2 border border-gray-299 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-699">Password</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    id="password" 
+                    placeholder="Enter your password" 
+                    required 
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+            </div>
+            <button 
+                type="submit" 
+                class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                Login
+            </button>
+        </form>
+        
+        <!-- Only display error messages -->
+        {% for message in messages %}
+            {% if message.tags == 'error' %}
+                <p class="mt-4 text-center text-sm text-red-600">{{ message }}</p>
+            {% endif %}
+        {% endfor %}
+    </div>
+</body>
+</html>

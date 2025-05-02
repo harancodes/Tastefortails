@@ -1,0 +1,109 @@
+{% load static %}
+{% load socialaccount %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Signup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-image: url('https://images.unsplash.com/photo-1601758003122-58e6f7ee0c91');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .overlay {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, rgba(100, 100, 255, 0.8), rgba(30, 144, 255, 0.8));
+        }
+        .gradient-bg:hover {
+            background: linear-gradient(135deg, rgba(70, 70, 255, 0.9), rgba(0, 102, 204, 0.9));
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative">
+
+    <div class="overlay absolute inset-0"></div>
+
+    <div class="w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-6 relative z-10 border border-white/10">
+        
+        <div class="flex justify-center mb-6">
+            <img src="#" alt="Taste for Tails Logo" class="w-16 h-16">
+        </div>
+
+        <h2 class="text-2xl font-bold text-center text-white mb-4">Create an Account</h2>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                {% if message.tags == 'error' %}
+                <div class="px-4 py-2 text-sm rounded-lg bg-red-50 text-red-600">
+                    {{ message }}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="{% url 'user_signup' %}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label for="full_name" class="block text-sm font-medium text-white mb-1">Full Name</label>
+                <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required
+                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-white mb-1">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required
+                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label for="phone_number" class="block text-sm font-medium text-white mb-1">Phone Number</label>
+                <input type="tel" id="phone_number" name="phone_number" placeholder="Enter your phone number" required
+                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-white mb-1">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required
+                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label for="confirm_password" class="block text-sm font-medium text-white mb-1">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required
+                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <button type="submit"
+                class="w-full gradient-bg text-white text-sm font-semibold py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
+                Sign Up
+            </button>
+        </form>
+
+        <div class="flex items-center my-5">
+            <div class="flex-grow border-t border-white/20"></div>
+            <span class="mx-3 text-white/50 text-sm">OR</span>
+            <div class="flex-grow border-t border-white/20"></div>
+        </div>
+
+        <a href="{% provider_login_url 'google' %}" class="w-full flex items-center justify-center gap-2 py-2 bg-white text-gray-800 rounded-lg shadow hover:shadow-md transition-all text-sm font-medium">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20">
+            <span>Sign up with Google</span>
+        </a>
+
+        <p class="mt-5 text-center text-sm text-white/80">
+            Already have an account? 
+            <a href="{% url 'user_login' %}" class="text-blue-300 hover:text-blue-200 font-medium transition-colors">Log in here</a>
+        </p>
+    </div>
+
+</body>
+</html>

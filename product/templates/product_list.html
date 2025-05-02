@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dog Food Products - Taste for Tails{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-12">
+        <!-- Page Title -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Dog Food</h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">Premium nutrition for your canine companion</p>
+        </div>
+
+        <!-- Search & Filter -->
+        <form method="GET" class="bg-white rounded-xl shadow-lg p-6 mb-10">
+            <!-- Search Bar -->
+            <div class="relative mb-6">
+                <div class="flex items-center rounded-lg border-2 border-gray-200 overflow-hidden">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        value="{{ search_query|default:'' }}" 
+                        placeholder="Find the perfect food for your pet..." 
+                        class="w-full px-6 py-4 text-gray-700 focus:outline-none"
+                    >
+                    <button type="submit" class="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2">
+                        <i class="fas fa-search"></i><span class="hidden sm:inline">Search</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Toggle -->
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-xl font-semibold text-gray-800">Refine Results</h2>
+                <button id="toggleFilters" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+                    <i class="fas fa-sliders-h"></i><span>Filters</span>
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div id="filterSection" class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+                <!-- Brand -->
+                <div>
+                    <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">Brand</label>
+                    <select id="brand" name="brand" class="w-full p-3 border-2 rounded-lg">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                            <option value="{{ brand.id }}" {% if brand_filter == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="category" name="category" class="w-full p-3 border-2 rounded-lg">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Price -->
+                <div>
+                    <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                    <select id="price" name="price" class="w-full p-3 border-2 rounded-lg">
+                        <option value="">All Prices</option>
+                        <option value="0-100" {% if price_filter == "0-100" %}selected{% endif %}>Under ₹100</option>
+                        <option value="100-500" {% if price_filter == "100-500" %}selected{% endif %}>₹100 - ₹500</option>
+                        <option value="500-1000" {% if price_filter == "500-1000" %}selected{% endif %}>₹500 - ₹1000</option>
+                        <option value="1000-" {% if price_filter == "1000-" %}selected{% endif %}>Over ₹1000</option>
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div>
+                    <label for="sort" class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                    <select id="sort" name="sort" class="w-full p-3 border-2 rounded-lg">
+                        <option value="">Popular</option>
+                        <option value="price_asc" {% if sort_by == "price_asc" %}selected{% endif %}>Price: Low to High</option>
+                        <option value="price_desc" {% if sort_by == "price_desc" %}selected{% endif %}>Price: High to Low</option>
+                        <option value="name_asc" {% if sort_by == "name_asc" %}selected{% endif %}>Name: A to Z</option>
+                        <option value="name_desc" {% if sort_by == "name_desc" %}selected{% endif %}>Name: Z to A</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <!-- Product Grid -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
+                <span class="text-sm text-gray-500">Showing {{ products|length }} products</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {% for product in products %}
+                <a href="{% url 'product:detail' product.slug %}
+" class="group">
+                    <div class="product-card bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
+                        <div class="relative">
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-72 object-cover group-hover:scale-110 transition-transform duration-500">
+                            
+                            {% if product.offer_percentage > 0 %}
+                            <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                                <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
+                            </div>
+                            {% endif %}
+
+                            <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                                <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
+                                    <span class="text-gray-800 text-sm">View Details</span>
+                                </div>
+                            </div>
+
+                            <div class="absolute top-3 right-3">
+                                <button onclick="event.preventDefault(); toggleWishlist({{ product.variants.first.id }})" class="bg-white p-2 rounded-full shadow hover:shadow-md">
+                                    <i class="far fa-heart text-red-500"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-4">
+                            {% if product.brand %}
+                            <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
+                            {% endif %}
+                            <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
+                            <div class="flex text-yellow-400 text-sm mt-1 mb-2">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                                <span class="ml-1 text-gray-500">(24)</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    {% if product.sales_price < product.regular_price %}
+                                        <span class="text-gray-400 line-through text-sm">₹{{ product.regular_price }}</span>
+                                        <span class="text-xl font-bold text-gray-800 ml-2">₹{{ product.sales_price }}</span>
+                                    {% else %}
+                                        <span class="text-xl font-bold text-gray-800">₹{{ product.sales_price }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if product.variants.all %}
+                                <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+                                    <i class="fas fa-shopping-cart"></i> Add
+                                </button>
+                                {% else %}
+                                <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggleFilters = document.getElementById('toggleFilters');
+        const filterSection = document.getElementById('filterSection');
+        toggleFilters.addEventListener('click', () => {
+            filterSection.classList.toggle('hidden');
+            const icon = toggleFilters.querySelector('i');
+            const text = toggleFilters.querySelector('span');
+            if (filterSection.classList.contains('hidden')) {
+                icon.classList.replace('fa-sliders-h', 'fa-filter');
+                text.textContent = 'Show Filters';
+            } else {
+                icon.classList.replace('fa-filter', 'fa-sliders-h');
+                text.textContent = 'Hide Filters';
+            }
+        });
+    });
+
+    function addCartItem(variantId) {
+        console.log(`Add to cart: ${variantId}`);
+        showToast(`Product added to cart!`, 'success');
+    }
+
+    function toggleWishlist(variantId) {
+        console.log(`Wishlist toggle: ${variantId}`);
+        showToast(`Product added to wishlist!`, 'success');
+    }
+
+    function showToast(message, type) {
+        alert(message); 
+    }
+</script>
+{% endblock %}

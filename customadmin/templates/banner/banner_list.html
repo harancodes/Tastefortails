@@ -1,0 +1,134 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold">Banner</h2>
+    <a href="{% url 'customadmin:add_banner' %}" class="btn btn-primary">Add Banner</a>
+  </div>
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Dashboard</li>
+      <li class="breadcrumb-item active" aria-current="page">Banner</li>
+    </ol>
+  </nav>
+
+  <!-- Search and Sort -->
+  <form method="get" class="row mb-3">
+    <div class="col-md-4">
+      <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Search banner...">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-outline-primary">Search</button>
+      <a href="{% url 'customadmin:banner_list' %}" class="btn btn-outline-secondary">Reset</a>
+    </div>
+    <div class="col-md-6 text-end">
+      <div class="btn-group" role="group">
+        <a href="?sort=latest" class="btn btn-outline-dark">Last Added First</a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Banner Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered text-center">
+      <thead class="table-primary">
+        <tr>
+          <th>SNO</th>
+          <th>Name</th>
+          <th>Image</th>
+          <th>Created</th>
+          <th>List / Unlist</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for banner in page_obj %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ banner.name }}</td>
+          <td>
+            {% if banner.image %}
+              <img src="{{ banner.image.url }}" alt="{{ banner.name }}" style="max-width: 120px; max-height: 60px;">
+            {% else %}
+              <span class="text-muted">No image</span>
+            {% endif %}
+          </td>
+          <td>{{ banner.created_at|date:"d M Y" }}</td>
+          <td>
+            <button type="button"
+                    class="btn {% if banner.is_listed %}btn-success{% else %}btn-danger{% endif %} btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#confirmToggleModal"
+                    data-url="{% url 'customadmin:toggle_list_banner' banner.id %}"
+                    data-action="{% if banner.is_listed %}Unlist{% else %}List{% endif %}">
+              {% if banner.is_listed %}Unlist{% else %}List{% endif %}
+            </button>
+          </td>
+          <td>
+            <a href="{% url 'customadmin:edit_banner' banner.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'customadmin:soft_delete_banner' banner.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">No banners found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center">
+    <nav>
+      <ul class="pagination">
+        {% for page_num in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == page_num %}active{% endif %}">
+          <a class="page-link" href="?page={{ page_num }}&search={{ search_query }}">{{ page_num }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmToggleModalLabel">Confirm Action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to <span id="toggle-action-name" class="fw-bold"></span> this banner?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" class="btn btn-primary" id="confirmToggleBtn">Yes, Proceed</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Modal -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var confirmModal = document.getElementById('confirmToggleModal');
+  confirmModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var url = button.getAttribute('data-url');
+    var action = button.getAttribute('data-action');
+
+    var confirmBtn = confirmModal.querySelector('#confirmToggleBtn');
+    var actionSpan = confirmModal.querySelector('#toggle-action-name');
+
+    confirmBtn.href = url;
+    actionSpan.textContent = action;
+  });
+});
+</script>
+{% endblock %}

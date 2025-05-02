@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 class="text-2xl font-bold text-center mb-4">OTP Verification</h2>
+        
+        <form method="POST" action="{% url 'verify_otp'%}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label for="otp" class="block text-sm font-medium text-gray-700">Enter OTP</label>
+                <input type="text" name="otp" id="otp" placeholder="Enter OTP" 
+                    class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                    required>
+            </div>
+            <button type="submit" 
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px -4 rounded-lg transition">
+                Verify OTP
+            </button>
+        </form>
+        
+        <div class="text-center mt-4">
+            <p class="text-sm text-gray-600">Time Remaining: 
+                <span id="timer" class="font-bold text-gray-800">Loading...</span>
+            </p>
+        </div>
+        
+        {% if messages %}
+            <div class="mt-4 text-center">
+                {% for message in messages %}
+                    <p class="text-sm text-red-600">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <div class="text-center mt-4" id="resend-link" style="display: none;">
+            <p class="text-sm text-gray-600">
+                OTP Expired? 
+                <a href="{% url 'resend_otp'%}" id="resend_otp" class="text-blue-500 font-bold">Resend OTP</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const otpCreationTime = new Date("{{ user_data.otp_created_at }}").getTime();
+const otpExpiryTime = otpCreationTime + 2 * 60 * 1000; // 2 minutes in milliseconds
+
+function updateTimer() {
+                const now = new Date().getTime();
+                const distance = otpExpiryTime - now;
+
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById("timer").innerHTML = minutes + "m " + seconds + "s ";
+
+                if (distance < 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById("timer").innerHTML = "EXPIRED";
+                    document.getElementById("resend-link").style.display = "block"; // Show resend link
+                }
+            }
+
+            const timerInterval = setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>
