@@ -18,7 +18,8 @@ urlpatterns = [
     path('products/add/', views.add_product, name='add_product'),
 
     path('products/toggle/<int:product_id>/', views.toggle_product_status, name='toggle_product_status'),
-path('products/delete/<int:product_id>/', views.soft_delete_product, name='delete_product'),
+path('products/delete/<int:product_id>/', views.soft_delete_product, name='soft_delete_product'),
+path('products/edit/<int:product_id>/', views.edit_product, name='edit_product'),
 
     
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
@@ -30,7 +31,19 @@ path('products/delete/<int:product_id>/', views.soft_delete_product, name='delet
       path('banner', views.add_banner, name='add_banner'),
       path('banner/toggle-list/<int:banner_id>/', views.toggle_list_banner, name='toggle_list_banner'),
 path('banner/edit/<int:banner_id>/', views.edit_banner, name='edit_banner'),
-path('banner/delete/<int:banner_id>/', views.soft_delete_banner, name='soft_delete_banner'),
+path('banner/delete/', views.soft_delete_banner, name='soft_delete_banner'),
+# path('brands', views.brands, name='brands'),
+path('brands/add/', views.add_brands, name='add_brands'),
+path('brands/', views.brands, name='brands_list'),
+
+
+path('brands/toggle-active/<int:brand_id>/', views.toggle_active_status, name='toggle_active_status'),
+path('brands/delete/<int:brand_id>/', views.soft_delete_brands, name='soft_delete_brands'),
+path('brands/edit/<int:brand_id>/', views.edit_brands, name='edit_brands'),
+
+
+
+
 
 
 

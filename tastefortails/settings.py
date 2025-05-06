@@ -197,7 +197,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 USE_TZ = True 
-STATICFILES_STORAGE ='whitenoise.storage.CompressedManifestStaticFilesStorage'
+# STATICFILES_STORAGE ='whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field typ'e
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -267,7 +267,7 @@ cloudinary.config(
     secure = True
 )
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
 # SOCIAL_AUTH_GOOGLE_OAUTH2_KEY= config('GOOGLE_CLIENT_ID')

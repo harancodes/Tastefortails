@@ -26,9 +26,9 @@
     </div>
     <div class="col-md-6 text-end">
       <div class="btn-group" role="group">
-        <a href="?sort=price_high" class="btn btn-outline-dark">Price High-Low</a>
+        <!-- <a href="?sort=price_high" class="btn btn-outline-dark">Price High-Low</a>
         <a href="?sort=price_low" class="btn btn-outline-dark">Price Low-High</a>
-        <a href="?sort=latest" class="btn btn-outline-dark">Last Added First</a>
+        <a href="?sort=latest" class="btn btn-outline-dark">Last Added First</a> -->
       </div>
     </div>
   </form>
@@ -40,8 +40,8 @@
         <tr>
           <th>SNO</th>
           <th>Category Name</th>
-          <th>Sales</th>
-          <th>Stock</th>
+          <!-- <th>Sales</th>
+          <th>Stock</th> -->
           <th>Created</th>
           <th>List / Unlist</th>
           <th>Action</th>
@@ -53,8 +53,8 @@
         <tr>
           <td>{{ forloop.counter }}</td>
           <td>{{ category.name }}</td>
-          <td>{{ category.sales }}</td>
-          <td>{{ category.stock }}</td>
+          <!-- <td>{{ category.sales }}</td>
+          <td>{{ category.stock }}</td> -->
           <td>{{ category.created_at|date:"d M Y" }}</td>
           <td>
             <button type="button"

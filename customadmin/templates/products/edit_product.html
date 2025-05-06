@@ -1,0 +1,136 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h2>Edit Product</h2>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label for="name" class="form-label">Product Name *</label>
+      <input type="text" class="form-control" id="name" name="name" value="{{ product.name }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="description" class="form-label">Description</label>
+      <textarea class="form-control" id="description" name="description">{{ product.description }}</textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="category" class="form-label">Category *</label>
+      <select class="form-select" id="category" name="category" required>
+        <option value="">Select Category</option>
+        {% for category in categories %}
+          <option value="{{ category.id }}" {% if product.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="brand" class="form-label">Brand</label>
+      <select class="form-select" id="brand" name="brand">
+        <option value="">Select Brand</option>
+        {% for brand in brands %}
+          <option value="{{ brand.id }}" {% if product.brand_id == brand.id %}selected{% endif %}>{{ brand.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="product_type" class="form-label">Product Type *</label>
+      <input type="text" class="form-control" id="product_type" name="product_type" value="{{ product.product_type }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="stock" class="form-label">Total Stock *</label>
+      <input type="number" class="form-control" id="stock" name="stock" value="{{ product.stock }}" required>
+    </div>
+
+    <hr>
+
+    <h4>Variants</h4>
+    <div id="variant-section">
+      {% for variant in variants %}
+        <div class="row variant-group mb-2">
+          <input type="hidden" name="variant_ids[]" value="{{ variant.id }}">
+          <div class="col-md-3">
+            <input type="text" name="variants_weight[]" value="{{ variant.weight }}" placeholder="Weight" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <input type="number" name="variants_price[]" value="{{ variant.variant_price }}" placeholder="Price" step="0.01" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <input type="number" name="variants_stock[]" value="{{ variant.quantity_in_stock }}" placeholder="Stock" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <button type="button" class="btn btn-danger remove-variant">Remove</button>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" class="btn btn-secondary mb-3" id="add-variant">+ Add Variant</button>
+
+    <hr>
+
+    <h4>Images</h4>
+    <div class="mb-3">
+      <label class="form-label">Main Image</label><br>
+      {% for img in images %}
+        {% if img.is_primary %}
+          <img src="{{ img.image.url }}" alt="Main Image" width="150" class="mb-2 d-block">
+        {% endif %}
+      {% endfor %}
+      <input type="file" name="main_image" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Other Images</label><br>
+      {% for img in images %}
+        {% if not img.is_primary %}
+          <img src="{{ img.image.url }}" alt="Other Image" width="100" class="me-2 mb-2">
+        {% endif %}
+      {% endfor %}
+      <input type="file" name="other_image_1" class="form-control mt-2">
+      <input type="file" name="other_image_2" class="form-control mt-2">
+      <input type="file" name="other_image_3" class="form-control mt-2">
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary">Update Product</button>
+      <a href="{% url 'customadmin:product_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- Variant Add/Remove Script -->
+<script>
+  document.getElementById('add-variant').addEventListener('click', function () {
+    const section = document.getElementById('variant-section');
+
+    const group = document.createElement('div');
+    group.classList.add('row', 'variant-group', 'mb-2');
+    group.innerHTML = `
+      <input type="hidden" name="variant_ids[]" value="">
+      <div class="col-md-3">
+        <input type="text" name="variants_weight[]" placeholder="Weight" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <input type="number" name="variants_price[]" placeholder="Price" step="0.01" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <button type="button" class="btn btn-danger remove-variant">Remove</button>
+      </div>
+    `;
+    section.appendChild(group);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-variant')) {
+      e.target.closest('.variant-group').remove();
+    }
+  });
+</script>
+{% endblock %}

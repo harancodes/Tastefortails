@@ -10,8 +10,11 @@
 
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
+
+    
     <h2>Product Management</h2>
-    <a href="{% url 'add_product' %}" class="btn btn-success">
+
+    <a href="{% url 'customadmin:add_product' %}" class="btn btn-success">
       <i class="fas fa-plus me-2"></i>Add Product
     </a>
   </div>
@@ -22,9 +25,8 @@
       <form method="GET" class="d-flex">
         <input type="text" name="search" class="form-control me-2" 
                placeholder="Search products..." value="{{ request.GET.search }}">
-        <button class="btn btn-primary" type="submit">
-          <i class="fas fa-search"></i>
-        </button>
+        <button type="submit" class="btn btn-outline-primary me-2">Search</button>
+      <a href="{% url 'customadmin:category_list' %}" class="btn btn-outline-secondary">Reset</a>
       </form>
     </div>
     <div class="col-md-6 text-end">
@@ -34,10 +36,7 @@
         </a>
         <a href="?sort=price_asc" class="btn btn-outline-dark {% if request.GET.sort == 'price_asc' %}active{% endif %}">
           Price Low-High
-        </a>
-        <a href="?sort=latest" class="btn btn-outline-dark {% if request.GET.sort == 'latest' %}active{% endif %}">
-          Newest First
-        </a>
+        </a>        
       </div>
     </div>
   </div>
@@ -70,36 +69,32 @@
           </td>
           <td>{{ product.name }}</td>
           <td>{{ product.category.name|default:"-" }}</td>
-          <td class="text-end">₹{{ product.price|default:"0" }}</td>
-          <td class="text-center">{{ product.stock }}</td>
+     <td class="text-end">₹{{ product.total_price|default:"0" }}</td>
+ 
+          <td class="text-center">{{ product.total_stock }}</td>
           <td class="text-center">
-            <span class="badge {% if product.is_active %}bg-success{% else %}bg-danger{% endif %}">
-              {% if product.is_active %}Active{% else %}Inactive{% endif %}
-            </span>
+           <div class="form-check form-switch d-inline-block">
+  <input class="form-check-input status-toggle" 
+         type="checkbox" 
+         data-product-id="{{ product.id }}"
+         {% if product.is_listed %}checked{% endif %}>
+  <label class="form-check-label"></label>
+</div>
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <a href="{% url 'edit_product' product.id %}" class="btn btn-primary">
-                <i class="fas fa-edit"></i>
-              </a>
+
+               <a href="{% url 'customadmin:edit_product' product.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
+    
+
              <!-- Delete Button -->
-<a href="{% url 'delete_product' product.id %}" 
-   class="btn btn-sm btn-outline-danger"
+<a href="{% url 'customadmin:soft_delete_product' product.id %}" 
+   class="btn btn-sm btn-outline-danger bi bi-trash"
    onclick="return confirm('Deactivate this product?')"
    data-bs-toggle="tooltip" 
    title="Deactivate">
    <i class="fas fa-ban"></i>
-</a>
-
-<!-- Toggle Switch -->
-<div class="form-check form-switch d-inline-block">
-  <input class="form-check-input status-toggle" 
-         type="checkbox" 
-         data-product-id="{{ product.id }}"
-         {% if product.is_active %}checked{% endif %}>
-  <label class="form-check-label"></label>
-</div>
- 
+</a>  
             </div>
           </td>
         </tr>
@@ -107,7 +102,7 @@
         <tr>
           <td colspan="7" class="text-center py-4">
             <div class="alert alert-warning mb-0">
-              No products found. <a href="{% url 'add_product' %}" class="alert-link">Add your first product</a>
+              No products found. <a href="{% url 'customadmin:add_product' product.id%}" class="alert-link">Add your first product</a>
             </div>
           </td>
         </tr>

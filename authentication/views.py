@@ -312,40 +312,39 @@ def reset_password(request):
 
 @never_cache
 def admin_login(request):
-    # If the user is already logged in and is a staff member, redirect to the dashboard
     if request.user.is_authenticated and request.user.is_staff:
         return redirect('admin_dashboard')
 
-    # Handle POST request for login
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         
         if user is not None and user.is_staff:
-            login(request, user)  # Log the user in
-            return redirect('admin_dashboard')  # Redirect to the admin dashboard
+            login(request, user)  
+            return redirect('admin_dashboard')  
         else:
-            messages.error(request, "Invalid username or password")  # Display error message
-            return redirect('admin_login')  # Redirect back to the login page
+            messages.error(request, "Invalid username or password")  
+            return redirect('admin_login')  
 
-    return render(request, 'admin_login.html')  # Render login page if not POST
+    return render(request, 'admin_login.html')  
 
 
 @block_superuser_navigation
+
 def home(request):
-    # Check if user is authenticated
+    
     if not request.user.is_authenticated:
         print("User is not authenticated, redirecting to login.")
-        return redirect('user_login')  # Redirect to login if not authenticated
+        return redirect('user_login')  
     
     print("User is authenticated, rendering home.")
     
-    # Querying active categories and products
-    new_products = Products.objects.filter(is_active=True)[:8]  # Adjust this to get the latest or featured products
-    categories = Category.objects.filter(is_active=True)  # Query active categories
+
+    new_products = Products.objects.filter(is_active=True)[:8]   
+    categories = Category.objects.filter(is_active=True)  
     
-    # Pass the queried data to the template
+
     context = {
         'user': request.user,
         'new_products': new_products,
@@ -356,12 +355,10 @@ def home(request):
 
 
 
-@never_cache
-@block_superuser_navigation
-@admin_required
 def user_logout(request):
     logout(request)
-    return redirect('user_login')
+    print("User logged out:", request.user.is_authenticated)  # Debugging line
+    return redirect('home')
 
 
 # def product(request):

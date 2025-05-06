@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from customadmin.views import admin_login  
 
 urlpatterns = [
     path('admin/', admin.site.urls), 
@@ -24,6 +25,7 @@ urlpatterns = [
     path('customadmin/', include('customadmin.urls')),
     path('accounts/', include('allauth.urls')),
     path('products/', include('product.urls', namespace='product')),
+    path('admin-login/', admin_login, name='admin_login'),  
 
 
 

@@ -1,16 +1,19 @@
-
 {% extends "base.html" %}
 {% load static %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-10">
+<div class="container mx-auto px-4 py-8">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <!-- Product Images Section -->
         <div class="flex flex-col items-center space-y-6 relative">
-            <div class="relative group w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
+            <!-- Main Image with Zoom -->
+            <div class="relative zoom-container w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
                 {% if primary_image %}
                     <img id="mainImage" src="{{ primary_image.image.url }}" 
-                         class="w-full h-full rounded-lg object-cover cursor-zoom-in transition-transform duration-300 transform group-hover:scale-105" 
-                         alt="{{ product.name }}">  
+                         class="w-full h-full rounded-lg object-cover cursor-zoom-in transition-transform duration-300 transform hover:scale-105" 
+                         alt="{{ product.name }}">
+                    <div class="zoom-lens"></div>
+                    <div class="zoom-result"></div>  
                 {% else %}
                     <div class="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
                         <p class="text-gray-500">No image available</p>
@@ -18,6 +21,7 @@
                 {% endif %}
             </div>
             
+            <!-- Thumbnails -->
             {% if images %}
             <div class="flex space-x-4">
                 {% for image in images %}
@@ -29,8 +33,9 @@
             {% endif %}
         </div>
 
-        <div class="space-y-8 flex flex-col justify-center">
-            <!-- Product Availability -->
+        <!-- Product Details Section -->
+        <div class="space-y-6">
+            <!-- Product Title & Availability -->
             <div>
                 <div class="flex items-center space-x-2 mb-2">
                     {% if product.is_active %}
@@ -42,13 +47,13 @@
                     <span class="px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-full">Special Offer</span>
                     {% endif %}
                 </div>
-                <h1 class="text-4xl font-bold text-gray-800 leading-tight">{{ product.name }}</h1>
+                <h1 class="text-3xl font-bold text-gray-800 leading-tight">{{ product.name }}</h1>
                 {% if product.brand %}
                 <p class="text-gray-600 mt-1">By {{ product.brand.name }}</p>
                 {% endif %}
             </div>
-            
-            <!-- Rating stars -->
+
+            <!-- Ratings -->
             <div class="flex items-center space-x-2">
                 <div class="flex items-center">
                     {% for i in "12345" %}
@@ -66,7 +71,25 @@
                 <span class="text-gray-600 font-medium">{{ average_rating|floatformat:1 }}</span>
                 <span class="text-gray-500">({{ product.reviews.count }} reviews)</span>
             </div>
-            
+
+            <!-- Price Section -->
+            <div>
+                <h4 class="text-xl font-semibold text-gray-700">Price</h4>
+                <div class="flex items-center space-x-3 mt-2">
+                    <span id="variantPrice" class="text-3xl font-bold text-gray-900">
+                        ₹{{ variants.0.variant_price }}
+                    </span>
+                    {% if product.brand.offer_percentage > 0 %}
+                        <span id="originalPrice" class="text-lg text-gray-400 line-through">
+                            ₹{{ original_price|floatformat:2 }}
+                        </span>
+                        <span class="px-2 py-1 text-sm font-semibold text-white bg-red-500 rounded">
+                            {{ product.brand.offer_percentage }}% OFF
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Description -->
             <div>
                 <h3 class="text-lg font-semibold text-gray-700 mb-2">Description</h3>
@@ -81,52 +104,160 @@
                 </div>
             </div>
 
+            <!-- quantity_in_stock Indicator -->
             <div class="mt-4">
-                {% if variants.first %}
-                    <h4 class="text-xl font-semibold text-gray-700">Price</h4>
-                    <div class="flex space-x-4 items-center mt-2">
-                        <span class="text-3xl font-bold text-gray-900">₹{{ variants.first.variant_price }}</span>
-                        {% if product.brand.offer_percentage > 0 %}
-                            {% with discount=product.brand.offer_percentage %}
-                                {% with price=variants.first.variant_price %}
-                                    {% with original=price|floatformat:2 %}
-
-                                            <span class="text-lg text-gray-400 line-through">₹{{ final }}</span>
-                                            <span class="px-2 py-1 text-sm font-semibold text-white bg-red-500 rounded">
-                                                {{ discount }}% OFF
-                                            </span>
-                                        {% endwith %}
-                                    {% endwith %}
-                                {% endwith %}
-
+                <div class="flex justify-between items-center mb-1">
+                    <span id="quantity_in_stockText" class="text-sm font-medium {% if variants.0.quantity_in_stock > 10 %}text-green-600{% elif variants.0.quantity_in_stock > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                        {% if variants.0.quantity_in_stock > 10 %}
+                            In quantity_in_stock ({{ variants.0.quantity_in_stock }} available)
+                        {% elif variants.0.quantity_in_stock > 0 %}
+                            Only {{ variants.0.quantity_in_stock }} left!
+                        {% else %}
+                            Out of quantity_in_stock
                         {% endif %}
+                    </span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="quantity_in_stockIndicator" class="{% if variants.0.quantity_in_stock > 10 %}bg-green-500{% elif variants.0.quantity_in_stock > 0 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full" 
+                         style="width: {% if variants.0.quantity_in_stock > 10 %}100%{% elif variants.0.quantity_in_stock > 0 %}%{% else %}0%{% endif %}"></div>
+                </div>
+            </div>
+
+            <!-- Variant Selection -->
+            {% if variants %}
+                <div class="mt-6">
+                    <h4 class="text-xl font-semibold text-gray-700 mb-2">Select Variant</h4>
+                    <div class="flex flex-wrap gap-3">
+                        {% for variant in variants %}
+                            <div class="variant-option {% if forloop.first %}bg-blue-100 border-2 border-blue-500{% else %}border-2 border-gray-300 hover:border-blue-300{% endif %} px-4 py-2 rounded-md cursor-pointer transition-all duration-200"
+                                 data-variant-id="{{ variant.id }}" 
+                                 data-price="{{ variant.variant_price }}" 
+                                 data-quantity_in_stock="{{ variant.quantity_in_stock }}">
+                                {{ variant.weight }}
+                            </div>
+                        {% endfor %}
                     </div>
-                {% else %}
-                    <p class="text-red-500">No variants available.</p>
-                {% endif %}
+                </div>
+            {% else %}
+                <p class="text-red-500">No variants available.</p>
+            {% endif %}
+
+            <!-- Quantity Selector -->
+            <div class="mt-6">
+                <h4 class="text-lg font-semibold text-gray-700 mb-2">Quantity</h4>
+                <div class="flex items-center space-x-2">
+                    <button id="decreaseQty" class="bg-gray-200 px-3 py-1 rounded-l hover:bg-gray-300">-</button>
+                    <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input border text-center w-16 py-1 focus:outline-none">
+                    <button id="increaseQty" class="bg-gray-200 px-3 py-1 rounded-r hover:bg-gray-300">+</button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 flex space-x-4">
+                <button id="addToCartBtn"
+                    onclick="event.preventDefault(); addCartItem({{ variants.0.id }}, document.getElementById('quantity').value)"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex-grow flex items-center justify-center gap-2">
+                    <i class="fas fa-shopping-cart"></i> Add to Cart
+                </button>
+                <button id="buyNowBtn" 
+                    onclick="window.location.href = `/checkout/?variant=${document.querySelector('.variant-option.active').dataset.variantId}&qty=${document.getElementById('quantity').value}`"
+                    class="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors flex-grow flex items-center justify-center gap-2">
+                    <i class="fas fa-bolt"></i> Buy Now
+                </button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
+<!-- Custom CSS -->
+<style>
+    /* Custom animations */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .animate-fadeIn {
+        animation: fadeIn 0.3s ease-in-out;
+    }
 
+    /* Zoom functionality */
+    .zoom-container {
+        position: relative;
+        overflow: hidden;
+    }
+    .zoom-lens {
+        position: absolute;
+        border: 1px solid #d4d4d4;
+        width: 100px;
+        height: 100px;
+        background-repeat: no-repeat;
+        cursor: none;
+        display: none;
+        z-index: 10;
+    }
+    .zoom-result {
+        position: absolute;
+        top: 0;
+        left: 105%;
+        width: 300px;
+        height: 300px;
+        border: 1px solid #d4d4d4;
+        background-repeat: no-repeat;
+        display: none;
+        z-index: 20;
+        background-color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Product gallery transitions */
+    .thumbnail-transition {
+        transition: all 0.3s ease;
+    }
+    .thumbnail-active {
+        transform: scale(1.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Quantity input styling */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+</style>
+
+<!-- Custom JavaScript -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // Main Image and Thumbnails
         const mainImage = document.getElementById("mainImage");
         const thumbnails = document.querySelectorAll(".thumbnail");
         const thumbnailContainers = document.querySelectorAll(".thumbnail-container");
-        const weightOptions = document.querySelectorAll(".weight-option");
-        const buyNowBtn = document.getElementById("buyNowBtn");
-        const addToCartBtn = document.getElementById("addToCartBtn");
-        const stockIndicator = document.getElementById("stockIndicator");
-        const stockText = document.getElementById("stockText");
-        const priceDisplay = document.querySelector(".text-3xl.font-bold");
-        const originalPriceDisplay = document.querySelector(".text-lg.text-gray-400.line-through");
         
+        // Variant Selection
+        const variantOptions = document.querySelectorAll(".variant-option");
+        const variantPriceDisplay = document.getElementById("variantPrice");
+        const originalPriceDisplay = document.getElementById("originalPrice");
+        const quantity_in_stockIndicator = document.getElementById("quantity_in_stockIndicator");
+        const quantity_in_stockText = document.getElementById("quantity_in_stockText");
+        
+        // Quantity Controls
+        const quantityInput = document.getElementById("quantity");
+        const decreaseQtyBtn = document.getElementById("decreaseQty");
+        const increaseQtyBtn = document.getElementById("increaseQty");
+        
+        // Action Buttons
+        const addToCartBtn = document.getElementById("addToCartBtn");
+        const buyNowBtn = document.getElementById("buyNowBtn");
+
+        // Initialize Image Zoom
+        initializeZoom();
+        
+        // Thumbnail Gallery
         if (thumbnails.length > 0 && mainImage) {
             thumbnailContainers.forEach((container, index) => {
                 container.addEventListener("click", () => {
+                    // Update active thumbnail
                     thumbnailContainers.forEach(cont => {
                         cont.classList.remove("active", "border-blue-500");
                         cont.classList.add("border-transparent");
@@ -134,132 +265,247 @@
                     container.classList.add("active", "border-blue-500");
                     container.classList.remove("border-transparent");
                     
+                    // Update main image
                     const newSrc = thumbnails[index].dataset.src;
                     mainImage.src = newSrc;
                     mainImage.classList.add("animate-fadeIn");
                     setTimeout(() => mainImage.classList.remove("animate-fadeIn"), 500);
+                    
+                    // Reinitialize zoom for new image
+                    initializeZoom();
                 });
             });
         }
-        
-        if (weightOptions.length > 0) {
-            weightOptions[0]?.classList.add("active");
-            
-            weightOptions.forEach(option => {
+
+        // Variant Selection
+        if (variantOptions.length > 0) {
+            variantOptions.forEach(option => {
                 option.addEventListener("click", function() {
-                    weightOptions.forEach(opt => {
+                    // Update active variant
+                    variantOptions.forEach(opt => {
                         opt.classList.remove("active", "bg-blue-100", "border-blue-500");
                         opt.classList.add("border-gray-300");
                     });
-                    
                     this.classList.add("active", "bg-blue-100", "border-blue-500");
                     this.classList.remove("border-gray-300");
                     
+                    // Get variant data
                     const variantId = this.dataset.variantId;
-                    const stock = parseInt(this.dataset.stock);
+                    const quantity_in_stock = parseInt(this.dataset.quantity_in_stock);
                     const price = this.dataset.price;
                     
-                    if (priceDisplay) {
-                        priceDisplay.textContent = `₹${price}`;
+                    // Update price display
+                    if (variantPriceDisplay) {
+                        variantPriceDisplay.textContent = `₹${price}`;
+                        variantPriceDisplay.classList.add("animate-fadeIn");
+                        setTimeout(() => variantPriceDisplay.classList.remove("animate-fadeIn"), 500);
                     }
                     
-                    updateStockDisplay(stock);
-                    
-                    if (buyNowBtn) buyNowBtn.disabled = stock < 1;
-                    if (addToCartBtn) addToCartBtn.disabled = stock < 1;
-                    
+                    // Update original price if there's a discount
                     const offerPercentage = {{ product.brand.offer_percentage|default:0 }};
                     if (offerPercentage > 0 && originalPriceDisplay) {
-                        const originalPrice = parseFloat(price) * (100 / (100 - offerPercentage));
+                        const originalPrice = (parseFloat(price) * 100) / (100 - offerPercentage);
                         originalPriceDisplay.textContent = `₹${originalPrice.toFixed(2)}`;
                     }
                     
-                    // Add animation to price
-                    if (priceDisplay) {
-                        priceDisplay.classList.add("animate-fadeIn");
-                        setTimeout(() => priceDisplay.classList.remove("animate-fadeIn"), 500);
-                    }
+                    // Update quantity_in_stock display
+                    updatequantity_in_stockDisplay(quantity_in_stock);
+                    
+                    // Update buttons
+                    buyNowBtn.disabled = quantity_in_stock < 1;
+                    addToCartBtn.disabled = quantity_in_stock < 1;
+                    
+                    // Update cart button action
+                    addToCartBtn.onclick = function(event) {
+                        event.preventDefault();
+                        addCartItem(variantId, quantityInput.value);
+                    };
+                    
+                    // Update buy now button href
+                    buyNowBtn.onclick = function() {
+                        window.location.href = `/checkout/?variant=${variantId}&qty=${quantityInput.value}`;
+                    };
                 });
             });
         }
-        
-        function updateStockDisplay(stock) {
-            if (!stockIndicator || !stockText) return;
+
+        // Quantity controls
+        if (decreaseQtyBtn && increaseQtyBtn && quantityInput) {
+            decreaseQtyBtn.addEventListener("click", function() {
+                const currentValue = parseInt(quantityInput.value);
+                if (currentValue > 1) {
+                    quantityInput.value = currentValue - 1;
+                }
+            });
             
-            if (stock > 10) {
-                stockIndicator.style.width = "100%";
-                stockText.textContent = `In Stock (${stock} available)`;
-                stockIndicator.classList.remove("bg-red-500", "bg-yellow-500");
-                stockIndicator.classList.add("bg-green-500");
-            } else if (stock > 0) {
-                stockIndicator.style.width = `${(stock/10)*100}%`;
-                stockText.textContent = `Only ${stock} left!`;
-                stockIndicator.classList.remove("bg-red-500", "bg-green-500");
-                stockIndicator.classList.add("bg-yellow-500");
-            } else {
-                stockIndicator.style.width = "0%";
-                stockText.textContent = "Out of Stock";
-                stockIndicator.classList.remove("bg-green-500", "bg-yellow-500");
-                stockIndicator.classList.add("bg-red-500");
+            increaseQtyBtn.addEventListener("click", function() {
+                const currentValue = parseInt(quantityInput.value);
+                const activeVariant = document.querySelector(".variant-option.active");
+                const maxquantity_in_stock = activeVariant ? parseInt(activeVariant.dataset.quantity_in_stock) : 99;
+                
+                if (currentValue < maxquantity_in_stock) {
+                    quantityInput.value = currentValue + 1;
+                } else {
+                    showToast(`Only ${maxquantity_in_stock} items available in quantity_in_stock`, "error");
+                }
+            });
+            
+            quantityInput.addEventListener("change", function() {
+                const currentValue = parseInt(this.value);
+                const activeVariant = document.querySelector(".variant-option.active");
+                const maxquantity_in_stock = activeVariant ? parseInt(activeVariant.dataset.quantity_in_stock) : 99;
+                
+                if (currentValue < 1) {
+                    this.value = 1;
+                } else if (currentValue > maxquantity_in_stock) {
+                    this.value = maxquantity_in_stock;
+                    showToast(`Only ${maxquantity_in_stock} items available in quantity_in_stock`, "error");
+                }
+            });
+        }
+
+        // Functions
+        function initializeZoom() {
+            if (!mainImage) return;
+            
+            const container = mainImage.parentElement;
+            const lens = container.querySelector(".zoom-lens");
+            const result = container.querySelector(".zoom-result");
+            
+            if (!lens || !result) return;
+            
+            mainImage.addEventListener("mousemove", function(e) {
+                moveLens(e);
+            });
+            
+            mainImage.addEventListener("mouseenter", function() {
+                lens.style.display = "block";
+                result.style.display = "block";
+            });
+            
+            mainImage.addEventListener("mouseleave", function() {
+                lens.style.display = "none";
+                result.style.display = "none";
+            });
+            
+            function moveLens(e) {
+                let pos = getCursorPos(e);
+                let x = pos.x - (lens.offsetWidth / 2);
+                let y = pos.y - (lens.offsetHeight / 2);
+                
+                // Prevent lens from going outside the image
+                if (x > mainImage.width - lens.offsetWidth) x = mainImage.width - lens.offsetWidth;
+                if (x < 0) x = 0;
+                if (y > mainImage.height - lens.offsetHeight) y = mainImage.height - lens.offsetHeight;
+                if (y < 0) y = 0;
+                
+                // Set lens position
+                lens.style.left = x + "px";
+                lens.style.top = y + "px";
+                
+                // Calculate ratio
+                let cx = result.offsetWidth / lens.offsetWidth;
+                let cy = result.offsetHeight / lens.offsetHeight;
+                
+                // Set result background
+                result.style.backgroundImage = "url('" + mainImage.src + "')";
+                result.style.backgroundSize = (mainImage.width * cx) + "px " + (mainImage.height * cy) + "px";
+                result.style.backgroundPosition = "-" + (x * cx) + "px -" + (y * cy) + "px";
+            }
+            
+            function getCursorPos(e) {
+                let rect = mainImage.getBoundingClientRect();
+                let x = e.pageX - rect.left - window.pageXOffset;
+                let y = e.pageY - rect.top - window.pageYOffset;
+                return {x: x, y: y};
             }
         }
         
-        /** Add to Cart */
-        if (addToCartBtn) {
-            addToCartBtn.addEventListener("click", function () {
-                if (this.disabled) return;
-                
-                const activeOption = document.querySelector(".weight-option.active");
-                if (!activeOption) return;
-                
-                const variantId = activeOption.dataset.variantId;
-                const stock = parseInt(activeOption.dataset.stock);
-                
-                if (stock < 1) {
-                    showToast("This size is out of stock!", "error");
-                    return;
-                }
-                
-                this.classList.add("animate-pulse");
-                setTimeout(() => this.classList.remove("animate-pulse"), 500);
-                
-                
-                
-                showToast("Added to Cart!", "success");
-            });
-        }
-        
-        if (buyNowBtn) {
-            buyNowBtn.addEventListener("click", function () {
-                if (this.disabled) return;
-                
-                const activeOption = document.querySelector(".weight-option.active");
-                if (!activeOption) return;
-                
-                const variantId = activeOption.dataset.variantId;
-                const stock = parseInt(activeOption.dataset.stock);
-                
-                if (stock < 1) {
-                    showToast("This size is out of stock!", "error");
-                    return;
-                }
-                
-                this.classList.add("animate-pulse");
-                setTimeout(() => this.classList.remove("animate-pulse"), 500);
-                
-                window.location.href = `/checkout/?variant=${variantId}`;
-            });
-        }
-        
-        /** Show Toast Message */
-        function showToast(message, type) {
-            const toast = document.createElement("div");
-            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white ${
-                type === "success" ? "bg-green-500" : "bg-red-500"
-            }`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+        function updatequantity_in_stockDisplay(quantity_in_stock) {
+            if (!quantity_in_stockIndicator || !quantity_in_stockText) return;
+            
+            if (quantity_in_stock > 10) {
+                quantity_in_stockIndicator.style.width = "100%";
+                quantity_in_stockText.textContent = `In quantity_in_stock (${quantity_in_stock} available)`;
+                quantity_in_stockText.className = "text-sm font-medium text-green-600";
+                quantity_in_stockIndicator.className = "bg-green-500 h-2 rounded-full";
+            } else if (quantity_in_stock > 0) {
+                quantity_in_stockIndicator.style.width = `${(quantity_in_stock/10)*100}%`;
+                quantity_in_stockText.textContent = `Only ${quantity_in_stock} left!`;
+                quantity_in_stockText.className = "text-sm font-medium text-yellow-600";
+                quantity_in_stockIndicator.className = "bg-yellow-500 h-2 rounded-full";
+            } else {
+                quantity_in_stockIndicator.style.width = "0%";
+                quantity_in_stockText.textContent = "Out of quantity_in_stock";
+                quantity_in_stockText.className = "text-sm font-medium text-red-600";
+                quantity_in_stockIndicator.className = "bg-red-500 h-2 rounded-full";
+            }
         }
     });
+
+    // Cart functionality
+    function addCartItem(variantId, quantity) {
+        if (!variantId) return;
+        
+        fetch('/cart/add/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                variant_id: variantId,
+                quantity: quantity || 1
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast("Added to Cart!", "success");
+                // Update cart count if needed
+                if (data.cart_count !== undefined) {
+                    const cartCountElement = document.getElementById("cartCount");
+                    if (cartCountElement) {
+                        cartCountElement.textContent = data.cart_count;
+                        cartCountElement.classList.add("animate-bounce");
+                        setTimeout(() => cartCountElement.classList.remove("animate-bounce"), 1000);
+                    }
+                }
+            } else {
+                showToast(data.message || "Failed to add to cart", "error");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("An error occurred. Please try again.", "error");
+        });
+    }
+
+    // Toast notification
+    function showToast(message, type) {
+        const toast = document.createElement("div");
+        toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white z-50 ${
+            type === "success" ? "bg-green-500" : "bg-red-500"
+        }`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // Animate in
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(20px)";
+        toast.style.transition = "opacity 0.3s, transform 0.3s";
+        
+        setTimeout(() => {
+            toast.style.opacity = "1";
+            toast.style.transform = "translateY(0)";
+        }, 10);
+        
+        // Remove after delay
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateY(20px)";
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
 </script>
+{% endblock %}

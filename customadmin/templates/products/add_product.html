@@ -1,0 +1,240 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- Load Cropper.js -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<div class="container mt-4">
+    <h2>Add Product</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="productForm">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Product Name *</label>
+            <input type="text" name="name" id="name" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea name="description" id="description" class="form-control"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="category" class="form-label">Category *</label>
+            <select name="category" id="category" class="form-control" required>
+                <option value="">Select a category</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="brand" class="form-label">Brand (Optional)</label>
+            <select name="brand" id="brand" class="form-control">
+                <option value="">Select a brand</option>
+                {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="product_type" class="form-label">Product Type *</label>
+            <select name="product_type" id="product_type" class="form-control" required>
+                <option value="">Select a type</option>
+                <option value="Dry">Dry</option>
+                <option value="Wet">Wet</option>
+                <option value="Gravy">Gravy</option>
+            </select>
+        </div>
+
+        <hr>
+        <h5>Variants</h5>
+        <div id="variant-section">
+            <div class="variant-group mb-2 d-flex gap-2 align-items-center">
+                <input type="text" name="variants_weight[]" placeholder="Weight (e.g., 500g)" class="form-control w-25" required>
+                <input type="text" name="variants_price[]" placeholder="Price" class="form-control w-25" required>
+                <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" required>
+                <button type="button" class="btn btn-danger btn-sm remove-variant">Remove</button>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="add-variant">+ Add Variant</button>
+
+        <hr>
+        <h5>Product Images</h5>
+
+        <!-- Croppable Main Image -->
+        <div class="mb-3">
+            <label class="form-label">Main Image (crop before submit)</label>
+            <input type="file" id="mainImageInput" accept="image/*" class="form-control">
+            <input type="hidden" name="main_image" id="mainImageCropped">
+            <div class="mt-3">
+                <img id="mainImagePreview" style="max-width: 100%; display: none;" />
+            </div>
+        </div>
+
+        <!-- Other Images (Crop Enabled) -->
+        <div class="mb-3">
+            <label class="form-label">Other Images (crop before submit)</label>
+            <input type="file" name="other_image_1" class="form-control mb-2" accept="image/*" id="otherImageInput1">
+            <input type="hidden" name="other_image_1_cropped" id="otherImageCropped1">
+            <div class="mt-3">
+                <img id="otherImagePreview1" style="max-width: 100%; display: none;" />
+            </div>
+
+            <input type="file" name="other_image_2" class="form-control mb-2" accept="image/*" id="otherImageInput2">
+            <input type="hidden" name="other_image_2_cropped" id="otherImageCropped2">
+            <div class="mt-3">
+                <img id="otherImagePreview2" style="max-width: 100%; display: none;" />
+            </div>
+
+            <input type="file" name="other_image_3" class="form-control mb-2" accept="image/*" id="otherImageInput3">
+            <input type="hidden" name="other_image_3_cropped" id="otherImageCropped3">
+            <div class="mt-3">
+                <img id="otherImagePreview3" style="max-width: 100%; display: none;" />
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add Product</button>
+    </form>
+</div>
+
+<!-- Variant Logic -->
+<script>
+    document.getElementById('add-variant').addEventListener('click', function () {
+        const variantGroup = document.createElement('div');
+        variantGroup.classList.add('variant-group', 'mb-2', 'd-flex', 'gap-2', 'align-items-center');
+        variantGroup.innerHTML = `
+            <input type="text" name="variants_weight[]" placeholder="Weight (e.g., 500g)" class="form-control w-25" required>
+            <input type="text" name="variants_price[]" placeholder="Price" class="form-control w-25" required>
+            <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" required>
+            <button type="button" class="btn btn-danger btn-sm remove-variant">Remove</button>
+        `;
+        document.getElementById('variant-section').appendChild(variantGroup);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('remove-variant')) {
+            e.target.parentElement.remove();
+        }
+    });
+</script>
+
+<script>
+    let cropperMain, cropperOther1, cropperOther2, cropperOther3;
+
+    // Main image cropping
+    const mainImageInput = document.getElementById('mainImageInput');
+    const mainImagePreview = document.getElementById('mainImagePreview');
+    mainImageInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            mainImagePreview.src = event.target.result;
+            mainImagePreview.style.display = 'block';
+
+            if (cropperMain) cropperMain.destroy();
+
+            cropperMain = new Cropper(mainImagePreview, {
+                aspectRatio: 1,
+                viewMode: 1,
+                autoCropArea: 1,
+                movable: true,
+                zoomable: true
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Other images cropping
+    function initializeCropper(inputId, previewId, cropperVar) {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+
+        input.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+
+                if (cropperVar) cropperVar.destroy();
+
+                cropperVar = new Cropper(preview, {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    movable: true,
+                    zoomable: true
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    initializeCropper('otherImageInput1', 'otherImagePreview1', cropperOther1);
+    initializeCropper('otherImageInput2', 'otherImagePreview2', cropperOther2);
+    initializeCropper('otherImageInput3', 'otherImagePreview3', cropperOther3);
+
+    document.getElementById('productForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+        // Handle cropping for all images
+        if (cropperMain) {
+            cropperMain.getCroppedCanvas().toBlob(function (blob) {
+                const croppedFile = new File([blob], "main_image.jpg", { type: "image/jpeg" });
+                formData.append("main_image", croppedFile);
+            });
+        }
+
+        if (cropperOther1) {
+            cropperOther1.getCroppedCanvas().toBlob(function (blob) {
+                const croppedFile = new File([blob], "other_image_1.jpg", { type: "image/jpeg" });
+                formData.append("other_image_1", croppedFile);
+            });
+        }
+
+        if (cropperOther2) {
+            cropperOther2.getCroppedCanvas().toBlob(function (blob) {
+                const croppedFile = new File([blob], "other_image_2.jpg", { type: "image/jpeg" });
+                formData.append("other_image_2", croppedFile);
+            });
+        }
+
+        if (cropperOther3) {
+            cropperOther3.getCroppedCanvas().toBlob(function (blob) {
+                const croppedFile = new File([blob], "other_image_3.jpg", { type: "image/jpeg" });
+                formData.append("other_image_3", croppedFile);
+            });
+        }
+
+        fetch("{% url 'customadmin:add_product' %}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else {
+                return response.text();
+            }
+        })
+        .catch(err => console.error(err));
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold">Brands</h2>
+    <a href="{% url 'customadmin:add_brands' %}" class="btn btn-primary">Add Brand</a>
+  </div>
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Dashboard</li>
+      <li class="breadcrumb-item active" aria-current="page">Brands</li>
+    </ol>
+  </nav>
+
+  <!-- Search -->
+  <form method="get" class="row mb-3">
+    <div class="col-md-4">
+      <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Search brand...">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-outline-primary">Search</button>
+      <a href="{% url 'customadmin:brands_list' %}" class="btn btn-outline-secondary">Reset</a>
+    </div>
+  </form>
+
+  <!-- Brand Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered text-center">
+      <thead class="table-primary">
+        <tr>
+          <th>SNO</th>
+          <th>Brand Name</th>
+          <th>Created</th>
+          <th>List / Unlist</th>
+          <th>Action</th>
+          <th>Offer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for brand in page_obj %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ brand.name }}</td>
+          <td>{{ brand.created_at|date:"d M Y" }}</td>
+          <td>
+            <button type="button"
+                    class="btn {% if brand.is_listed %}btn-success{% else %}btn-danger{% endif %} btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#confirmToggleModal"
+                    data-url="{% url 'customadmin:toggle_active_status' brand.id %}"
+                    data-action="{% if brand.is_listed %}Unlist{% else %}List{% endif %}">
+              {% if brand.is_listed %}Unlist{% else %}List{% endif %}
+            </button>
+          </td>
+          <td>
+            {% if brand.id %}
+              <a href="{% url 'customadmin:edit_brands' brand.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
+              <a href="#" class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'customadmin:soft_delete_brands' brand.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+            {% else %}
+              <span class="text-danger">Invalid brand</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if brand.offer_percentage %}{{ brand.offer_percentage }}%{% else %}<span class="text-muted">--</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">No brands found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center">
+    <nav>
+      <ul class="pagination">
+        {% for page_num in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == page_num %}active{% endif %}">
+          <a class="page-link" href="?page={{ page_num }}&search={{ search_query }}">{{ page_num }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Add Offer Button -->
+  <div class="text-end">
+    <a href="#" class="btn btn-dark mt-3">Add Offer</a>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmToggleModalLabel">Confirm Action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to <span id="toggle-action-name" class="fw-bold"></span> this brand?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" class="btn btn-primary" id="confirmToggleBtn">Yes, Proceed</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var confirmModal = document.getElementById('confirmToggleModal');
+  confirmModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var url = button.getAttribute('data-url');
+    var action = button.getAttribute('data-action');
+
+    var confirmBtn = confirmModal.querySelector('#confirmToggleBtn');
+    var actionSpan = confirmModal.querySelector('#toggle-action-name');
+
+    confirmBtn.href = url;
+    actionSpan.textContent = action;
+  });
+});
+</script>
+{% endblock %}
