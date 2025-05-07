@@ -357,7 +357,7 @@ def home(request):
 
 def user_logout(request):
     logout(request)
-    print("User logged out:", request.user.is_authenticated)  # Debugging line
+    print("User logged out:", request.user.is_authenticated)  
     return redirect('home')
 
 

@@ -169,9 +169,7 @@
     </div>
 </div>
 
-<!-- Custom CSS -->
 <style>
-    /* Custom animations */
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -218,7 +216,6 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    /* Quantity input styling */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
         -webkit-appearance: none;
@@ -391,6 +388,7 @@
             function moveLens(e) {
                 let pos = getCursorPos(e);
                 let x = pos.x - (lens.offsetWidth / 2);
+                
                 let y = pos.y - (lens.offsetHeight / 2);
                 
                 // Prevent lens from going outside the image

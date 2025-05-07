@@ -9,7 +9,7 @@ from django.utils.timezone import now
 
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    image = models.ImageField(upload_to="category", default='category/default_image.jpg')  # Default image
+    image = CloudinaryField('image')   
     is_active = models.BooleanField(default=True)
     is_listed= models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,7 +35,7 @@ class Category(models.Model):
 class Brand(models.Model):
     name = models.CharField(max_length=255, unique=True)
     offer_percentage = models.PositiveIntegerField(default=0, help_text="Discount percentage for this brand.")
-    image = models.ImageField(upload_to='brand_images/', blank=True, null=True)
+    image = CloudinaryField('image', default = True)
     is_listed = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=now)
     updated_at= models.DateTimeField(auto_now=True)

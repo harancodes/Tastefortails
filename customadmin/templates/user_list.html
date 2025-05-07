@@ -40,7 +40,7 @@
                         <th class="py-3">Orders</th>
                         <th class="py-3">Balance</th>
                         <th class="py-3">Block/Unblock</th>
-                        <th class="py-3">Action</th>
+                        <!-- <th class="py-3">Action</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -65,21 +65,46 @@
                         <td class="py-3">{{ user.orders_count|default:"0" }}</td>
                         <td class="py-3">${{ user.balance|default:"0.00" }}</td>
                         <td class="py-3">
-                            <a href="{% url 'customadmin:block_user' user.id %}" 
-                               onclick="return confirm('Are you sure you want to {% if user.is_active %}block{% else %}unblock{% endif %} this user?');"
-                               class="text-decoration-none">
-                                {% if user.is_active %}
-                                <button type="button" class="btn btn-danger btn-sm rounded-pill px-3">BLOCK</button>
-                                {% else %}
-                                <button type="button" class="btn btn-success btn-sm rounded-pill px-3">UNBLOCK</button>
-                                {% endif %}
-                            </a>
+
+
+                                     <a href="{% url 'customadmin:block_user' user.id %}" 
+   class="text-decoration-none" 
+   data-bs-toggle="modal" 
+   data-bs-target="#confirmBlockModal"
+   data-user-id="{{ user.id }}" 
+   data-is-active="{{ user.is_active }}">
+    {% if user.is_active %}
+    <button type="button" class="btn btn-danger btn-sm rounded-pill px-3">BLOCK</button>
+    {% else %}
+    <button type="button" class="btn btn-success btn-sm rounded-pill px-3">UNBLOCK</button>
+    {% endif %}
+</a>         
                         </td>
-                        <td class="py-3 text-center">
+
+<div class="modal fade" id="confirmBlockModal" tabindex="-1" aria-labelledby="confirmBlockModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmBlockModalLabel">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to 
+                <span id="blockAction"></span> this user?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a id="confirmBlockBtn" href="#" class="btn btn-danger">Confirm</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+                        <!-- <td class="py-3 text-center">
                             <button class="btn btn-link btn-sm p-0">
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
-                        </td>
+                        </td> -->
                     </tr>
                     {% empty %}
                     <tr>
@@ -128,7 +153,6 @@
     </div>
 </div>
 
-<!-- Minor extra styling -->
 <style>
     .avatar {
         width: 40px;
@@ -147,3 +171,31 @@
     }
 </style>
 {% endblock %}
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var blockLinks = document.querySelectorAll('[data-bs-toggle="modal"]');
+
+        blockLinks.forEach(function(link) {
+            link.addEventListener('click', function(event) {
+                var userId = link.getAttribute('data-user-id');
+                var isActive = link.getAttribute('data-is-active') === 'True';  // Convert to boolean
+                var confirmBlockBtn = document.getElementById('confirmBlockBtn');
+                var blockActionSpan = document.getElementById('blockAction');
+                
+                // Update modal message and button text
+                if (isActive) {
+                    blockActionSpan.textContent = "block";
+                } else {
+                    blockActionSpan.textContent = "unblock";
+                }
+
+                // Update the confirmation link with the correct URL
+                var url = '{% url "customadmin:block_user" 0 %}'.replace('0', userId);
+                confirmBlockBtn.setAttribute('href', url);
+            });
+        });
+    });
+</script>
+

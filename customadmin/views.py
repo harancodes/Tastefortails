@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from customadmin.models import Banner
 from django.urls import reverse
 import logging
+from django.db.models import Sum
 
 def block_superuser_navigation(view_func):
     def wrapper(request, *args, **kwargs):
@@ -59,6 +60,9 @@ def admin_login(request):
 def admin_dashboard(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to access this page")
+    
+    # total_user = User.objects.aggregate(Sum('points'))['points__sum']
+    
     return render(request, 'admin_dashboard.html')
 
 @admin_required
@@ -106,27 +110,38 @@ def block_user(request, user_id):
 ###### Category Section ######
 
 
-@admin_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+
+@staff_member_required
 def add_category(request):
     if request.method == "POST":
         name = request.POST.get('name')
         image = request.FILES.get('image')
 
+        # Check if name is empty
         if not name.strip():
             messages.error(request, "Category name cannot be empty.")
             return redirect('customadmin:add_category')
-        elif Category.objects.filter(name__iexact=name.strip()):
 
-            messages.error(request, "This already exist")
-            print("This worked")
+        # Check if category already exists
+        if Category.objects.filter(name__iexact=name.strip()).exists():
+            messages.error(request, "This category already exists.")
             return redirect('customadmin:add_category')
-    
 
-        Category.objects.create(name=name, image=image if image else 'category/default_image.jpg')
+        # Default image if no image is uploaded
+        default_image = 'category/default_image.jpg'  # Adjust to the correct path
+
+        # Create the category object with the uploaded image or default image
+        Category.objects.create(name=name.strip(), image=image if image else default_image)
+
+        # Success message
         messages.success(request, "Category added successfully.")
         return redirect('customadmin:category_list')
 
     return render(request, 'category/add_category.html')
+
 
 
 
@@ -162,23 +177,31 @@ def toggle_list_category(request, category_id):
 
 @admin_required
 def edit_category(request, category_id):
+    # Fetch the category to edit
     category = get_object_or_404(Category, id=category_id)
 
     if request.method == "POST":
         name = request.POST.get('name')
-        image = request.POST.get('image')
+        image = request.FILES.get('image')  # Use request.FILES to get uploaded image files
+
+        # Update category name if provided
         if name:
-            category.name = name
+            category.name = name.strip()
             category.save()
-            messages.success(request, "Category updated successfully.")
-            return redirect('customadmin:category_list')
+            messages.success(request, "Category name updated successfully.")
         else:
             messages.error(request, "Category name cannot be empty.")
-        if image:
-            category.image = image
-            category.save()
-            messages.success(request,'Image Added Successfully')
 
+        # Update category image if a new image is uploaded
+        if image:
+            category.image = image  # Assign the uploaded image to the CloudinaryField
+            category.save()
+            messages.success(request, 'Image updated successfully.')
+
+        # Redirect to category list or any other page
+        return redirect('customadmin:category_list')
+
+    # Render the edit form with the category details
     return render(request, 'category/edit_category.html', {'category': category})
 
 
@@ -190,6 +213,7 @@ def soft_delete_category(request, category_id):
     category.save()
     messages.success(request, "Category deleted (soft) successfully.")
     return redirect('customadmin:category_list')
+
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -250,34 +274,53 @@ def product_list(request):
 
 
 
-@admin_required
+
 def add_product(request):
     if request.method == "POST":
+        # Fetch product fields
         name = request.POST.get('name')
         description = request.POST.get('description', '')
         category_id = request.POST.get('category')
         brand_id = request.POST.get('brand')
         product_type = request.POST.get('product_type')
 
-        # Validate fields
+        # Validate required product fields
         if not all([name, category_id, product_type]):
             messages.error(request, "Please fill in all required fields.")
             return redirect('customadmin:add_product')
-
-        # Variant values
+        
+        # Fetch variant fields (multiple variants possible)
         variants_weight = request.POST.getlist('variants_weight[]')
         variants_price = request.POST.getlist('variants_price[]')
         variants_stock = request.POST.getlist('variants_stock[]')
 
-        # Clean variant data
+        # Clean variant data (strip spaces)
         variants_weight = [w.strip() for w in variants_weight if w.strip()]
         variants_price = [p.strip() for p in variants_price if p.strip()]
         variants_stock = [s.strip() for s in variants_stock if s.strip()]
 
+        # Ensure at least one variant is provided
         if not all([variants_weight, variants_price, variants_stock]):
             messages.error(request, "At least one variant is required.")
             return redirect('customadmin:add_product')
 
+        # Check for negative or invalid values in variants
+        for w, p, s in zip(variants_weight, variants_price, variants_stock):
+            try:
+                if float(p) < 0:
+                    messages.error(request, "Variant price cannot be negative.")
+                    return redirect('customadmin:add_product')
+                if int(s) < 0:
+                    messages.error(request, "Variant stock cannot be negative.")
+                    return redirect('customadmin:add_product')
+                if float(w) < 0:
+                    messages.error(request, "Variant weight cannot be negative.")
+                    return redirect('customadmin:add_product')
+            except ValueError:
+                messages.error(request, "Variant weight, price, and stock must be valid numbers.")
+                return redirect('customadmin:add_product')
+
+        # Calculate total stock and min price across all variants
         try:
             total_stock = sum(int(s) for s in variants_stock if s)
             min_price = min(float(p) for p in variants_price if p)
@@ -285,7 +328,7 @@ def add_product(request):
             messages.error(request, "Variant prices and stock must be valid numbers.")
             return redirect('customadmin:add_product')
 
-        # Create product (no price field here because it's on the Variant model)
+        # Create product (no price field here because it's in the Variant model)
         product = Products.objects.create(
             name=name,
             description=description,
@@ -306,27 +349,31 @@ def add_product(request):
                     quantity_in_stock=int(s),
                 )
 
-        # Handle Main Image
+        # Handle Main Image (Primary image for the product)
         main_image = request.FILES.get('main_image')
         if main_image:
             ProductImage.objects.create(product=product, image=main_image, is_primary=True)
 
-        # Handle other images
+        # Handle other images (if any)
         for i in range(1, 4):
+            
             other_image = request.FILES.get(f'other_image_{i}')
             if other_image:
                 ProductImage.objects.create(product=product, image=other_image, is_primary=False)
 
+        # Success message
         messages.success(request, f"Product '{product.name}' added successfully.")
         return redirect('customadmin:product_list')
 
+    # Get active categories and brands to display in the form
     categories = Category.objects.filter(is_active=True)
     brands = Brand.objects.filter(is_active=True)
+    
     return render(request, 'products/add_product.html', {
         'categories': categories,
         'brands': brands,
     })
-
+    
 
 @admin_required
 def edit_product(request, product_id):

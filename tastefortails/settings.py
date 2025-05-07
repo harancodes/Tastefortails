@@ -245,6 +245,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
+
 # ACCOUNT_SIGNUP_FIELDS = ['email']
 
 SOCIALACCOUNT_ADAPTER = 'authentication.iadapters.CustomSocialAccountAdapter'

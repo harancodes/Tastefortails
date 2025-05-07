@@ -21,6 +21,8 @@ def product_list_view(request):
     price_filter = request.GET.get('price', '')  # e.g., "100-500"
     sort_by = request.GET.get('sort', '')
 
+    
+
     # Annotate products with the lowest variant_price
     products = Products.objects.filter(is_active=True) \
         .select_related('brand', 'category') \
@@ -55,6 +57,7 @@ def product_list_view(request):
         products = products.order_by('-name')
     else:
         products = products.order_by('-created_at')
+
 
     context = {
         'products': products,

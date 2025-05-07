@@ -68,8 +68,29 @@
           </td>
           <td>
             <a href="{% url 'customadmin:edit_category' category.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
-            <a href="#" class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
-            <a href="{% url 'customadmin:soft_delete_category' category.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+            <a href="{% url 'customadmin:soft_delete_category' category.id %}"  class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-category-id="{{ category.id }}">
+    <i class="bi bi-trash"></i>
+</a>
+
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to soft delete this category? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a id="confirmDeleteBtn" href="#" class="btn btn-danger">Confirm</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
           </td>
           <td>
             {% if category.offer %}{{ category.offer }}{% else %}<span class="text-muted">--</span>{% endif %}
@@ -139,5 +160,25 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+
+
+<script>
+    // JavaScript to dynamically update the href of the confirmation link
+    document.addEventListener('DOMContentLoaded', function() {
+        var deleteLinks = document.querySelectorAll('[data-bs-toggle="modal"]');
+
+        deleteLinks.forEach(function(link) {
+            link.addEventListener('click', function(event) {
+                var categoryId = link.getAttribute('data-category-id');
+                var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+                // Update the confirmation link with the correct URL
+                var url = '{% url "customadmin:soft_delete_category" 0 %}'.replace('0', categoryId);
+                confirmDeleteBtn.setAttribute('href', url);
+            });
+        });
+    });
+</script>
+
 {% endblock %}
 
