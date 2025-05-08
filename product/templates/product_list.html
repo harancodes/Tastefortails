@@ -3,7 +3,61 @@
 
 {% block title %}Dog Food Products - Taste for Tails{% endblock %}
 
+
+
 {% block content %}
+
+<style>
+.pagination {
+  display: flex;
+  justify-content: center;
+  padding-left: 0;
+  list-style: none;
+  border-radius: 0.25rem;
+}
+
+.page-item {
+  margin: 0 3px;
+}
+
+.page-link {
+  position: relative;
+  display: block;
+  padding: 8px 16px;
+  margin-left: -1px;
+  line-height: 1.25;
+  color: #007bff;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.page-link:hover {
+  z-index: 2;
+  color: #0056b3;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+  cursor: pointer;
+}
+
+.page-item.active .page-link {
+  z-index: 3;
+  color: #fff;
+  background-color: #007bff;
+  border-color: #007bff;
+  cursor: default;
+}
+
+.page-item.disabled .page-link {
+  color: #6c757d;
+  pointer-events: none;
+  background-color: #fff;
+  border-color: #dee2e6;
+}
+</style>
+
 <div class="bg-gray-50 min-h-screen">
   <div class="container mx-auto px-4 py-12">
     <!-- Page Title -->
@@ -94,84 +148,106 @@
       </form>
     </aside>
 
+    <!-- Product Grid -->
+    <section class="mb-12">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
+        <span class="text-sm text-gray-500">Showing {{ page_obj.paginator.count }} products</span>
+      </div>
 
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        {% for product in page_obj %}
+        {% if product.is_active %}
+          <a href="{% url 'product:detail' product.slug %}" class="group">
+            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
+              <div class="relative">
+                <!-- Thumbnail Image -->
+                {% if product.thumbnail %}
+                  <img src="{{ product.thumbnail}}" alt="{{ product.name }}" class="w-full h-64 object-cover">
+                {% else %}
+                  <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
+                {% endif %}
 
-<!-- Product Grid -->
-<section class="mb-12">
-  <div class="flex justify-between items-center mb-8">
-    <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
-    <span class="text-sm text-gray-500">Showing {{ products|length }} products</span>
-  </div>
+                <!-- Offer Badge -->
+                {% if product.offer_percentage > 0 %}
+                  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
+                  </div>
+                {% endif %}
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <!-- Hover effect with view details button -->
+                <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                  <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
+                    <span class="text-gray-800 text-sm">View Details</span>
+                  </div>
+                </div>
 
-    {% for product in products %}
-    {% if product.is_active %}
+                <!-- Wishlist Button -->
+                <div class="absolute top-3 right-3">
+                  <button onclick="event.preventDefault(); toggleWishlist({{ product.variants.first.id }})" class="bg-white p-2 rounded-full shadow hover:shadow-md">
+                    <i class="far fa-heart text-red-500"></i>
+                  </button>
+                </div>
+              </div>
 
-      <a href="{% url 'product:detail' product.slug %}" class="group">
-        <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
-          <div class="relative">
-            <!-- Thumbnail Image -->
-            {% if product.thumbnail %}
-              <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-64 object-cover">
+              <!-- Product Info -->
+              <div class="p-4">
+                {% if product.brand %}
+                  <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
+                {% endif %}
+                <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
+                
+                <!-- Rating Stars -->
+                <div class="flex text-yellow-400 text-sm mt-1 mb-2">
+                  <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                  <span class="ml-1 text-gray-500">(24)</span>
+                </div>
+
+                <!-- Price & Cart Button -->
+                <div class="flex justify-between items-center">
+                  <p class="text-2xl text-gray-800 font-bold">₹{{ product.min_price }}</p>
+                  {% if product.variants.all %}
+                    <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+                      <i class="fas fa-shopping-cart"></i> Add
+                    </button>
+                  {% else %}
+                    <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </a>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Pagination -->
+    <div class="flex justify-center mt-8">
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
             {% else %}
-              <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
+              <li class="page-item"><a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ num }}">{{ num }}</a></li>
             {% endif %}
+          {% endfor %}
 
-            <!-- Offer Badge -->
-            {% if product.offer_percentage > 0 %}
-              <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-                <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
-              </div>
-            {% endif %}
-
-            <!-- Hover effect with view details button -->
-            <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-              <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
-                <span class="text-gray-800 text-sm">View Details</span>
-              </div>
-            </div>
-
-            <!-- Wishlist Button -->
-            <div class="absolute top-3 right-3">
-              <button onclick="event.preventDefault(); toggleWishlist({{ product.variants.first.id }})" class="bg-white p-2 rounded-full shadow hover:shadow-md">
-                <i class="far fa-heart text-red-500"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Product Info -->
-          <div class="p-4">
-            {% if product.brand %}
-              <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
-            {% endif %}
-            <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
-            
-            <!-- Rating Stars -->
-            <div class="flex text-yellow-400 text-sm mt-1 mb-2">
-              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-              <span class="ml-1 text-gray-500">(24)</span>
-            </div>
-
-            <!-- Price & Cart Button -->
-            <div class="flex justify-between items-center">
-              <p class="text-2xl text-gray-800 font-bold">₹{{ product.min_price }}</p>
-              {% if product.variants.all %}
-                <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
-                  <i class="fas fa-shopping-cart"></i> Add
-                </button>
-              {% else %}
-                <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </a>
-      {% endif %}
-    {% endfor %}
-  </div>
-</section>
-
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
   </div>
 </div>
 {% endblock %}

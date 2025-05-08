@@ -7,7 +7,6 @@
     <a href="{% url 'customadmin:add_category' %}" class="btn btn-primary">Add Category</a>
   </div>
 
-  <!-- Breadcrumb -->
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item">Dashboard</li>
@@ -89,8 +88,6 @@
         </div>
     </div>
 </div>
-
-
           </td>
           <td>
             {% if category.offer %}{{ category.offer }}{% else %}<span class="text-muted">--</span>{% endif %}
@@ -118,13 +115,11 @@
     </nav>
   </div>
 
-  <!-- Add Offer Button -->
   <div class="text-end">
     <a href="#" class="btn btn-dark mt-3">Add Offer</a>
   </div>
 </div>
 
-<!-- Confirmation Modal -->
 <div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -143,7 +138,6 @@
   </div>
 </div>
 
-<!-- JavaScript for Modal -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var confirmModal = document.getElementById('confirmToggleModal');
@@ -163,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <script>
-    // JavaScript to dynamically update the href of the confirmation link
     document.addEventListener('DOMContentLoaded', function() {
         var deleteLinks = document.querySelectorAll('[data-bs-toggle="modal"]');
 
@@ -172,7 +165,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 var categoryId = link.getAttribute('data-category-id');
                 var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-                // Update the confirmation link with the correct URL
                 var url = '{% url "customadmin:soft_delete_category" 0 %}'.replace('0', categoryId);
                 confirmDeleteBtn.setAttribute('href', url);
             });

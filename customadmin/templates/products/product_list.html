@@ -12,12 +12,12 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
 
     
-    <h2>Product Management</h2>
+    <h2>Product Management</h2> 
 
     <a href="{% url 'customadmin:add_product' %}" class="btn btn-success">
       <i class="fas fa-plus me-2"></i>Add Product
     </a>
-  </div>
+  </div>  
 
   <!-- Search and Filters -->
   <div class="row mb-3">
@@ -74,26 +74,54 @@
           <td class="text-center">{{ product.total_stock }}</td>
           <td class="text-center">
            <div class="form-check form-switch d-inline-block">
-  <input class="form-check-input status-toggle" 
-         type="checkbox" 
-         data-product-id="{{ product.id }}"
-         {% if product.is_listed %}checked{% endif %}>
+<button type="button"
+        class="btn {% if product.is_listed %}btn-success{% else %}btn-danger{% endif %} btn-sm toggle-product-btn"
+        data-bs-toggle="modal"
+        data-bs-target="#confirmProductToggleModal"
+        data-url="{% url 'customadmin:toggle_product_status' product.id %}"
+        data-action="{% if product.is_listed %}Unlist{% else %}List{% endif %}">
+  {% if product.is_listed %}Unlist{% else %}List{% endif %}
+</button>
+
   <label class="form-check-label"></label>
 </div>
+
           </td>
-          <td class="text-center">
+        
+<div class="modal fade" id="confirmProductToggleModal" tabindex="-1" aria-labelledby="confirmProductToggleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmProductToggleModalLabel">Confirm Product Status Change</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to <span id="product-toggle-action-name" class="fw-bold text-capitalize"></span> this product?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" class="btn btn-primary" id="confirmProductToggleBtn">Yes, Proceed</a>
+      </div>
+    </div>
+  </div>
+</div>
+  <td class="text-center">
             <div class="btn-group btn-group-sm">
 
-               <a href="{% url 'customadmin:edit_product' product.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a> 
+
+<a href="{% url 'customadmin:edit_product' product.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a> 
 
 
-<a href="{% url 'customadmin:soft_delete_product' product.id %}"  class="btn btn-sm btn-outline-danger bi bi-trash"
-   data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" 
+<a href="{% url 'customadmin:soft_delete_product' product.id %}"  
+   class="btn btn-sm btn-outline-danger bi bi-trash deactivate-product"     
+   data-bs-toggle="modal" 
+   data-bs-target="#confirmDeleteModal" 
    data-product-id="{{ product.id }}" 
    data-bs-toggle="tooltip" 
    title="Deactivate">
    <i class="fas fa-ban"></i>
 </a>
+
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -111,9 +139,7 @@
         </div>
     </div>
 </div>
-
-
-            </div>
+      </div>
           </td>
         </tr>
         {% empty %}
@@ -177,11 +203,88 @@
   </nav>
   {% endif %}
 </div>
-{% endblock %}
+<!-- {% endblock %} -->
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-{% endblock %}
+
+
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deactivation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to deactivate this product?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Deactivate</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // === Soft Delete Modal ===
+  const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+  const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+  if (confirmDeleteModal && confirmDeleteBtn) {
+    confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      const productId = button.getAttribute('data-product-id');
+      const url = `/admin/products/${productId}/soft_delete/`;
+      confirmDeleteBtn.setAttribute('href', url);
+    });
+  }
+
+  // === Product Toggle Modal ===
+  const confirmModal = document.getElementById('confirmProductToggleModal');
+  if (confirmModal) {
+    confirmModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      const url = button.getAttribute('data-url');
+      const action = button.getAttribute('data-action');
+
+      const confirmBtn = confirmModal.querySelector('#confirmProductToggleBtn');
+      const actionSpan = confirmModal.querySelector('#product-toggle-action-name');
+
+      if (confirmBtn && actionSpan) {
+        confirmBtn.href = url;
+        actionSpan.textContent = action;
+      }
+    });
+  }
+
+  // === Bootstrap Tooltips ===
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script> -->
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var confirmModal = document.getElementById('confirmToggleModal');
+  confirmModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var url = button.getAttribute('data-url');
+    var action = button.getAttribute('data-action');
+
+    var confirmBtn = confirmModal.querySelector('#confirmToggleBtn');
+    var actionSpan = confirmModal.querySelector('#toggle-action-name');
+
+    confirmBtn.href = url;
+    actionSpan.textContent = action;
+  });
+});
+</script>
 
 
 <script>
@@ -190,13 +293,18 @@
 
         deleteLinks.forEach(function(link) {
             link.addEventListener('click', function(event) {
-                var productId = link.getAttribute('data-product-id');
+                var categoryId = link.getAttribute('data-category-id');
                 var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-                // Update the confirmation link with the correct URL
-                var url = '{% url "customadmin:soft_delete_product" 0 %}'.replace('0', productId);
+                var url = '{% url "customadmin:soft_delete_category" 0 %}'.replace('0', categoryId);
                 confirmDeleteBtn.setAttribute('href', url);
             });
         });
     });
 </script>
+ 
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{%endblock%}
+

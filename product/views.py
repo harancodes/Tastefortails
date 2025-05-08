@@ -20,6 +20,7 @@ def product_list_view(request):
     category_filter = request.GET.get('category', '')
     price_filter = request.GET.get('price', '')  # e.g., "100-500"
     sort_by = request.GET.get('sort', '')
+    page_number = request.GET.get('page')
 
     
 
@@ -58,9 +59,11 @@ def product_list_view(request):
     else:
         products = products.order_by('-created_at')
 
-
+    paginator = Paginator(products, 5)  # 10 products per page
+    page_obj = paginator.get_page(page_number)
     context = {
-        'products': products,
+        'page_obj': page_obj, 
+        # 'products': products,
         'brands': Brand.objects.all(),
         'categories': Category.objects.all(),
         'search_query': search_query,

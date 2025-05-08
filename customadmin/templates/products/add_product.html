@@ -1,6 +1,7 @@
 {% extends 'admin_base.html' %}
 
 {% block content %}
+
 <!-- Load Cropper.js -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -12,7 +13,7 @@
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
-    {% endif %}
+    {% endif %} 
 
     <form method="POST" enctype="multipart/form-data" id="productForm">
         {% csrf_token %}
@@ -51,9 +52,10 @@
             <label for="product_type" class="form-label">Product Type *</label>
             <select name="product_type" id="product_type" class="form-control" required>
                 <option value="">Select a type</option>
-                <option value="Dry">Dry</option>
-                <option value="Wet">Wet</option>
-                <option value="Gravy">Gravy</option>
+                <option value="dry">Dry</option>
+                <option value="wet">Wet</option>
+                <option value="gravy">Gravy</option>
+                <option value="milk_replacers">Milk Replacers</option>
             </select>
         </div>
 
@@ -62,8 +64,8 @@
         <div id="variant-section">
             <div class="variant-group mb-2 d-flex gap-2 align-items-center">
                 <input type="text" name="variants_weight[]" placeholder="Weight (e.g., 500g)" class="form-control w-25" required>
-                <input type="text" name="variants_price[]" placeholder="Price" class="form-control w-25" required>
-                <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" required>
+                <input type="number" name="variants_price[]" placeholder="Price" class="form-control w-25" step="0.01" min="0" required>
+                <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" min="0" required>
                 <button type="button" class="btn btn-danger btn-sm remove-variant">Remove</button>
             </div>
         </div>
@@ -74,35 +76,75 @@
 
         <!-- Croppable Main Image -->
         <div class="mb-3">
-            <label class="form-label">Main Image (crop before submit)</label>
-            <input type="file" id="mainImageInput" accept="image/*" class="form-control">
-            <input type="hidden" name="main_image" id="mainImageCropped">
-            <div class="mt-3">
-                <img id="mainImagePreview" style="max-width: 100%; display: none;" />
+            <label class="form-label">Main Image * (crop before submit)</label>
+            <input type="file" id="mainImageInput" accept="image/*" class="form-control" required>
+            <div class="mt-3" id="mainImageContainer" style="display: none;">
+                <img id="mainImagePreview" style="max-width: 100%;" />
+                <div class="mt-2">
+                    <button type="button" class="btn btn-primary btn-sm" id="cropMainImage">Crop Main Image</button>
+                </div>
+            </div>
+            <div class="mt-2" id="mainImageCroppedContainer" style="display: none;">
+                <p class="text-success">Image cropped successfully!</p>
+                <img id="mainImageCroppedPreview" style="max-width: 100%; max-height: 300px;" />
+                <input type="hidden" name="main_image_data" id="mainImageData">
             </div>
         </div>
 
         <!-- Other Images (Crop Enabled) -->
         <div class="mb-3">
-            <label class="form-label">Other Images (crop before submit)</label>
-            <input type="file" name="other_image_1" class="form-control mb-2" accept="image/*" id="otherImageInput1">
-            <input type="hidden" name="other_image_1_cropped" id="otherImageCropped1">
-            <div class="mt-3">
-                <img id="otherImagePreview1" style="max-width: 100%; display: none;" />
+            <label class="form-label">Other Images (optional)</label>
+            
+            <!-- Other Image 1 -->
+            <div class="mb-3">
+                <input type="file" id="otherImageInput1" accept="image/*" class="form-control mb-2">
+                <div class="mt-2" id="otherImageContainer1" style="display: none;">
+                    <img id="otherImagePreview1" style="max-width: 100%;" />
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" id="cropOtherImage1">Crop Image</button>
+                    </div>
+                </div>
+                <div class="mt-2" id="otherImageCroppedContainer1" style="display: none;">
+                    <p class="text-success">Image cropped successfully!</p>
+                    <img id="otherImageCroppedPreview1" style="max-width: 100%; max-height: 200px;" />
+                    <input type="hidden" name="other_image_data_1" id="otherImageData1">
+                </div>
             </div>
 
-            <input type="file" name="other_image_2" class="form-control mb-2" accept="image/*" id="otherImageInput2">
-            <input type="hidden" name="other_image_2_cropped" id="otherImageCropped2">
-            <div class="mt-3">
-                <img id="otherImagePreview2" style="max-width: 100%; display: none;" />
+            <!-- Other Image 2 -->
+            <div class="mb-3">
+                <input type="file" id="otherImageInput2" accept="image/*" class="form-control mb-2">
+                <div class="mt-2" id="otherImageContainer2" style="display: none;">
+                    <img id="otherImagePreview2" style="max-width: 100%;" />
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" id="cropOtherImage2">Crop Image</button>
+                    </div>
+                </div>
+                <div class="mt-2" id="otherImageCroppedContainer2" style="display: none;">
+                    <p class="text-success">Image cropped successfully!</p>
+                    <img id="otherImageCroppedPreview2" style="max-width: 100%; max-height: 200px;" />
+                    <input type="hidden" name="other_image_data_2" id="otherImageData2">
+                </div>
             </div>
 
-            <input type="file" name="other_image_3" class="form-control mb-2" accept="image/*" id="otherImageInput3">
-            <input type="hidden" name="other_image_3_cropped" id="otherImageCropped3">
-            <div class="mt-3">
-                <img id="otherImagePreview3" style="max-width: 100%; display: none;" />
+            <!-- Other Image 3 -->
+            <div class="mb-3">
+                <input type="file" id="otherImageInput3" accept="image/*" class="form-control mb-2">
+                <div class="mt-2" id="otherImageContainer3" style="display: none;">
+                    <img id="otherImagePreview3" style="max-width: 100%;" />
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" id="cropOtherImage3">Crop Image</button>
+                    </div>
+                </div>
+                <div class="mt-2" id="otherImageCroppedContainer3" style="display: none;">
+                    <p class="text-success">Image cropped successfully!</p>
+                    <img id="otherImageCroppedPreview3" style="max-width: 100%; max-height: 200px;" />
+                    <input type="hidden" name="other_image_data_3" id="otherImageData3">
+                </div>
             </div>
         </div>
+
+        <div id="responseMessage"></div>
 
         <button type="submit" class="btn btn-primary">Add Product</button>
     </form>
@@ -115,8 +157,8 @@
         variantGroup.classList.add('variant-group', 'mb-2', 'd-flex', 'gap-2', 'align-items-center');
         variantGroup.innerHTML = `
             <input type="text" name="variants_weight[]" placeholder="Weight (e.g., 500g)" class="form-control w-25" required>
-            <input type="text" name="variants_price[]" placeholder="Price" class="form-control w-25" required>
-            <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" required>
+            <input type="number" name="variants_price[]" placeholder="Price" class="form-control w-25" step="0.01" min="0" required>
+            <input type="number" name="variants_stock[]" placeholder="Stock" class="form-control w-25" min="0" required>
             <button type="button" class="btn btn-danger btn-sm remove-variant">Remove</button>
         `;
         document.getElementById('variant-section').appendChild(variantGroup);
@@ -124,29 +166,41 @@
 
     document.addEventListener('click', function (e) {
         if (e.target.classList.contains('remove-variant')) {
-            e.target.parentElement.remove();
+            const variantGroups = document.querySelectorAll('.variant-group');
+            if (variantGroups.length > 1) {
+                e.target.parentElement.remove();
+            } else {
+                alert('At least one variant is required.');
+            }
         }
     });
 </script>
 
+<!-- Image Cropping Scripts -->
 <script>
-    let cropperMain, cropperOther1, cropperOther2, cropperOther3;
-
-    // Main image cropping
+    // Main Image Processing
+    let mainCropper = null;
     const mainImageInput = document.getElementById('mainImageInput');
     const mainImagePreview = document.getElementById('mainImagePreview');
-    mainImageInput.addEventListener('change', function (e) {
+    const mainImageContainer = document.getElementById('mainImageContainer');
+    const mainImageCroppedContainer = document.getElementById('mainImageCroppedContainer');
+    const mainImageCroppedPreview = document.getElementById('mainImageCroppedPreview');
+    const mainImageData = document.getElementById('mainImageData');
+    const cropMainImageBtn = document.getElementById('cropMainImage');
+
+    mainImageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function (event) {
+        reader.onload = function(event) {
             mainImagePreview.src = event.target.result;
-            mainImagePreview.style.display = 'block';
-
-            if (cropperMain) cropperMain.destroy();
-
-            cropperMain = new Cropper(mainImagePreview, {
+            mainImageContainer.style.display = 'block';
+            mainImageCroppedContainer.style.display = 'none';
+            
+            if (mainCropper) mainCropper.destroy();
+            
+            mainCropper = new Cropper(mainImagePreview, {
                 aspectRatio: 1,
                 viewMode: 1,
                 autoCropArea: 1,
@@ -157,23 +211,52 @@
         reader.readAsDataURL(file);
     });
 
-    // Other images cropping
-    function initializeCropper(inputId, previewId, cropperVar) {
-        const input = document.getElementById(inputId);
-        const preview = document.getElementById(previewId);
+    cropMainImageBtn.addEventListener('click', function() {
+        if (!mainCropper) return;
+        
+        const canvas = mainCropper.getCroppedCanvas({
+            width: 800,
+            height: 800,
+            minWidth: 256,
+            minHeight: 256,
+            maxWidth: 4096,
+            maxHeight: 4096,
+            fillColor: '#fff',
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+        
+        mainImageCroppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
+        mainImageData.value = canvas.toDataURL('image/jpeg', 0.8);
+        
+        mainImageContainer.style.display = 'none';
+        mainImageCroppedContainer.style.display = 'block';
+    });
 
-        input.addEventListener('change', function (e) {
+    // Function to initialize other image croppers
+    function initializeOtherImageCropper(index) {
+        let otherCropper = null;
+        const input = document.getElementById(`otherImageInput${index}`);
+        const preview = document.getElementById(`otherImagePreview${index}`);
+        const container = document.getElementById(`otherImageContainer${index}`);
+        const croppedContainer = document.getElementById(`otherImageCroppedContainer${index}`);
+        const croppedPreview = document.getElementById(`otherImageCroppedPreview${index}`);
+        const imageData = document.getElementById(`otherImageData${index}`);
+        const cropBtn = document.getElementById(`cropOtherImage${index}`);
+
+        input.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function (event) {
+            reader.onload = function(event) {
                 preview.src = event.target.result;
-                preview.style.display = 'block';
-
-                if (cropperVar) cropperVar.destroy();
-
-                cropperVar = new Cropper(preview, {
+                container.style.display = 'block';
+                croppedContainer.style.display = 'none';
+                
+                if (otherCropper) otherCropper.destroy();
+                
+                otherCropper = new Cropper(preview, {
                     aspectRatio: 1,
                     viewMode: 1,
                     autoCropArea: 1,
@@ -183,58 +266,129 @@
             };
             reader.readAsDataURL(file);
         });
+
+        cropBtn.addEventListener('click', function() {
+            if (!otherCropper) return;
+            
+            const canvas = otherCropper.getCroppedCanvas({
+                width: 800,
+                height: 800,
+                minWidth: 256,
+                minHeight: 256,
+                maxWidth: 4096,
+                maxHeight: 4096,
+                fillColor: '#fff',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+            
+            croppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
+            imageData.value = canvas.toDataURL('image/jpeg', 0.8);
+            
+            container.style.display = 'none';
+            croppedContainer.style.display = 'block';
+        });
     }
 
-    initializeCropper('otherImageInput1', 'otherImagePreview1', cropperOther1);
-    initializeCropper('otherImageInput2', 'otherImagePreview2', cropperOther2);
-    initializeCropper('otherImageInput3', 'otherImagePreview3', cropperOther3);
+    // Initialize other image croppers
+    initializeOtherImageCropper(1);
+    initializeOtherImageCropper(2);
+    initializeOtherImageCropper(3);
 
-    document.getElementById('productForm').addEventListener('submit', function (e) {
+    // Form submission
+    document.getElementById('productForm').addEventListener('submit', function(e) {
         e.preventDefault();
-
-        const formData = new FormData(e.target);
-
-        // Handle cropping for all images
-        if (cropperMain) {
-            cropperMain.getCroppedCanvas().toBlob(function (blob) {
-                const croppedFile = new File([blob], "main_image.jpg", { type: "image/jpeg" });
-                formData.append("main_image", croppedFile);
-            });
+        
+        // Validate main image
+        if (!mainImageData.value) {
+            alert('Please crop the main image before submitting.');
+            return;
         }
-
-        if (cropperOther1) {
-            cropperOther1.getCroppedCanvas().toBlob(function (blob) {
-                const croppedFile = new File([blob], "other_image_1.jpg", { type: "image/jpeg" });
-                formData.append("other_image_1", croppedFile);
-            });
-        }
-
-        if (cropperOther2) {
-            cropperOther2.getCroppedCanvas().toBlob(function (blob) {
-                const croppedFile = new File([blob], "other_image_2.jpg", { type: "image/jpeg" });
-                formData.append("other_image_2", croppedFile);
-            });
-        }
-
-        if (cropperOther3) {
-            cropperOther3.getCroppedCanvas().toBlob(function (blob) {
-                const croppedFile = new File([blob], "other_image_3.jpg", { type: "image/jpeg" });
-                formData.append("other_image_3", croppedFile);
-            });
-        }
-
-        fetch("{% url 'customadmin:add_product' %}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (response.redirected) {
-                window.location.href = response.url;
-            } else {
-                return response.text();
+        
+        const form = new FormData(this);
+        
+        // Convert data URLs to blobs for each cropped image
+        const appendImageBlob = (dataUrl, fieldName) => {
+            if (dataUrl) {
+                fetch(dataUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const file = new File([blob], `${fieldName}.jpg`, { type: 'image/jpeg' });
+                        form.append(fieldName, file);
+                    });
             }
-        })
-        .catch(err => console.error(err));
+        };
+        
+        // Create a promise for each image conversion
+        const imagePromises = [];
+        
+        if (mainImageData.value) {
+            imagePromises.push(
+                fetch(mainImageData.value)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const file = new File([blob], 'main_image.jpg', { type: 'image/jpeg' });
+                        form.append('main_image', file);
+                    })
+            );
+        }
+        
+        // Add other images if they exist
+        const otherImagePromises = [1, 2, 3].map(index => {
+            const dataUrl = document.getElementById(`otherImageData${index}`).value;
+            if (dataUrl) {
+                return fetch(dataUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const file = new File([blob], `other_image_${index}.jpg`, { type: 'image/jpeg' });
+                        form.append(`other_image_${index}`, file);
+                    });
+            }
+            return Promise.resolve();
+        });
+        
+        imagePromises.push(...otherImagePromises);
+        
+        // When all image conversions are done, submit the form
+        Promise.all(imagePromises)
+            .then(() => {
+                fetch("{% url 'customadmin:add_product' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: form
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    if (data) {
+                        console.log("Server Response:", data);
+                        if (data.status === 'success') {
+                            // Redirect to product list page on success
+                            window.location.href = data.redirect_url;
+                        } else {
+                            // Show error message
+                            const responseDiv = document.getElementById('responseMessage');
+                            responseDiv.innerHTML = `
+                                <div class="alert alert-danger mt-3">${data.message}</div>
+                            `;
+                        }
+                    }
+                })
+                .catch(error => {
+                    const responseDiv = document.getElementById('responseMessage');
+                    responseDiv.innerHTML = `
+                        <div class="alert alert-danger mt-3">An error occurred: ${error.message}</div>
+                    `;
+                    console.error('Submission error:', error);
+                });
+            });
     });
 </script>
 {% endblock %}

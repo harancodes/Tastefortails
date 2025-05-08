@@ -230,8 +230,6 @@ from django.shortcuts import render
 from django.db.models import FloatField
 
 
-
-
 @admin_required
 def product_list(request):
     # Base query to get active products
@@ -246,24 +244,24 @@ def product_list(request):
             Q(category__name__icontains=search_query)
         )
 
-    # Sorting functionality
+    
     sort = request.GET.get('sort')
     if sort == 'price_asc':
-        products = products.order_by('variants__variant_price')  # Sorting by variant price
+        products = products.order_by('variants__variant_price')  
     elif sort == 'price_desc':
         products = products.order_by('-variants__variant_price')
     elif sort == 'latest':
         products = products.order_by('-created_at')
 
-    # Annotate products with total stock and total price
+
     products = products.annotate(
         total_stock=Sum('variants__quantity_in_stock'),  
-        total_price=Sum(F('variants__variant_price') * F('variants__quantity_in_stock'), output_field=FloatField())  # Summing price * stock for each variant
+        total_price=Sum(F('variants__variant_price') * F('variants__quantity_in_stock'), output_field=FloatField())  
     )
     
 
-    # Pagination setup
-    paginator = Paginator(products, 3)  # Show 5 products per page
+    
+    paginator = Paginator(products, 3)  
     page_number = request.GET.get('page')
     products = paginator.get_page(page_number)
 
@@ -274,98 +272,115 @@ def product_list(request):
 
 
 
-
+@admin_required
 def add_product(request):
     if request.method == "POST":
-        # Fetch product fields
-        name = request.POST.get('name')
-        description = request.POST.get('description', '')
-        category_id = request.POST.get('category')
-        brand_id = request.POST.get('brand')
-        product_type = request.POST.get('product_type')
+        try:
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            category_id = request.POST.get('category')
+            brand_id = request.POST.get('brand')
+            product_type = request.POST.get('product_type')
 
-        # Validate required product fields
-        if not all([name, category_id, product_type]):
-            messages.error(request, "Please fill in all required fields.")
-            return redirect('customadmin:add_product')
-        
-        # Fetch variant fields (multiple variants possible)
-        variants_weight = request.POST.getlist('variants_weight[]')
-        variants_price = request.POST.getlist('variants_price[]')
-        variants_stock = request.POST.getlist('variants_stock[]')
+            
+            if not all([name, category_id, product_type]):
+                messages.error(request, "Please fill in all required fields.")
+                return redirect('customadmin:add_product')
+            
+            
+            variants_weight = request.POST.getlist('variants_weight[]')
+            variants_price = request.POST.getlist('variants_price[]')
+            variants_stock = request.POST.getlist('variants_stock[]')
 
-        # Clean variant data (strip spaces)
-        variants_weight = [w.strip() for w in variants_weight if w.strip()]
-        variants_price = [p.strip() for p in variants_price if p.strip()]
-        variants_stock = [s.strip() for s in variants_stock if s.strip()]
+            
+            variants_weight = [w.strip() for w in variants_weight if w.strip()]
+            variants_price = [p.strip() for p in variants_price if p.strip()]
+            variants_stock = [s.strip() for s in variants_stock if s.strip()]
 
-        # Ensure at least one variant is provided
-        if not all([variants_weight, variants_price, variants_stock]):
-            messages.error(request, "At least one variant is required.")
-            return redirect('customadmin:add_product')
 
-        # Check for negative or invalid values in variants
-        for w, p, s in zip(variants_weight, variants_price, variants_stock):
-            try:
-                if float(p) < 0:
-                    messages.error(request, "Variant price cannot be negative.")
-                    return redirect('customadmin:add_product')
-                if int(s) < 0:
-                    messages.error(request, "Variant stock cannot be negative.")
-                    return redirect('customadmin:add_product')
-                if float(w) < 0:
-                    messages.error(request, "Variant weight cannot be negative.")
-                    return redirect('customadmin:add_product')
-            except ValueError:
-                messages.error(request, "Variant weight, price, and stock must be valid numbers.")
+            if not all([variants_weight, variants_price, variants_stock]):
+                messages.error(request, "At least one variant is required.")
                 return redirect('customadmin:add_product')
 
-        # Calculate total stock and min price across all variants
-        try:
-            total_stock = sum(int(s) for s in variants_stock if s)
-            min_price = min(float(p) for p in variants_price if p)
-        except ValueError:
-            messages.error(request, "Variant prices and stock must be valid numbers.")
+
+            for w, p, s in zip(variants_weight, variants_price, variants_stock):
+                try:
+                    if float(p) < 0:
+                        messages.error(request, "Variant price cannot be negative.")
+                        return redirect('customadmin:add_product')
+                    if int(s) < 0:
+                        messages.error(request, "Variant stock cannot be negative.")
+                        return redirect('customadmin:add_product')
+                except ValueError:
+                    messages.error(request, "Variant weight, price, and stock must be valid numbers.")
+                    return redirect('customadmin:add_product')
+
+
+            try:
+                total_stock = sum(int(s) for s in variants_stock if s)
+                min_price = min(float(p) for p in variants_price if p)
+            except ValueError:
+                messages.error(request, "Variant prices and stock must be valid numbers.")
+                return redirect('customadmin:add_product')
+
+            product = Products.objects.create(
+                name=name,
+                description=description,
+                category_id=category_id,
+                brand_id=brand_id or None,
+                product_type=product_type,
+                stock=total_stock,  
+                is_active=True,
+            )
+
+            # Create variants
+            for w, p, s in zip(variants_weight, variants_price, variants_stock):
+                if w and p and s:
+                    Variant.objects.create(
+                        product=product,
+                        weight=w,
+                        variant_price=float(p),
+                        quantity_in_stock=int(s),
+                    )
+
+            
+            main_image = request.FILES.get('main_image')
+            if main_image:
+                ProductImage.objects.create(product=product, image=main_image, is_primary=True)
+            else:
+                messages.warning(request, "No main image was provided. Product added without a primary image.")
+
+        
+            for i in range(1, 4):
+                other_image = request.FILES.get(f'other_image_{i}')
+                if other_image:
+                    ProductImage.objects.create(product=product, image=other_image, is_primary=False)
+
+            
+            messages.success(request, f"Product '{product.name}' added successfully.")
+            
+            
+            
+            redirect_url = reverse('customadmin:product_list')
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': f"Product '{product.name}' added successfully.",
+                    'redirect_url': redirect_url
+                })
+            return redirect(redirect_url)
+            
+        except Exception as e:
+            
+            error_message = f"An error occurred: {str(e)}"
+            messages.error(request, error_message)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'error', 'message': error_message}, status=400)
             return redirect('customadmin:add_product')
 
-        # Create product (no price field here because it's in the Variant model)
-        product = Products.objects.create(
-            name=name,
-            description=description,
-            category_id=category_id,
-            brand_id=brand_id or None,
-            product_type=product_type,
-            stock=total_stock,  # Total stock across all variants
-            is_active=True,
-        )
 
-        # Create variants
-        for w, p, s in zip(variants_weight, variants_price, variants_stock):
-            if w and p and s:
-                Variant.objects.create(
-                    product=product,
-                    weight=w,
-                    variant_price=float(p),
-                    quantity_in_stock=int(s),
-                )
-
-        # Handle Main Image (Primary image for the product)
-        main_image = request.FILES.get('main_image')
-        if main_image:
-            ProductImage.objects.create(product=product, image=main_image, is_primary=True)
-
-        # Handle other images (if any)
-        for i in range(1, 4):
-            
-            other_image = request.FILES.get(f'other_image_{i}')
-            if other_image:
-                ProductImage.objects.create(product=product, image=other_image, is_primary=False)
-
-        # Success message
-        messages.success(request, f"Product '{product.name}' added successfully.")
-        return redirect('customadmin:product_list')
-
-    # Get active categories and brands to display in the form
     categories = Category.objects.filter(is_active=True)
     brands = Brand.objects.filter(is_active=True)
     
@@ -373,7 +388,7 @@ def add_product(request):
         'categories': categories,
         'brands': brands,
     })
-    
+
 
 @admin_required
 def edit_product(request, product_id):
@@ -387,15 +402,17 @@ def edit_product(request, product_id):
         product_type = request.POST.get('product_type')
         stock = request.POST.get('stock')
 
-        # Validation
+        # Basic product field validation
         if not all([name, category_id, product_type, stock]):
             messages.error(request, "Please fill in all required fields.")
             return redirect('customadmin:edit_product', product_id=product.id)
 
         try:
             stock = int(stock)
+            if stock < 0:
+                raise ValueError("Stock cannot be negative.")
         except ValueError:
-            messages.error(request, "Stock must be a number.")
+            messages.error(request, "Stock must be a non-negative integer.")
             return redirect('customadmin:edit_product', product_id=product.id)
 
         # Update product
@@ -407,7 +424,7 @@ def edit_product(request, product_id):
         product.stock = stock
         product.save()
 
-        # Update or create variants
+        # Variant handling
         variants_ids = request.POST.getlist('variant_ids[]')
         variants_weight = request.POST.getlist('variants_weight[]')
         variants_price = request.POST.getlist('variants_price[]')
@@ -415,29 +432,40 @@ def edit_product(request, product_id):
 
         for v_id, w, p, s in zip(variants_ids, variants_weight, variants_price, variants_stock):
             if w.strip() and p.strip() and s.strip():
-                if v_id:  # Update existing
+                try:
+                    price = float(p)
+                    quantity = int(s)
+
+                    if price < 0 or quantity < 0:
+                        raise ValueError("Price and quantity must be non-negative.")
+
+                except ValueError:
+                    messages.error(request, "Each variant must have valid non-negative price and quantity.")
+                    return redirect('customadmin:edit_product', product_id=product.id)
+
+                if v_id:  # Update existing variant
                     variant = Variant.objects.filter(id=v_id, product=product).first()
                     if variant:
                         variant.weight = w.strip()
-                        variant.variant_price = float(p)
-                        variant.quantity_in_stock = int(s)
+                        variant.variant_price = price
+                        variant.quantity_in_stock = quantity
                         variant.save()
-                else:  # Create new
+                else:  # Create new variant
                     Variant.objects.create(
                         product=product,
                         weight=w.strip(),
-                        variant_price=float(p),
-                        quantity_in_stock=int(s),
+                        variant_price=price,
+                        quantity_in_stock=quantity,
                         is_active=True,
                     )
 
-        # Update main image
+        # Handle main image
         main_image = request.FILES.get('main_image')
         if main_image:
             ProductImage.objects.filter(product=product, is_primary=True).delete()
             ProductImage.objects.create(product=product, image=main_image, is_primary=True)
 
-        # Replace other images
+        # Handle other images
         ProductImage.objects.filter(product=product, is_primary=False).delete()
         for i in range(1, 4):
             other_image = request.FILES.get(f'other_image_{i}')
@@ -447,7 +475,7 @@ def edit_product(request, product_id):
         messages.success(request, f"Product '{name}' updated successfully.")
         return redirect('customadmin:product_list')
 
-    # GET request
+    # GET method: load data
     categories = Category.objects.filter(is_active=True)
     brands = Brand.objects.filter(is_active=True)
     variants = Variant.objects.filter(product=product)
@@ -460,9 +488,6 @@ def edit_product(request, product_id):
         'variants': variants,
         'images': images,
     })
-
-
-
 
 
 @admin_required
@@ -480,17 +505,24 @@ def soft_delete_product(request, product_id):
     return redirect('customadmin:product_list')
 
 
+# @admin_required
+# @never_cache
+# def block_product(request, product_id):
+#     product = get_object_or_404(Products, id=product_id)
+#     product.is_blocked = not product.is_blocked  # Toggling the block status
+#     product.save()
+#     status = 'blocked' if product.is_blocked else 'unblocked'
+#     messages.success(request, f"{product.name} has been {status} successfully.")
+#     return redirect('customadmin:product_list')
 
-@admin_required
-@never_cache
-def block_product(request, product_id):
-    product = get_object_or_404(Products, id=product_id)
-    product.is_blocked = not product.is_blocked  # Toggling the block status
-    product.save()
-    status = 'blocked' if product.is_blocked else 'unblocked'
-    messages.success(request, f"{product.name} has been {status} successfully.")
-    return redirect('customadmin:product_list')
-
+# @admin_required
+# @never_cache
+# def toggle_list_product(request, product_id):
+#     product = get_object_or_404(Banner, id=product_id)
+#     product.is_listed = not product.is_listed
+#     product.save()
+#     messages.success(request, f"{'Listed' if product.is_listed else 'Unlisted'} banner successfully.")
+#     return redirect('customadmin:banner_list')
 
 
 def admin_logout(request):
@@ -498,46 +530,32 @@ def admin_logout(request):
     return render(request, 'admin_login.html')
 
 
+# views.py
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import user_passes_test
-from product.models import Products
+from django.views.decorators.http import require_POST
 
-
-@csrf_exempt  
-@require_http_methods(["POST"])
-@admin_required
+@require_POST
 def toggle_product_status(request, product_id):
-    if not request.is_ajax():
-        return JsonResponse(
-            {'success': False, 'error': 'Bad request method'}, 
-            status=400
-        )
-
     try:
         product = Products.objects.get(id=product_id)
-        product.is_active = not product.is_active
+        product.is_listed = not product.is_listed
         product.save()
-        
         return JsonResponse({
             'success': True,
-            'is_active': product.is_active,
-            'message': f"Product {'activated' if product.is_active else 'deactivated'} successfully"
+            'is_listed': product.is_listed
         })
-
     except Products.DoesNotExist:
-        return JsonResponse(
-            {'success': False, 'error': 'Product not found'},
-            status=404
-        )
-        
+        return JsonResponse({
+            'success': False,
+            'error': 'Product not found'
+        }, status=404)
     except Exception as e:
-        return JsonResponse(
-            {'success': False, 'error': str(e)},
-            status=500
-        )
-####### Product Section ####### 
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+        
+####### Product End ####### 
 
 ######## Banner Section #######    
     
