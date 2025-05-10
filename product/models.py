@@ -85,6 +85,10 @@ class Products(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+    # @property
+    def main_image(self):
+            return self.images.filter(is_primary=True).first()
+
     def __str__(self):
         return self.name
 
@@ -117,6 +121,8 @@ class ProductImage(models.Model):
         indexes = [
             models.Index(fields=['is_primary', 'uploaded_at']),
         ]
+   
+
 
     def __str__(self):
         return f"Image of {self.product.name}"

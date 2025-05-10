@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, ExpressionWrapper
 from django.shortcuts import render, redirect
 from django.views.decorators.cache import never_cache
 from django.http.response import HttpResponseForbidden
@@ -244,24 +244,31 @@ def product_list(request):
             Q(category__name__icontains=search_query)
         )
 
-    
+    # Sorting
     sort = request.GET.get('sort')
     if sort == 'price_asc':
-        products = products.order_by('variants__variant_price')  
+        products = products.annotate(min_price=Min('variants__variant_price')).order_by('min_price')
     elif sort == 'price_desc':
-        products = products.order_by('-variants__variant_price')
+        products = products.annotate(max_price=Max('variants__variant_price')).order_by('-max_price')
     elif sort == 'latest':
         products = products.order_by('-created_at')
 
-
+    # Annotate total stock and total price
     products = products.annotate(
-        total_stock=Sum('variants__quantity_in_stock'),  
-        total_price=Sum(F('variants__variant_price') * F('variants__quantity_in_stock'), output_field=FloatField())  
+        total_stock=Sum('variants__quantity_in_stock'),
+        total_price=Sum(
+            ExpressionWrapper(
+                F('variants__variant_price') * F('variants__quantity_in_stock'),
+                output_field=FloatField()
+            )
+        )
     )
-    
 
-    
-    paginator = Paginator(products, 3)  
+    # Prefetch related images to avoid N+1 queries
+    products = products.prefetch_related('images')
+
+    # Pagination
+    paginator = Paginator(products, 3)  # Show 3 products per page
     page_number = request.GET.get('page')
     products = paginator.get_page(page_number)
 
@@ -269,7 +276,6 @@ def product_list(request):
         'products': products,
         'search_query': search_query,
     })
-
 
 
 @admin_required
@@ -531,30 +537,15 @@ def admin_logout(request):
 
 
 # views.py
-from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+# from .models import Products
 
 @require_POST
 def toggle_product_status(request, product_id):
-    try:
-        product = Products.objects.get(id=product_id)
-        product.is_listed = not product.is_listed
-        product.save()
-        return JsonResponse({
-            'success': True,
-            'is_listed': product.is_listed
-        })
-    except Products.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Product not found'
-        }, status=404)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-        
+    product = get_object_or_404(Products, id=product_id)
+    product.is_listed = not product.is_listed
+    product.save()
+    return redirect('customadmin:product_list')         
 ####### Product End ####### 
 
 ######## Banner Section #######    

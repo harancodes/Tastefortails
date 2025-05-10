@@ -53,7 +53,7 @@ def user_login(request):
     if request.user.is_authenticated:
         return redirect('home')
 
-    login_error = None  
+    login_error = None
 
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -63,13 +63,14 @@ def user_login(request):
         if user is not None:
             if not user.is_active:
                 login_error = "This account is inactive. Please contact support."
+            elif user.is_blocked:
+                login_error = "This account is blocked. Please contact support."
             else:
                 login(request, user)
                 return redirect('home')
         else:
             login_error = "Invalid email or password. Please try again."
 
-   
     return render(request, 'user_auth/login.html', {'login_error': login_error})
 
 
