@@ -6,46 +6,51 @@
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Add New Category</h5>
             <a href="{% url 'customadmin:category_list' %}" class="btn btn-light btn-sm">← Back to Category List</a>
-        </div>
+        </div>  
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 
+                <!-- Category Name Field -->
                 <div class="mb-3">
                     <label for="name" class="form-label">Category Name</label>
                     <input type="text" name="name" class="form-control" id="name" required placeholder="Enter category name">
+                    <div class="text-danger small mt-1" id="nameError"></div>
                 </div>
 
+                <!-- Category Image Field -->
                 <div class="mb-3">
                     <label for="image" class="form-label">Category Image</label>
                     <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
+                    <div class="text-danger small mt-1" id="imageError"></div>
                     <div class="mt-3">
                         <img id="imagePreview" src="" class="img-thumbnail pi page-item" style="max-height: 200px;" />
-
                     </div>
                 </div>
 
+                <!-- Submit Buttons -->
                 <div class="d-flex justify-content-between">
                     <button type="submit" class="btn btn-success">Create Category</button>
                     <a href="{% url 'customadmin:category_list' %}" class="btn btn-secondary">Cancel</a>
                 </div>
-                {% if messages %}
-    <div class="mt-3">
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    </div>
-{% endif %}
 
+                <!-- Django Messages -->
+                {% if messages %}
+                <div class="mt-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </form>
         </div>
     </div>
 </div>
 
-<!-- JS for Image Preview -->
+<!-- JavaScript: Image Preview + Validation -->
 <script>
     document.getElementById('imageInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -53,22 +58,46 @@
             document.getElementById('imagePreview').src = URL.createObjectURL(file);
         }
     });
+
+    document.querySelector('form').addEventListener('submit', function (event) {
+        let isValid = true;
+
+        // Clear previous errors
+        document.getElementById('nameError').textContent = '';
+        document.getElementById('imageError').textContent = '';
+
+        const nameInput = document.getElementById('name');
+        const imageInput = document.getElementById('imageInput');
+
+        // Validate Category Name
+        const name = nameInput.value.trim();
+        if (!name) {
+            document.getElementById('nameError').textContent = 'Category name is required.';
+            isValid = false;
+        } else if (name.length < 3) {
+            document.getElementById('nameError').textContent = 'Category name must be at least 3 characters.';
+            isValid = false;
+        }
+
+        // Validate Image (type + size)
+        if (imageInput.files.length > 0) {
+            const file = imageInput.files[0];
+            const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            const maxSizeInMB = 2;
+            const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
+
+            if (!validImageTypes.includes(file.type)) {
+                document.getElementById('imageError').textContent = 'Only JPEG, PNG, GIF, or WebP images are allowed.';
+                isValid = false;
+            } else if (file.size > maxSizeInBytes) {
+                document.getElementById('imageError').textContent = `File size must be less than ${maxSizeInMB}MB.`;
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            event.preventDefault(); // Prevent form submission
+        }
+    });
 </script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

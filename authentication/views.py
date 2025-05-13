@@ -61,7 +61,7 @@ def user_login(request):
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
-            if not user.is_active:
+            if user.is_blocked:
                 login_error = "This account is inactive. Please contact support."
             elif user.is_blocked:
                 login_error = "This account is blocked. Please contact support."

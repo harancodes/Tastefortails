@@ -7,25 +7,40 @@
         <!-- Product Images Section -->
         <div class="flex flex-col items-center space-y-6 relative">
             <!-- Main Image with Zoom -->
-            <div class="relative zoom-container w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
+            <div id="gallery-main" class="relative w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
                 {% if primary_image %}
-                    <img id="mainImage" src="{{ primary_image.image.url }}" 
-                         class="w-full h-full rounded-lg object-cover cursor-zoom-in transition-transform duration-300 transform hover:scale-105" 
+                    <img id="main-image" src="{{ primary_image.image.url }}" 
+                         class="w-full h-full rounded-lg object-cover cursor-zoom-in" 
                          alt="{{ product.name }}">
-                    <div class="zoom-lens"></div>
-                    <div class="zoom-result"></div>  
-                {% else %}
+                    <!-- Zoom Lens -->
+                    <div id="zoom-lens" class="absolute hidden"></div>
+                    <!-- Zoom Result -->
+                    <div id="zoom-result" class="absolute hidden"></div>
+                    <!-- Zoom Toggle Button -->
+                    <a href="#" id="zoom-toggle" class="absolute top-4 right-4 text-white bg-black bg-opacity-60 rounded-full p-2 hover:bg-opacity-80 flex items-center justify-center">
+                        <i class="fas fa-search-plus text-xl"></i>
+                    </a>
+                {% else %}  
                     <div class="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
                         <p class="text-gray-500">No image available</p>
                     </div>
                 {% endif %}
+            </div>
+
+            <!-- Fullscreen Zoom Modal -->
+            <div id="fullscreen-zoom" class="hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-90 z-50 flex items-center justify-center">
+                <img id="fullscreen-image" src="" alt="{{ product.name }} - fullscreen" class="max-w-[80%] max-h-[80%] object-contain">
+                <div id="fullscreen-zoom-lens" class="absolute hidden"></div>
+                <span id="fullscreen-close" class="absolute top-4 right-4 text-white text-2xl cursor-pointer">×</span>
+                <span id="fullscreen-prev" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-3xl cursor-pointer">←</span>
+                <span id="fullscreen-next" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-3xl cursor-pointer">→</span>
             </div>
             
             <!-- Thumbnails -->
             {% if images %}
             <div class="flex space-x-4">
                 {% for image in images %}
-                <div class="thumbnail-container {% if forloop.first %}active p-1 rounded-lg border-2 border-blue-500{% else %}p-1 rounded-lg border-2 border-transparent hover:border-blue-500{% endif %} cursor-pointer transition-all duration-300">
+                <div class="thumb-slide thumbnail-container {% if forloop.first %}active p-1 rounded-lg border-2 border-blue-500{% else %}p-1 rounded-lg border-2 border-transparent hover:border-blue-500{% endif %} cursor-pointer transition-all duration-300">
                     <img src="{{ image.image.url }}" data-src="{{ image.image.url }}" class="thumbnail w-16 h-16 object-cover rounded-md">
                 </div>
                 {% endfor %}
@@ -104,22 +119,22 @@
                 </div>
             </div>
 
-            <!-- quantity_in_stock Indicator -->
+            <!-- Stock Indicator -->
             <div class="mt-4">
                 <div class="flex justify-between items-center mb-1">
-                    <span id="quantity_in_stockText" class="text-sm font-medium {% if variants.0.quantity_in_stock > 10 %}text-green-600{% elif variants.0.quantity_in_stock > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                    <span id="stockText" class="text-sm font-medium {% if variants.0.quantity_in_stock > 10 %}text-green-600{% elif variants.0.quantity_in_stock > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
                         {% if variants.0.quantity_in_stock > 10 %}
-                            In quantity_in_stock ({{ variants.0.quantity_in_stock }} available)
+                            In stock ({{ variants.0.quantity_in_stock }} available)
                         {% elif variants.0.quantity_in_stock > 0 %}
                             Only {{ variants.0.quantity_in_stock }} left!
                         {% else %}
-                            Out of quantity_in_stock
+                            Out of stock
                         {% endif %}
                     </span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div id="quantity_in_stockIndicator" class="{% if variants.0.quantity_in_stock > 10 %}bg-green-500{% elif variants.0.quantity_in_stock > 0 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full" 
-                         style="width: {% if variants.0.quantity_in_stock > 10 %}100%{% elif variants.0.quantity_in_stock > 0 %}%{% else %}0%{% endif %}"></div>
+                    <div id="stockIndicator" class="{% if variants.0.quantity_in_stock > 10 %}bg-green-500{% elif variants.0.quantity_in_stock > 0 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full" 
+                         style="width: {% if variants.0.quantity_in_stock > 10 %}100%{% elif variants.0.quantity_in_stock > 0 %}{{variants.0.quantity_in_stock|floatformat:0}}0%{% else %}0%{% endif %}"></div>
                 </div>
             </div>
 
@@ -132,7 +147,7 @@
                             <div class="variant-option {% if forloop.first %}bg-blue-100 border-2 border-blue-500{% else %}border-2 border-gray-300 hover:border-blue-300{% endif %} px-4 py-2 rounded-md cursor-pointer transition-all duration-200"
                                  data-variant-id="{{ variant.id }}" 
                                  data-price="{{ variant.variant_price }}" 
-                                 data-quantity_in_stock="{{ variant.quantity_in_stock }}">
+                                 data-stock="{{ variant.quantity_in_stock }}">
                                 {{ variant.weight }}
                             </div>
                         {% endfor %}
@@ -178,42 +193,99 @@
         animation: fadeIn 0.3s ease-in-out;
     }
 
-    /* Zoom functionality */
-    .zoom-container {
+    /* Zoom Styles */
+    #gallery-main {
         position: relative;
-        overflow: hidden;
-    }
-    .zoom-lens {
-        position: absolute;
-        border: 1px solid #d4d4d4;
-        width: 100px;
-        height: 100px;
-        background-repeat: no-repeat;
-        cursor: none;
-        display: none;
-        z-index: 10;
-    }
-    .zoom-result {
-        position: absolute;
-        top: 0;
-        left: 105%;
-        width: 300px;
-        height: 300px;
-        border: 1px solid #d4d4d4;
-        background-repeat: no-repeat;
-        display: none;
-        z-index: 20;
-        background-color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: crosshair;
     }
 
-    /* Product gallery transitions */
+    #main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        cursor: zoom-in;
+    }
+
+    #zoom-lens {
+        width: 100px;
+        height: 100px;
+        border: 2px solid rgba(59, 130, 246, 0.7);
+        background: rgba(59, 130, 246, 0.15);
+        pointer-events: none;
+    }
+
+    #zoom-result {
+        top: 0;
+        right: -350px;
+        width: 300px;
+        height: 300px;
+        border: 2px solid #333;
+        background-repeat: no-repeat;
+        z-index: 100;
+    }
+
+    #zoom-toggle {
+        width: 36px;
+        height: 36px;
+        transition: all 0.2s ease;
+    }
+
+    #zoom-toggle:hover {
+        background-color: rgba(0, 0, 0, 0.7);
+        transform: scale(1.1);
+    }
+
+    #fullscreen-zoom {
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    #fullscreen-image {
+        max-width: 80%;
+        max-height: 80%;
+        object-fit: contain;
+    }
+
+    #fullscreen-zoom-lens {
+        width: 150px;
+        height: 150px;
+        border: 2px solid #fff;
+        background: rgba(255, 255, 255, 0.2);
+        pointer-events: none;
+    }
+
+    #fullscreen-close {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #fullscreen-prev,
+    #fullscreen-next {
+        padding: 10px;
+    }
+
+    /* Thumbnail Styles */
     .thumbnail-transition {
         transition: all 0.3s ease;
     }
     .thumbnail-active {
         transform: scale(1.1);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box servizio: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 991px) {
+        #zoom-result {
+            display: none !important;
+        }
+        #zoom-lens {
+            display: none !important;
+        }
     }
 
     input[type=number]::-webkit-inner-spin-button,
@@ -225,100 +297,366 @@
 
 <!-- Custom JavaScript -->
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Main Image and Thumbnails
-        const mainImage = document.getElementById("mainImage");
-        const thumbnails = document.querySelectorAll(".thumbnail");
-        const thumbnailContainers = document.querySelectorAll(".thumbnail-container");
+    // // Product Data for Images
+    // const productData = {
+    //     images: [
+    //         {% for image in images %}
+    //             { url: "{{ image.image.url }}" }{% if not forloop.last %},{% endif %}
+    //         {% endfor %}
+    //     ]
+    // };
+
+    // Product Image Zoom Functionality
+    let currentImageIndex = 0;
+
+    // Initialize on document load
+    document.addEventListener('DOMContentLoaded', function() {
+        initImageZoom();
+        initFullscreenZoom();
+        initThumbnails();
+    });
+
+    // Initialize thumbnail click events
+    function initThumbnails() {
+        const thumbnails = document.querySelectorAll('.thumbnail');
+        const thumbnailContainers = document.querySelectorAll('.thumbnail-container');
+        const mainImage = document.getElementById('main-image');
+
+        thumbnails.forEach((thumbnail, index) => {
+            thumbnail.addEventListener('click', function() {
+                const imgSrc = this.getAttribute('data-src');
+                if (mainImage && imgSrc) {
+                    mainImage.src = imgSrc;
+                    currentImageIndex = index;
+
+                    thumbnailContainers.forEach(container => {
+                        container.classList.remove('active', 'border-blue-500');
+                        container.classList.add('border-transparent');
+                    });
+
+                    thumbnailContainers[index].classList.add('active', 'border-blue-500');
+                    thumbnailContainers[index].classList.remove('border-transparent');
+                }
+            });
+        });
+    }
+
+    // Initialize image zoom functionality
+    function initImageZoom() {
+        const container = document.getElementById('gallery-main');
+        const mainImage = document.getElementById('main-image');
+        const lens = document.getElementById('zoom-lens');
+        const result = document.getElementById('zoom-result');
+        const zoomToggle = document.getElementById('zoom-toggle');
         
-        // Variant Selection
+        if (!container || !mainImage || !lens || !result) {
+            console.error('Zoom elements not found');
+            return;
+        }
+        
+        // Set up the zoom functionality
+        const zoomLevel = 3;
+        
+        // Show lens and result on mouseenter
+        container.addEventListener('mouseenter', function(e) {
+            if (window.innerWidth >= 992) { // Only on desktop
+                lens.style.display = 'block';
+                result.style.display = 'block';
+                updateZoom(e);
+            }
+        });
+        
+        // Hide lens and result on mouseleave
+        container.addEventListener('mouseleave', function() {
+            lens.style.display = 'none';
+            result.style.display = 'none';
+        });
+        
+        // Update zoom on mousemove
+        container.addEventListener('mousemove', updateZoom);
+        
+        // Toggle fullscreen zoom on click
+        if (zoomToggle) {
+            zoomToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                openFullscreenZoom();
+            });
+        }
+        
+        // Also allow clicking on the image to open fullscreen
+        mainImage.addEventListener('click', function(e) {
+            if (window.innerWidth >= 768) {
+                e.preventDefault();
+                openFullscreenZoom();
+            }
+        });
+        
+        function updateZoom(e) {
+            if (lens.style.display === 'none') return;
+            
+            // Get cursor position
+            const rect = mainImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Ensure cursor is within bounds
+            if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+                lens.style.display = 'none';
+                result.style.display = 'none';
+                return;
+            }
+            
+            // Position lens
+            const lensWidth = lens.offsetWidth;
+            const lensHeight = lens.offsetHeight;
+            
+            let lensX = x - lensWidth / 2;
+            let lensY = y - lensHeight / 2;
+            
+            // Prevent lens from going outside the image
+            if (lensX < 0) lensX = 0;
+            if (lensY < 0) lensY = 0;
+            if (lensX > rect.width - lensWidth) lensX = rect.width - lensWidth;
+            if (lensY > rect.height - lensHeight) lensY = rect.height - lensHeight;
+            
+            lens.style.left = `${lensX}px`;
+            lens.style.top = `${lensY}px`;
+            
+            // Calculate the ratio of the result div size to the lens size
+            const ratioX = result.offsetWidth / lensWidth;
+            const ratioY = result.offsetHeight / lensHeight;
+            
+            // Set background properties for the result div
+            result.style.backgroundImage = `url(${mainImage.src})`;
+            result.style.backgroundSize = `${rect.width * ratioX}px ${rect.height * ratioY}px`;
+            result.style.backgroundPosition = `-${lensX * ratioX}px -${lensY * ratioY}px`;
+        }
+    }
+
+    // Initialize fullscreen zoom
+    function initFullscreenZoom() {
+        const fullscreenZoom = document.getElementById('fullscreen-zoom');
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        const fullscreenLens = document.getElementById('fullscreen-zoom-lens');
+        const closeBtn = document.getElementById('fullscreen-close');
+        const prevBtn = document.getElementById('fullscreen-prev');
+        const nextBtn = document.getElementById('fullscreen-next');
+        
+        if (!fullscreenZoom || !fullscreenImage || !fullscreenLens || !closeBtn || !prevBtn || !nextBtn) {
+            console.error('Fullscreen zoom elements not found');
+            return;
+        }
+        
+        // Close fullscreen on close button click
+        closeBtn.addEventListener('click', closeFullscreenZoom);
+        
+        // Close fullscreen on background click
+        fullscreenZoom.addEventListener('click', function(e) {
+            if (e.target === fullscreenZoom) {
+                closeFullscreenZoom();
+            }
+        });
+        
+        // Navigate to previous image
+        prevBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateFullscreenImage(-1);
+        });
+        
+        // Navigate to next image
+        nextBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateFullscreenImage(1);
+        });
+        
+        // Handle keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (fullscreenZoom.style.display === 'flex') {
+                if (e.key === 'Escape') {
+                    closeFullscreenZoom();
+                } else if (e.key === 'ArrowLeft') {
+                    navigateFullscreenImage(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navigateFullscreenImage(1);
+                }
+            }
+        });
+        
+        // Handle zoom lens in fullscreen
+        fullscreenImage.addEventListener('mousemove', function(e) {
+            updateFullscreenZoom(e);
+        });
+        
+        fullscreenImage.addEventListener('mouseenter', function() {
+            fullscreenLens.style.display = 'block';
+        });
+        
+        fullscreenImage.addEventListener('mouseleave', function() {
+            fullscreenLens.style.display = 'none';
+        });
+        
+        function updateFullscreenZoom(e) {
+            const rect = fullscreenImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Ensure cursor is within bounds
+            if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+                fullscreenLens.style.display = 'none';
+                return;
+            }
+            
+            // Position lens
+            const lensWidth = fullscreenLens.offsetWidth;
+            const lensHeight = fullscreenLens.offsetHeight;
+            
+            let lensX = x - lensWidth / 2;
+            let lensY = y - lensHeight / 2;
+            
+            // Prevent lens from going outside the image
+            if (lensX < 0) lensX = 0;
+            if (lensY < 0) lensY = 0;
+            if (lensX > rect.width - lensWidth) lensX = rect.width - lensWidth;
+            if (lensY > rect.height - lensHeight) lensY = rect.height - lensHeight;
+            
+            fullscreenLens.style.left = `${lensX}px`;
+            fullscreenLens.style.top = `${lensY}px`;
+            
+            // Calculate zoom ratio
+            const zoomLevel = 2.5;
+            
+            // Set background properties for the lens
+            fullscreenLens.style.backgroundImage = `url(${fullscreenImage.src})`;
+            fullscreenLens.style.backgroundSize = `${rect.width * zoomLevel}px ${rect.height * zoomLevel}px`;
+            
+            // Calculate background position
+            const bgX = (x / rect.width) * 100;
+            const bgY = (y / rect.height) * 100;
+            fullscreenLens.style.backgroundPosition = `${bgX}% ${bgY}%`;
+        }
+    }
+
+    // Open fullscreen zoom
+    function openFullscreenZoom() {
+        const fullscreenZoom = document.getElementById('fullscreen-zoom');
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        
+        if (!fullscreenZoom || !fullscreenImage) return;
+        
+        // Get current image source
+        const mainImage = document.getElementById('main-image');
+        if (mainImage) {
+            fullscreenImage.src = mainImage.src;
+            
+            // Show fullscreen zoom
+            fullscreenZoom.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Update current image index
+            const thumbSlides = document.querySelectorAll('.thumb-slide');
+            thumbSlides.forEach((slide, index) => {
+                if (slide.classList.contains('active')) {
+                    currentImageIndex = index;
+                }
+            });
+        }
+    }
+
+    // Close fullscreen zoom
+    function closeFullscreenZoom() {
+        const fullscreenZoom = document.getElementById('fullscreen-zoom');
+        if (fullscreenZoom) {
+            fullscreenZoom.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Navigate fullscreen image
+    function navigateFullscreenImage(direction) {
+        const images = productData.images || [];
+        if (images.length <= 1) return;
+        
+        // Calculate new index
+        currentImageIndex = (currentImageIndex + direction + images.length) % images.length;
+        
+        // Update fullscreen image
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        const mainImage = document.getElementById('main-image');
+        if (fullscreenImage && images[currentImageIndex]) {
+            fullscreenImage.src = images[currentImageIndex].url;
+            mainImage.src = images[currentImageIndex].url;
+        }
+        
+        // Update thumbnail active state
+        const thumbSlides = document.querySelectorAll('.thumb-slide');
+        thumbSlides.forEach((slide, index) => {
+            if (index === currentImageIndex) {
+                slide.classList.add('active', 'border-blue-500');
+                slide.classList.remove('border-transparent');
+            } else {
+                slide.classList.remove('active', 'border-blue-500');
+                slide.classList.add('border-transparent');
+            }
+        });
+    }
+
+    // Existing JavaScript for Variant Selection, Quantity, and Cart
+    document.addEventListener("DOMContentLoaded", function () {
         const variantOptions = document.querySelectorAll(".variant-option");
         const variantPriceDisplay = document.getElementById("variantPrice");
         const originalPriceDisplay = document.getElementById("originalPrice");
-        const quantity_in_stockIndicator = document.getElementById("quantity_in_stockIndicator");
-        const quantity_in_stockText = document.getElementById("quantity_in_stockText");
-        
-        // Quantity Controls
+        const stockIndicator = document.getElementById("stockIndicator");
+        const stockText = document.getElementById("stockText");
+
         const quantityInput = document.getElementById("quantity");
         const decreaseQtyBtn = document.getElementById("decreaseQty");
         const increaseQtyBtn = document.getElementById("increaseQty");
-        
-        // Action Buttons
+
         const addToCartBtn = document.getElementById("addToCartBtn");
         const buyNowBtn = document.getElementById("buyNowBtn");
-
-        // Initialize Image Zoom
-        initializeZoom();
-        
-        // Thumbnail Gallery
-        if (thumbnails.length > 0 && mainImage) {
-            thumbnailContainers.forEach((container, index) => {
-                container.addEventListener("click", () => {
-                    // Update active thumbnail
-                    thumbnailContainers.forEach(cont => {
-                        cont.classList.remove("active", "border-blue-500");
-                        cont.classList.add("border-transparent");
-                    });
-                    container.classList.add("active", "border-blue-500");
-                    container.classList.remove("border-transparent");
-                    
-                    // Update main image
-                    const newSrc = thumbnails[index].dataset.src;
-                    mainImage.src = newSrc;
-                    mainImage.classList.add("animate-fadeIn");
-                    setTimeout(() => mainImage.classList.remove("animate-fadeIn"), 500);
-                    
-                    // Reinitialize zoom for new image
-                    initializeZoom();
-                });
-            });
-        }
 
         // Variant Selection
         if (variantOptions.length > 0) {
             variantOptions.forEach(option => {
                 option.addEventListener("click", function() {
-                    // Update active variant
                     variantOptions.forEach(opt => {
                         opt.classList.remove("active", "bg-blue-100", "border-blue-500");
                         opt.classList.add("border-gray-300");
                     });
                     this.classList.add("active", "bg-blue-100", "border-blue-500");
                     this.classList.remove("border-gray-300");
-                    
-                    // Get variant data
+
                     const variantId = this.dataset.variantId;
-                    const quantity_in_stock = parseInt(this.dataset.quantity_in_stock);
+                    const stock = parseInt(this.dataset.stock);
                     const price = this.dataset.price;
-                    
-                    // Update price display
+
                     if (variantPriceDisplay) {
                         variantPriceDisplay.textContent = `₹${price}`;
                         variantPriceDisplay.classList.add("animate-fadeIn");
                         setTimeout(() => variantPriceDisplay.classList.remove("animate-fadeIn"), 500);
                     }
-                    
-                    // Update original price if there's a discount
+
                     const offerPercentage = {{ product.brand.offer_percentage|default:0 }};
                     if (offerPercentage > 0 && originalPriceDisplay) {
                         const originalPrice = (parseFloat(price) * 100) / (100 - offerPercentage);
                         originalPriceDisplay.textContent = `₹${originalPrice.toFixed(2)}`;
                     }
-                    
-                    // Update quantity_in_stock display
-                    updatequantity_in_stockDisplay(quantity_in_stock);
-                    
-                    // Update buttons
-                    buyNowBtn.disabled = quantity_in_stock < 1;
-                    addToCartBtn.disabled = quantity_in_stock < 1;
-                    
-                    // Update cart button action
+
+                    updateStockDisplay(stock);
+
+                    buyNowBtn.disabled = stock < 1;
+                    addToCartBtn.disabled = stock < 1;
+
+                    // Update current quantity if it exceeds new stock
+                    if (parseInt(quantityInput.value) > stock) {
+                        quantityInput.value = stock > 0 ? stock : 1;
+                    }
+
                     addToCartBtn.onclick = function(event) {
                         event.preventDefault();
                         addCartItem(variantId, quantityInput.value);
                     };
-                    
-                    // Update buy now button href
+
                     buyNowBtn.onclick = function() {
                         window.location.href = `/checkout/?variant=${variantId}&qty=${quantityInput.value}`;
                     };
@@ -334,117 +672,58 @@
                     quantityInput.value = currentValue - 1;
                 }
             });
-            
+
             increaseQtyBtn.addEventListener("click", function() {
                 const currentValue = parseInt(quantityInput.value);
                 const activeVariant = document.querySelector(".variant-option.active");
-                const maxquantity_in_stock = activeVariant ? parseInt(activeVariant.dataset.quantity_in_stock) : 99;
-                
-                if (currentValue < maxquantity_in_stock) {
+                const maxStock = activeVariant ? parseInt(activeVariant.dataset.stock) : 99;
+
+                if (currentValue < maxStock) {
                     quantityInput.value = currentValue + 1;
                 } else {
-                    showToast(`Only ${maxquantity_in_stock} items available in quantity_in_stock`, "error");
+                    showToast(`Only ${maxStock} items available in stock`, "error");
                 }
             });
-            
+
             quantityInput.addEventListener("change", function() {
                 const currentValue = parseInt(this.value);
                 const activeVariant = document.querySelector(".variant-option.active");
-                const maxquantity_in_stock = activeVariant ? parseInt(activeVariant.dataset.quantity_in_stock) : 99;
-                
+                const maxStock = activeVariant ? parseInt(activeVariant.dataset.stock) : 99;
+
                 if (currentValue < 1) {
                     this.value = 1;
-                } else if (currentValue > maxquantity_in_stock) {
-                    this.value = maxquantity_in_stock;
-                    showToast(`Only ${maxquantity_in_stock} items available in quantity_in_stock`, "error");
+                } else if (currentValue > maxStock) {
+                    this.value = maxStock;
+                    showToast(`Only ${maxStock} items available in stock`, "error");
                 }
             });
         }
 
-        // Functions
-        function initializeZoom() {
-            if (!mainImage) return;
-            
-            const container = mainImage.parentElement;
-            const lens = container.querySelector(".zoom-lens");
-            const result = container.querySelector(".zoom-result");
-            
-            if (!lens || !result) return;
-            
-            mainImage.addEventListener("mousemove", function(e) {
-                moveLens(e);
-            });
-            
-            mainImage.addEventListener("mouseenter", function() {
-                lens.style.display = "block";
-                result.style.display = "block";
-            });
-            
-            mainImage.addEventListener("mouseleave", function() {
-                lens.style.display = "none";
-                result.style.display = "none";
-            });
-            
-            function moveLens(e) {
-                let pos = getCursorPos(e);
-                let x = pos.x - (lens.offsetWidth / 2);
-                
-                let y = pos.y - (lens.offsetHeight / 2);
-                
-                // Prevent lens from going outside the image
-                if (x > mainImage.width - lens.offsetWidth) x = mainImage.width - lens.offsetWidth;
-                if (x < 0) x = 0;
-                if (y > mainImage.height - lens.offsetHeight) y = mainImage.height - lens.offsetHeight;
-                if (y < 0) y = 0;
-                
-                // Set lens position
-                lens.style.left = x + "px";
-                lens.style.top = y + "px";
-                
-                // Calculate ratio
-                let cx = result.offsetWidth / lens.offsetWidth;
-                let cy = result.offsetHeight / lens.offsetHeight;
-                
-                // Set result background
-                result.style.backgroundImage = "url('" + mainImage.src + "')";
-                result.style.backgroundSize = (mainImage.width * cx) + "px " + (mainImage.height * cy) + "px";
-                result.style.backgroundPosition = "-" + (x * cx) + "px -" + (y * cy) + "px";
-            }
-            
-            function getCursorPos(e) {
-                let rect = mainImage.getBoundingClientRect();
-                let x = e.pageX - rect.left - window.pageXOffset;
-                let y = e.pageY - rect.top - window.pageYOffset;
-                return {x: x, y: y};
-            }
-        }
-        
-        function updatequantity_in_stockDisplay(quantity_in_stock) {
-            if (!quantity_in_stockIndicator || !quantity_in_stockText) return;
-            
-            if (quantity_in_stock > 10) {
-                quantity_in_stockIndicator.style.width = "100%";
-                quantity_in_stockText.textContent = `In quantity_in_stock (${quantity_in_stock} available)`;
-                quantity_in_stockText.className = "text-sm font-medium text-green-600";
-                quantity_in_stockIndicator.className = "bg-green-500 h-2 rounded-full";
-            } else if (quantity_in_stock > 0) {
-                quantity_in_stockIndicator.style.width = `${(quantity_in_stock/10)*100}%`;
-                quantity_in_stockText.textContent = `Only ${quantity_in_stock} left!`;
-                quantity_in_stockText.className = "text-sm font-medium text-yellow-600";
-                quantity_in_stockIndicator.className = "bg-yellow-500 h-2 rounded-full";
+        function updateStockDisplay(stock) {
+            if (!stockIndicator || !stockText) return;
+
+            if (stock > 10) {
+                stockIndicator.style.width = "100%";
+                stockText.textContent = `In stock (${stock} available)`;
+                stockText.className = "text-sm font-medium text-green-600";
+                stockIndicator.className = "bg-green-500 h-2 rounded-full";
+            } else if (stock > 0) {
+                stockIndicator.style.width = `${(stock/10)*100}%`;
+                stockText.textContent = `Only ${stock} left!`;
+                stockText.className = "text-sm font-medium text-yellow-600";
+                stockIndicator.className = "bg-yellow-500 h-2 rounded-full";
             } else {
-                quantity_in_stockIndicator.style.width = "0%";
-                quantity_in_stockText.textContent = "Out of quantity_in_stock";
-                quantity_in_stockText.className = "text-sm font-medium text-red-600";
-                quantity_in_stockIndicator.className = "bg-red-500 h-2 rounded-full";
+                stockIndicator.style.width = "0%";
+                stockText.textContent = "Out of stock";
+                stockText.className = "text-sm font-medium text-red-600";
+                stockIndicator.className = "bg-red-500 h-2 rounded-full";
             }
         }
     });
 
-    // Cart functionality
     function addCartItem(variantId, quantity) {
         if (!variantId) return;
-        
+
         fetch('/cart/add/', {
             method: 'POST',
             headers: {
@@ -460,7 +739,6 @@
         .then(data => {
             if (data.success) {
                 showToast("Added to Cart!", "success");
-                // Update cart count if needed
                 if (data.cart_count !== undefined) {
                     const cartCountElement = document.getElementById("cartCount");
                     if (cartCountElement) {
@@ -479,7 +757,6 @@
         });
     }
 
-    // Toast notification
     function showToast(message, type) {
         const toast = document.createElement("div");
         toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white z-50 ${
@@ -487,18 +764,16 @@
         }`;
         toast.textContent = message;
         document.body.appendChild(toast);
-        
-        // Animate in
+
         toast.style.opacity = "0";
         toast.style.transform = "translateY(20px)";
         toast.style.transition = "opacity 0.3s, transform 0.3s";
-        
+
         setTimeout(() => {
             toast.style.opacity = "1";
             toast.style.transform = "translateY(0)";
         }, 10);
-        
-        // Remove after delay
+
         setTimeout(() => {
             toast.style.opacity = "0";
             toast.style.transform = "translateY(20px)";
@@ -506,4 +781,5 @@
         }, 3000);
     }
 </script>
+
 {% endblock %}

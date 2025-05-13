@@ -520,11 +520,11 @@
     const group = document.createElement('div');
     group.classList.add('row', 'variant-group', 'mb-2');
     group.innerHTML = `
-      <input type="hidden" name="variant_ids[]" value="">
-      <div class="col-md-3">
-        <input type="text" name="variants_weight[]" placeholder="Weight" class="form-control" required maxlength="50">
-        <div class="invalid-feedback">Weight is required.</div>
-      </div>
+     <div class="col-md-3">
+  <input type="number" name="variants_weight[]" placeholder="Weight" min="0.01" step="0.01" class="form-control" required maxlength="50">
+  <div class="invalid-feedback">Weight must be greater than zero.</div>
+</div>
+
       <div class="col-md-3">
         <input type="number" name="variants_price[]" placeholder="Price" min="0.01" step="0.01" class="form-control" required>
         <div class="invalid-feedback">Price must be greater than zero.</div>

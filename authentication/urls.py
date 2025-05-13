@@ -22,6 +22,7 @@ urlpatterns = [
 
     # path('product', views.product, name='product')
     # path('product/<int:id>/', views.product_detail_view, name='product_detail_view'),
+    #  path('auth/check-blocked-user/', views.check_blocked_user, name='check_blocked_user'),
    
 
 ]

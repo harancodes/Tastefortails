@@ -1,66 +1,40 @@
-# from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
-# from allauth.exceptions import ImmediateHttpResponse
-# from django.shortcuts import resolve_url
-# from django.contrib.auth import get_user_model
-# from django.shortcuts import redirect
-# from django.contrib import messages
-
-# User = get_user_model()
-
-# class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
-#     def get_login_redirect_url(self, request):
-#         return resolve_url('/')  
-
-#     def is_open_for_signup(self, request, sociallogin):
-#         if sociallogin.account.provider == 'google':
-#             email = sociallogin.account.extra_data.get('email')
-#             return email is not None
-#         return super().is_open_for_signup(request, sociallogin)
-
-#     def pre_social_login(self, request, sociallogin):
-#         email = sociallogin.account.extra_data.get('email')
-#         if email:
-#             try:
-#                 user = User.objects.get(email=email)
-#                 if user.is_blocked:
-#                     messages.error(request, "This account is blocked. Please contact the team.")
-#                     raise ImmediateHttpResponse(redirect('account_login'))
-#                 sociallogin.connect(request, user)
-#             except User.DoesNotExist:
-#                 pass  
-
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.exceptions import ImmediateHttpResponse
-from django.shortcuts import resolve_url
-from django.contrib.auth import get_user_model
-from django.shortcuts import redirect
 from django.contrib import messages
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def get_login_redirect_url(self, request):
-        return resolve_url('/')  # Default redirect URL after successful login
-
-    def is_open_for_signup(self, request, sociallogin):
-        if sociallogin.account.provider == 'google':
-            email = sociallogin.account.extra_data.get('email')
-            return email is not None
-        return super().is_open_for_signup(request, sociallogin)
+        return reverse('home')  # Or any view name
 
     def pre_social_login(self, request, sociallogin):
         email = sociallogin.account.extra_data.get('email')
-        if email:
-            try:
-                user = User.objects.get(email=email)
-                if user.is_blocked:
-                    # Blocked account: Show message and prevent login
-                    messages.error(request, "This account is blocked. Please contact the team.")
-                    # Raise ImmediateHttpResponse to stop the flow and redirect to login
-                    raise ImmediateHttpResponse(redirect('account_login'))  # Redirect to login page
-                # If the account is not blocked, continue the login process
-                sociallogin.connect(request, user)
-            except User.DoesNotExist:
-                pass  # Continue with the normal signup flow if the user doesn't exist
 
+        if not email:
+            messages.error(request, "No email received from Google.")
+            raise ImmediateHttpResponse(redirect(reverse('user_login')))
 
+        try:
+            user = User.objects.get(email=email)
+
+            # BLOCK: If the user is flagged as inactive or blocked
+            if not user.is_active or getattr(user, 'is_blocked', False):
+                messages.error(request, "Your account is blocked.")
+                raise ImmediateHttpResponse(redirect(reverse('user_login')))
+
+            # EXISTING USER (email registered without social account)
+            if not sociallogin.is_existing and not user.socialaccount_set.filter(provider='google').exists():
+                messages.error(
+                    request,
+                    "This email is already registered using a password. "
+                    "Please log in with your email and password, then connect your Google account from your profile settings."
+                )
+                raise ImmediateHttpResponse(redirect(reverse('user_login')))
+
+        except User.DoesNotExist:
+            # Allow signup if you want; block if not
+            pass

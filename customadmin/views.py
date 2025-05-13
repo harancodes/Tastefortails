@@ -225,7 +225,7 @@ from django.utils.text import slugify
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum
-from django.db.models import Sum, Min,F
+from django.db.models import Sum, Min,F, Max
 from django.shortcuts import render
 from django.db.models import FloatField
 
@@ -276,38 +276,48 @@ def product_list(request):
         'products': products,
         'search_query': search_query,
     })
+import cloudinary
+import cloudinary.uploader
+import base64
+from PIL import Image
+from io import BytesIO
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.http import JsonResponse
 
-
-@admin_required
 def add_product(request):
     if request.method == "POST":
         try:
+            # Handle form fields
             name = request.POST.get('name')
             description = request.POST.get('description', '')
             category_id = request.POST.get('category')
             brand_id = request.POST.get('brand')
             product_type = request.POST.get('product_type')
 
-            
+            # Validate required fields
             if not all([name, category_id, product_type]):
                 messages.error(request, "Please fill in all required fields.")
                 return redirect('customadmin:add_product')
-            
-            
+
+            # Check for duplicate product name
+            if Products.objects.filter(name__iexact=name).exists():
+                messages.error(request, f"A product with the name '{name}' already exists.")
+                return redirect('customadmin:add_product')
+
+            # Get variant data
             variants_weight = request.POST.getlist('variants_weight[]')
             variants_price = request.POST.getlist('variants_price[]')
             variants_stock = request.POST.getlist('variants_stock[]')
 
-            
+            # Clean and validate variants
             variants_weight = [w.strip() for w in variants_weight if w.strip()]
             variants_price = [p.strip() for p in variants_price if p.strip()]
             variants_stock = [s.strip() for s in variants_stock if s.strip()]
 
-
             if not all([variants_weight, variants_price, variants_stock]):
                 messages.error(request, "At least one variant is required.")
                 return redirect('customadmin:add_product')
-
 
             for w, p, s in zip(variants_weight, variants_price, variants_stock):
                 try:
@@ -321,7 +331,6 @@ def add_product(request):
                     messages.error(request, "Variant weight, price, and stock must be valid numbers.")
                     return redirect('customadmin:add_product')
 
-
             try:
                 total_stock = sum(int(s) for s in variants_stock if s)
                 min_price = min(float(p) for p in variants_price if p)
@@ -329,13 +338,14 @@ def add_product(request):
                 messages.error(request, "Variant prices and stock must be valid numbers.")
                 return redirect('customadmin:add_product')
 
+            # Create product
             product = Products.objects.create(
                 name=name,
                 description=description,
                 category_id=category_id,
                 brand_id=brand_id or None,
                 product_type=product_type,
-                stock=total_stock,  
+                stock=total_stock,
                 is_active=True,
             )
 
@@ -349,51 +359,79 @@ def add_product(request):
                         quantity_in_stock=int(s),
                     )
 
-            
-            main_image = request.FILES.get('main_image')
-            if main_image:
+            # Handle main image and cropping
+            main_image_data = request.POST.get('main_image_data')
+            if main_image_data:
+                main_image = save_cropped_image(main_image_data)
                 ProductImage.objects.create(product=product, image=main_image, is_primary=True)
             else:
-                messages.warning(request, "No main image was provided. Product added without a primary image.")
+                main_image = request.FILES.get('main_image')
+                if main_image:
+                    ProductImage.objects.create(product=product, image=main_image, is_primary=True)
+                else:
+                    messages.warning(request, "No main image was provided. Product added without a primary image.")
 
-        
+            # Handle additional images and cropping
             for i in range(1, 4):
-                other_image = request.FILES.get(f'other_image_{i}')
-                if other_image:
+                other_image_data = request.POST.get(f'other_image_data_{i}')
+                if other_image_data:
+                    other_image = save_cropped_image(other_image_data)
                     ProductImage.objects.create(product=product, image=other_image, is_primary=False)
+                else:
+                    other_image = request.FILES.get(f'other_image_{i}')
+                    if other_image:
+                        ProductImage.objects.create(product=product, image=other_image, is_primary=False)
 
-            
             messages.success(request, f"Product '{product.name}' added successfully.")
-            
-            
-            
             redirect_url = reverse('customadmin:product_list')
-            
+
+            # AJAX response support
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'status': 'success', 
+                    'status': 'success',
                     'message': f"Product '{product.name}' added successfully.",
                     'redirect_url': redirect_url
                 })
+
             return redirect(redirect_url)
-            
+
         except Exception as e:
-            
             error_message = f"An error occurred: {str(e)}"
             messages.error(request, error_message)
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+
             return redirect('customadmin:add_product')
 
-
+    # Handle GET request
     categories = Category.objects.filter(is_active=True)
     brands = Brand.objects.filter(is_active=True)
-    
+
     return render(request, 'products/add_product.html', {
         'categories': categories,
         'brands': brands,
     })
+
+def save_cropped_image(base64_data):
+    """Helper function to save the base64 cropped image to Cloudinary"""
+    
+    try:
+        format, imgstr = base64_data.split(';base64,')  
+        imgdata = base64.b64decode(imgstr)
+        
+        image = Image.open(BytesIO(imgdata))
+        
+        # Upload the image to Cloudinary
+        upload_result = cloudinary.uploader.upload(imgdata, resource_type="image")
+        
+        cloudinary_url = upload_result['secure_url']
+        
+        return cloudinary_url
+    except Exception as e:
+        raise ValueError(f"Error processing image: {str(e)}")
+
+
 
 
 @admin_required
@@ -412,6 +450,11 @@ def edit_product(request, product_id):
         if not all([name, category_id, product_type, stock]):
             messages.error(request, "Please fill in all required fields.")
             return redirect('customadmin:edit_product', product_id=product.id)
+        
+        if Products.objects.filter(name__iexact=name).exclude(id=product.id).exists():
+            messages.error(request, f"A product with the name '{name}' already exists.")
+            return redirect('customadmin:edit_product', product_id=product.id)
+        
 
         try:
             stock = int(stock)
@@ -540,12 +583,27 @@ def admin_logout(request):
 from django.views.decorators.http import require_POST
 # from .models import Products
 
-@require_POST
+# @require_POST
+# def toggle_product_status(request, product_id):
+#     product = get_object_or_404(Products, id=product_id)
+#     product.is_listed = not product.is_listed  # Toggle the status
+#     product.save()
+#     action = "listed" if product.is_listed else "unlisted"
+#     messages.success(request, f"Product '{product.name}' has been {action}.")
+#     return redirect('customadmin:product_list')         
+
 def toggle_product_status(request, product_id):
     product = get_object_or_404(Products, id=product_id)
+
     product.is_listed = not product.is_listed
     product.save()
-    return redirect('customadmin:product_list')         
+
+    action = "listed" if product.is_listed else "unlisted"
+    messages.success(request, f"Product has been successfully {action}.")
+
+    return redirect(request.META.get('HTTP_REFERER', 'customadmin:product_list'))
+
+
 ####### Product End ####### 
 
 ######## Banner Section #######    
@@ -659,7 +717,7 @@ def add_brands(request):
 
         if not name.strip():
             messages.error(request, "Category name cannot be empty.")
-            return redirect('customadmin:add_category')
+            return redirect('customadmin:brand_list')
         elif Brand.objects.filter(name__iexact=name.strip()):
 
             messages.error(request, "This already exist")
@@ -733,10 +791,10 @@ def edit_brands(request, brand_id):
 @admin_required
 def soft_delete_brands(request, brand_id):
     brand = get_object_or_404(Brand, id=brand_id)
-    brand.is_deleted = True
+    brand.is_active = False
     brand.save()
     messages.success(request, "Brands deleted (soft) successfully.")
-    return redirect('customadmin:brands')
+    return redirect('customadmin:brands_list')
 
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -746,7 +804,7 @@ from django.http import JsonResponse, HttpResponseBadRequest
 def toggle_active_status(request, brand_id):
     try:
         brand = Brand.objects.get(pk=brand_id)
-        brand.is_active = not brand.is_active
+        brand.is_listed = not brand.is_listed
         brand.save()
         return JsonResponse({'status': 'success', 'is_active': brand.is_active})
     except Brand.DoesNotExist:

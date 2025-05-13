@@ -5,7 +5,7 @@
   
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      <div class="tex-danger alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
   
@@ -13,7 +13,7 @@
     {% csrf_token %}
 
     <div class="mb-3">
-      <label for="name" class="form-label">Product Name *</label>
+      <label for="name" class="form-label">Product Name </label>
       <input type="text" class="form-control" id="name" name="name" 
              minlength="3" maxlength="100" pattern="[A-Za-z0-9\s\-_,.&]+" 
              title="Name should be 3-100 characters and contain only letters, numbers, spaces, and basic punctuation">
@@ -59,13 +59,7 @@
 </div>
 
 
-    <!-- <div class="mb-3">
-      <label for="stock" class="form-label">Total Stock *</label>
-      <input type="number" class="form-control" id="stock" name="stock" value="0" 
-             required min="0" max="999999">
-      <div class="invalid-feedback">Stock must be a non-negative number.</div>
-    </div> -->
-    
+
     <hr>
 
     <h4>Variants</h4>
@@ -144,28 +138,23 @@
   </form>
 </div>
 
-<!-- Load Cropper.js -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
-<!-- Form Validation and Image Handling Script -->
 <script>
-  // Current croppers
   let mainImageCropper = null;
   let additionalImageCroppers = {};
   
-  // Initialize form validation
   document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('productForm');
     
-    // Form validation before submit
+    // Form validation before s
     form.addEventListener('submit', function(event) {
       if (!validateForm()) {
         event.preventDefault();
         return false;
       }
       
-      // Additional validation for variants
       if (!validateVariants()) {
         event.preventDefault();
         return false;
@@ -471,10 +460,11 @@
     const group = document.createElement('div');
     group.classList.add('row', 'variant-group', 'mb-2');
     group.innerHTML = `
-      <div class="col-md-3">
-        <input type="text" name="variants_weight[]" placeholder="Weight" class="form-control" required maxlength="50">
-        <div class="invalid-feedback">Weight is required.</div>
-      </div>
+     <div class="col-md-3">
+  <input type="number" name="variants_weight[]" placeholder="Weight" min="0.01" step="0.01" class="form-control" required maxlength="50">
+  <div class="invalid-feedback">Weight must be greater than zero.</div>
+</div>
+
       <div class="col-md-3">
         <input type="number" name="variants_price[]" placeholder="Price" min="0.01" step="0.01" class="form-control" required>
         <div class="invalid-feedback">Price must be greater than zero.</div>

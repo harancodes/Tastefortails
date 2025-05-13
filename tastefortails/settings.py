@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'product',
     'corsheaders',
     'customadmin',
+    # 'Cart',
 
 
     'django.contrib.sites',

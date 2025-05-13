@@ -56,13 +56,8 @@
             </button>
           </td>
           <td>
-            {% if brand.id %}
-              <a href="{% url 'customadmin:edit_brands' brand.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
-              <a href="#" class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
-              <a href="{% url 'customadmin:soft_delete_brands' brand.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
-            {% else %}
-              <span class="text-danger">Invalid brand</span>
-            {% endif %}
+            <a href="{% url 'customadmin:edit_brands' brand.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'customadmin:soft_delete_brands' brand.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
           </td>
           <td>
             {% if brand.offer_percentage %}{{ brand.offer_percentage }}%{% else %}<span class="text-muted">--</span>{% endif %}
@@ -96,7 +91,7 @@
   </div>
 </div>
 
-<!-- Confirmation Modal -->
+<!-- Toggle Confirmation Modal -->
 <div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -109,27 +104,49 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="#" class="btn btn-primary" id="confirmToggleBtn">Yes, Proceed</a>
+        <button type="button" class="btn btn-primary" id="confirmToggleBtn">Yes, Proceed</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal Script -->
+<!-- Toggle Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var confirmModal = document.getElementById('confirmToggleModal');
+  var confirmBtn = document.getElementById('confirmToggleBtn');
+  var actionSpan = document.getElementById('toggle-action-name');
+  var toggleUrl = '';
+
   confirmModal.addEventListener('show.bs.modal', function (event) {
     var button = event.relatedTarget;
-    var url = button.getAttribute('data-url');
+    toggleUrl = button.getAttribute('data-url');
     var action = button.getAttribute('data-action');
-
-    var confirmBtn = confirmModal.querySelector('#confirmToggleBtn');
-    var actionSpan = confirmModal.querySelector('#toggle-action-name');
-
-    confirmBtn.href = url;
     actionSpan.textContent = action;
+  });
+
+  confirmBtn.addEventListener('click', function () {
+    fetch(toggleUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        location.reload();
+      } else {
+        alert('Toggle failed: ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error toggling brand status.');
+    });
   });
 });
 </script>
+
 {% endblock %}

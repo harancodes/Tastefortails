@@ -32,7 +32,9 @@ def product_list_view(request):
 
     if search_query:
         products = products.filter(
-            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+            Q(name__icontains=search_query) | Q(description__icontains=search_query )
+            
+
         )
 
     if brand_filter:
