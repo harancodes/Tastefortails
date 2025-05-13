@@ -99,6 +99,7 @@
     <!-- Main Image with Cropping -->
     <div class="mb-4">
       <label class="form-label">Main Image *</label>
+      <p class="form-text">Upload an image and use the crop tool to adjust it to a 1:1 ratio. Click "Crop Main Image" to save your selection.</p>
       <div class="row">
         <div class="col-md-6">
           {% for img in images %}
@@ -136,6 +137,7 @@
     <!-- Additional Images with Cropping -->
     <div class="mb-4">
       <label class="form-label">Additional Images</label>
+      <p class="form-text">Upload up to three additional images. Use the crop tool to adjust to a 4:3 ratio. Click "Crop Image" to save each selection.</p>
       <div class="row">
         {% for img in images %}
           {% if not img.is_primary %}
@@ -190,156 +192,239 @@
 
 <!-- Form Validation and Image Handling Script -->
 <script>
-  // Current croppers
-  let mainImageCropper = null;
-  let additionalImageCroppers = {};
+// Current croppers
+let mainImageCropper = null;
+let additionalImageCroppers = {};
+
+// Initialize form validation
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('productForm');
   
-  // Initialize form validation
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('productForm');
-    
-    // Form validation before submit
-    form.addEventListener('submit', function(event) {
-      if (!validateForm()) {
-        event.preventDefault();
-        return false;
-      }
-      
-      // Additional validation for variants
-      if (!validateVariants()) {
-        event.preventDefault();
-        return false;
-      }
-      
-      // Submit if everything is valid
-      return true;
-    });
-    
-    // Main image upload and cropping
-    setupMainImageCropper();
-    
-    // Additional images upload and cropping
-    setupAdditionalImageCroppers();
-    
-    // Setup handlers for removing existing images
-    setupExistingImageRemovers();
-  });
-  
-  // Validate the entire form
-  function validateForm() {
-    const form = document.getElementById('productForm');
-    let isValid = true;
-    
-    // Check required fields
-    const requiredFields = form.querySelectorAll('[required]');
-    requiredFields.forEach(field => {
-      if (!field.value.trim()) {
-        field.classList.add('is-invalid');
-        isValid = false;
-      } else {
-        field.classList.remove('is-invalid');
-      }
-    });
-    
-    // Validate product name
-    const nameField = document.getElementById('name');
-    if (nameField.value.length < 3 || nameField.value.length > 100) {
-      nameField.classList.add('is-invalid');
-      isValid = false;
-    }
-    
-    // Validate stock
-    const stockField = document.getElementById('stock');
-    if (isNaN(stockField.value) || parseInt(stockField.value) < 0) {
-      stockField.classList.add('is-invalid');
-      isValid = false;
-    }
-    
-    return isValid;
-  }
-  
-  // Validate variants
-  function validateVariants() {
-    let isValid = true;
-    const variants = document.querySelectorAll('.variant-group');
-    
-    if (variants.length === 0) {
-      alert('Please add at least one variant for this product.');
+  // Form validation before submit
+  form.addEventListener('submit', function(event) {
+    if (!validateForm()) {
+      event.preventDefault();
       return false;
     }
     
-    variants.forEach(variant => {
-      const weightInput = variant.querySelector('[name="variants_weight[]"]');
-      const priceInput = variant.querySelector('[name="variants_price[]"]');
-      const stockInput = variant.querySelector('[name="variants_stock[]"]');
-      
-      if (!weightInput.value.trim()) {
-        weightInput.classList.add('is-invalid');
-        isValid = false;
-      }
-      
-      if (!priceInput.value || parseFloat(priceInput.value) <= 0) {
-        priceInput.classList.add('is-invalid');
-        isValid = false;
-      }
-      
-      if (!stockInput.value || parseInt(stockInput.value) < 0) {
-        stockInput.classList.add('is-invalid');
-        isValid = false;
-      }
-    });
+    // Additional validation for variants
+    if (!validateVariants()) {
+      event.preventDefault();
+      return false;
+    }
     
-    return isValid;
+    // Disable submit button to prevent double submission
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').innerHTML = 'Updating...';
+    
+    // Submit if everything is valid
+    return true;
+  });
+  
+  // Main image upload and cropping
+  setupMainImageCropper();
+  
+  // Additional images upload and cropping
+  setupAdditionalImageCroppers();
+  
+  // Setup handlers for removing existing images
+  setupExistingImageRemovers();
+  
+  // Setup handlers for adding and removing variants
+  setupVariantHandlers();
+});
+
+// Validate the entire form
+function validateForm() {
+  const form = document.getElementById('productForm');
+  let isValid = true;
+  
+  // Check required fields
+  const requiredFields = form.querySelectorAll('[required]');
+  requiredFields.forEach(field => {
+    if (!field.value.trim()) {
+      field.classList.add('is-invalid');
+      isValid = false;
+    } else {
+      field.classList.remove('is-invalid');
+    }
+  });
+  
+  // Validate product name
+  const nameField = document.getElementById('name');
+  if (nameField.value.length < 3 || nameField.value.length > 100) {
+    nameField.classList.add('is-invalid');
+    isValid = false;
   }
   
-  // Setup main image cropper
-  function setupMainImageCropper() {
-    const mainImageInput = document.getElementById('main_image');
-    const mainImageContainer = document.getElementById('main-image-container');
-    const mainImagePreview = document.getElementById('main-image-preview');
-    const cropMainImageBtn = document.getElementById('crop-main-image');
-    const cancelMainCropBtn = document.getElementById('cancel-main-crop');
-    const mainImageCroppedContainer = document.getElementById('main-image-cropped-container');
-    const mainImageCroppedPreview = document.getElementById('main-image-cropped-preview');
-    const mainImageData = document.getElementById('main_image_data');
-    const currentMainImageContainer = document.getElementById('current-main-image-container');
+  // Validate stock
+  const stockField = document.getElementById('stock');
+  if (stockField && (isNaN(stockField.value) || parseInt(stockField.value) < 0)) {
+    stockField.classList.add('is-invalid');
+    isValid = false;
+  }
+  
+  // Validate main image
+  const mainImageInput = document.getElementById('main_image');
+  const mainImageData = document.getElementById('main_image_data');
+  const currentMainImageContainer = document.getElementById('current-main-image-container');
+  if (!mainImageInput.files.length && !mainImageData.value && 
+      (!currentMainImageContainer || currentMainImageContainer.style.display === 'none')) {
+    mainImageInput.classList.add('is-invalid');
+    alert('Please provide a main image for the product.');
+    isValid = false;
+  } else {
+    mainImageInput.classList.remove('is-invalid');
+  }
+  
+  return isValid;
+}
+
+// Validate variants
+function validateVariants() {
+  let isValid = true;
+  const variants = document.querySelectorAll('.variant-group');
+  
+  if (variants.length === 0) {
+    alert('Please add at least one variant for this product.');
+    return false;
+  }
+  
+  variants.forEach(variant => {
+    const weightInput = variant.querySelector('[name="variants_weight[]"]');
+    const priceInput = variant.querySelector('[name="variants_price[]"]');
+    const stockInput = variant.querySelector('[name="variants_stock[]"]');
     
-    mainImageInput.addEventListener('change', function(e) {
-      if (!validateImageFile(this)) {
-        this.value = '';
-        return;
+    if (!weightInput.value.trim()) {
+      weightInput.classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    if (!priceInput.value || parseFloat(priceInput.value) <= 0) {
+      priceInput.classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    if (!stockInput.value || parseInt(stockInput.value) < 0) {
+      stockInput.classList.add('is-invalid');
+      isValid = false;
+    }
+  });
+  
+  return isValid;
+}
+
+// Setup handlers for adding and removing variants
+function setupVariantHandlers() {
+  // Add Variant functionality
+  const addVariantBtn = document.getElementById('add-variant');
+  if (addVariantBtn) {
+    addVariantBtn.addEventListener('click', function() {
+      const section = document.getElementById('variant-section');
+
+      const group = document.createElement('div');
+      group.classList.add('row', 'variant-group', 'mb-2');
+      group.innerHTML = `
+        <input type="hidden" name="variant_ids[]" value="">
+        <div class="col-md-3">
+          <input type="text" name="variants_weight[]" placeholder="Weight" 
+       class="form-control" required maxlength="50"
+       pattern="^(?!-)[A-Za-z0-9. ]+$"
+       title="Only letters, numbers, spaces, and dots allowed. No negative values.">
+<div class="invalid-feedback">Weight must be a positive value and contain only letters, numbers, and dots.</div>
+
+        </div>
+        <div class="col-md-3">
+          <input type="number" name="variants_price[]" placeholder="Price" 
+                min="0.01" step="0.01" class="form-control" required>
+          <div class="invalid-feedback">Price must be greater than zero.</div>
+        </div>
+        <div class="col-md-3">
+          <input type="number" name="variants_stock[]" placeholder="Stock" 
+                min="0" class="form-control" required>
+          <div class="invalid-feedback">Stock must be a non-negative number.</div>
+        </div>
+        <div class="col-md-3">
+          <button type="button" class="btn btn-danger remove-variant">Remove</button>
+        </div>
+      `;
+      section.appendChild(group);
+
+      // Add validation listeners to new fields
+      const newInputs = group.querySelectorAll('input');
+      newInputs.forEach(input => {
+        input.addEventListener('input', function() {
+          if (this.checkValidity()) {
+            this.classList.remove('is-invalid');
+          } else {
+            this.classList.add('is-invalid');
+          }
+        });
+      });
+    });
+  }
+
+  // Remove variant functionality - use event delegation
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-variant')) {
+      e.target.closest('.variant-group').remove();
+    }
+  });
+}
+
+// Setup main image cropper
+function setupMainImageCropper() {
+  const mainImageInput = document.getElementById('main_image');
+  const mainImageContainer = document.getElementById('main-image-container');
+  const mainImagePreview = document.getElementById('main-image-preview');
+  const cropMainImageBtn = document.getElementById('crop-main-image');
+  const cancelMainCropBtn = document.getElementById('cancel-main-crop');
+  const mainImageCroppedContainer = document.getElementById('main-image-cropped-container');
+  const mainImageCroppedPreview = document.getElementById('main-image-cropped-preview');
+  const mainImageData = document.getElementById('main_image_data');
+  const currentMainImageContainer = document.getElementById('current-main-image-container');
+  
+  if (!mainImageInput) return; // Safety check
+  
+  mainImageInput.addEventListener('change', function(e) {
+    if (!validateImageFile(this)) {
+      this.value = '';
+      return;
+    }
+    
+    const file = this.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+      // Hide current image and show preview container
+      if (currentMainImageContainer) {
+        currentMainImageContainer.style.display = 'none';
+      }
+      mainImageContainer.style.display = 'block';
+      mainImageCroppedContainer.style.display = 'none';
+      mainImagePreview.src = e.target.result;
+      
+      // Initialize cropper
+      if (mainImageCropper) {
+        mainImageCropper.destroy();
       }
       
-      const file = this.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = function(e) {
-        // Hide current image and show preview container
-        if (currentMainImageContainer) {
-          currentMainImageContainer.style.display = 'none';
-        }
-        mainImageContainer.style.display = 'block';
-        mainImageCroppedContainer.style.display = 'none';
-        mainImagePreview.src = e.target.result;
-        
-        // Initialize cropper
-        if (mainImageCropper) {
-          mainImageCropper.destroy();
-        }
-        
-        // Create new cropper with 1:1 aspect ratio for product images
-        mainImageCropper = new Cropper(mainImagePreview, {
-          aspectRatio: 1,
-          viewMode: 2,
-          autoCropArea: 1,
-          responsive: true
-        });
-      };
-      
-      reader.readAsDataURL(file);
-    });
+      // Create new cropper with 1:1 aspect ratio for product images
+      mainImageCropper = new Cropper(mainImagePreview, {
+        aspectRatio: 1,
+        viewMode: 2,
+        autoCropArea: 1,
+        responsive: true
+      });
+    };
     
-    // Crop button handler
+    reader.readAsDataURL(file);
+  });
+  
+  // Crop button handler
+  if (cropMainImageBtn) {
     cropMainImageBtn.addEventListener('click', function() {
       if (!mainImageCropper) return;
       
@@ -355,15 +440,19 @@
         imageSmoothingQuality: 'high'
       });
       
-      mainImageCroppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
-      mainImageData.value = canvas.toDataURL('image/jpeg', 0.8);
+      // Convert canvas to base64
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      mainImageCroppedPreview.src = imageDataUrl;
+      mainImageData.value = imageDataUrl;
       
       // Hide cropper and show cropped result
       mainImageContainer.style.display = 'none';
       mainImageCroppedContainer.style.display = 'block';
     });
-    
-    // Cancel button handler
+  }
+  
+  // Cancel button handler
+  if (cancelMainCropBtn) {
     cancelMainCropBtn.addEventListener('click', function() {
       if (mainImageCropper) {
         mainImageCropper.destroy();
@@ -378,196 +467,158 @@
       }
     });
   }
-  
-  // Setup additional image croppers
-  function setupAdditionalImageCroppers() {
-    for (let i = 1; i <= 3; i++) {
-      setupSingleAdditionalImageCropper(i);
-    }
+}
+
+// Setup additional image croppers
+function setupAdditionalImageCroppers() {
+  for (let i = 1; i <= 3; i++) {
+    setupSingleAdditionalImageCropper(i);
   }
+}
+
+function setupSingleAdditionalImageCropper(index) {
+  const input = document.getElementById(`other_image_${index}`);
+  const container = document.getElementById(`other-image-container-${index}`);
+  const preview = document.getElementById(`other-image-preview-${index}`);
+  const cropBtn = document.getElementById(`crop-other-image-${index}`);
+  const cancelBtn = document.getElementById(`cancel-other-crop-${index}`);
+  const croppedContainer = document.getElementById(`other-image-cropped-container-${index}`);
+  const croppedPreview = document.getElementById(`other-image-cropped-preview-${index}`);
+  const imageData = document.getElementById(`other_image_data_${index}`);
   
-  function setupSingleAdditionalImageCropper(index) {
-    const input = document.getElementById(`other_image_${index}`);
-    const container = document.getElementById(`other-image-container-${index}`);
-    const preview = document.getElementById(`other-image-preview-${index}`);
-    const cropBtn = document.getElementById(`crop-other-image-${index}`);
-    const cancelBtn = document.getElementById(`cancel-other-crop-${index}`);
-    const croppedContainer = document.getElementById(`other-image-cropped-container-${index}`);
-    const croppedPreview = document.getElementById(`other-image-cropped-preview-${index}`);
-    const imageData = document.getElementById(`other_image_data_${index}`);
+  if (!input || !container || !preview || !cropBtn || !cancelBtn || 
+      !croppedContainer || !croppedPreview || !imageData) return; // Safety check
+  
+  input.addEventListener('change', function(e) {
+    if (!validateImageFile(this)) {
+      this.value = '';
+      return;
+    }
     
-    input.addEventListener('change', function(e) {
-      if (!validateImageFile(this)) {
-        this.value = '';
-        return;
-      }
-      
-      const file = this.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = function(e) {
-        // Show preview container
-        container.style.display = 'block';
-        croppedContainer.style.display = 'none';
-        preview.src = e.target.result;
-        
-        // Initialize cropper
-        if (additionalImageCroppers[index]) {
-          additionalImageCroppers[index].destroy();
-        }
-        
-        // Create new cropper with 4:3 aspect ratio for additional images
-        additionalImageCroppers[index] = new Cropper(preview, {
-          aspectRatio: 4/3,
-          viewMode: 2,
-          autoCropArea: 0.8,
-          responsive: true
-        });
-      };
-      
-      reader.readAsDataURL(file);
-    });
+    const file = this.files[0];
+    if (!file) return;
     
-    // Crop button handler
-    cropBtn.addEventListener('click', function() {
-      if (!additionalImageCroppers[index]) return;
-      
-      const canvas = additionalImageCroppers[index].getCroppedCanvas({
-        width: 800,
-        height: 600,
-        minWidth: 256,
-        minHeight: 192,
-        maxWidth: 4096,
-        maxHeight: 3072,
-        fillColor: '#fff',
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
-      });
-      
-      croppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
-      imageData.value = canvas.toDataURL('image/jpeg', 0.8);
-      
-      // Hide cropper and show cropped result
-      container.style.display = 'none';
-      croppedContainer.style.display = 'block';
-    });
+    const reader = new FileReader();
     
-    // Cancel button handler
-    cancelBtn.addEventListener('click', function() {
+    reader.onload = function(e) {
+      // Show preview container
+      container.style.display = 'block';
+      croppedContainer.style.display = 'none';
+      preview.src = e.target.result;
+      
+      // Initialize cropper
       if (additionalImageCroppers[index]) {
         additionalImageCroppers[index].destroy();
-        additionalImageCroppers[index] = null;
       }
-      input.value = '';
-      container.style.display = 'none';
+      
+      // Create new cropper with 4:3 aspect ratio for additional images
+      additionalImageCroppers[index] = new Cropper(preview, {
+        aspectRatio: 4/3,
+        viewMode: 2,
+        autoCropArea: 0.8,
+        responsive: true
+      });
+    };
+    
+    reader.readAsDataURL(file);
+  });
+  
+  // Crop button handler
+  cropBtn.addEventListener('click', function() {
+    if (!additionalImageCroppers[index]) return;
+    
+    const canvas = additionalImageCroppers[index].getCroppedCanvas({
+      width: 800,
+      height: 600,
+      minWidth: 256,
+      minHeight: 192,
+      maxWidth: 4096,
+      maxHeight: 3072,
+      fillColor: '#fff',
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
     });
+    
+    // Convert canvas to base64
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    croppedPreview.src = imageDataUrl;
+    imageData.value = imageDataUrl;
+    
+    // Hide cropper and show cropped result
+    container.style.display = 'none';
+    croppedContainer.style.display = 'block';
+  });
+  
+  // Cancel button handler
+  cancelBtn.addEventListener('click', function() {
+    if (additionalImageCroppers[index]) {
+      additionalImageCroppers[index].destroy();
+      additionalImageCroppers[index] = null;
+    }
+    input.value = '';
+    container.style.display = 'none';
+  });
+}
+
+// Setup handlers for removing existing images
+function setupExistingImageRemovers() {
+  const removeButtons = document.querySelectorAll('.remove-existing-image');
+  
+  removeButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const imageId = this.getAttribute('data-image-id');
+      const parent = this.closest('.col-md-3');
+      
+      // Create hidden input to track removed images
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = 'remove_image_ids[]';
+      hiddenInput.value = imageId;
+      document.getElementById('productForm').appendChild(hiddenInput);
+      
+      // Hide the image from UI
+      parent.style.display = 'none';
+    });
+  });
+}
+
+// Validate image file type and size
+function validateImageFile(input) {
+  const file = input.files[0];
+  
+  if (!file) {
+    return false;
   }
   
-  // Setup handlers for removing existing images
-  function setupExistingImageRemovers() {
-    const removeButtons = document.querySelectorAll('.remove-existing-image');
-    
-    removeButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const imageId = this.getAttribute('data-image-id');
-        const parent = this.closest('.col-md-3');
-        
-        // Create hidden input to track removed images
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'remove_image_ids[]';
-        hiddenInput.value = imageId;
-        document.getElementById('productForm').appendChild(hiddenInput);
-        
-        // Hide the image from UI
-        parent.style.display = 'none';
-      });
-    });
+  // Check file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    input.classList.add('is-invalid');
+    alert('Please select a valid image file (JPG, PNG, or WebP)');
+    return false;
   }
   
-  // Validate image file type and size
-  function validateImageFile(input) {
-    const file = input.files[0];
-    
-    if (!file) {
-      return false;
-    }
-    
-    // Check file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      input.classList.add('is-invalid');
-      alert('Please select a valid image file (JPG, PNG, or WebP)');
-      return false;
-    }
-    
-    // Check file size (5MB max)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-    if (file.size > maxSize) {
-      input.classList.add('is-invalid');
-      alert('Image file size must be less than 5MB');
-      return false;
-    }
-    
-    input.classList.remove('is-invalid');
-    return true;
+  // Check file size (5MB max)
+  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+  if (file.size > maxSize) {
+    input.classList.add('is-invalid');
+    alert('Image file size must be less than 5MB');
+    return false;
   }
+  
+  input.classList.remove('is-invalid');
+  return true;
+}
 
-  // Add Variant functionality
-  document.getElementById('add-variant').addEventListener('click', function () {
-    const section = document.getElementById('variant-section');
-
-    const group = document.createElement('div');
-    group.classList.add('row', 'variant-group', 'mb-2');
-    group.innerHTML = `
-     <div class="col-md-3">
-  <input type="number" name="variants_weight[]" placeholder="Weight" min="0.01" step="0.01" class="form-control" required maxlength="50">
-  <div class="invalid-feedback">Weight must be greater than zero.</div>
-</div>
-
-      <div class="col-md-3">
-        <input type="number" name="variants_price[]" placeholder="Price" min="0.01" step="0.01" class="form-control" required>
-        <div class="invalid-feedback">Price must be greater than zero.</div>
-      </div>
-      <div class="col-md-3">
-        <input type="number" name="variants_stock[]" placeholder="Stock" min="0" class="form-control" required>
-        <div class="invalid-feedback">Stock must be a non-negative number.</div>
-      </div>
-      <div class="col-md-3">
-        <button type="button" class="btn btn-danger remove-variant">Remove</button>
-      </div>
-    `;
-    section.appendChild(group);
-
-    // Add validation listeners to new fields
-    const newInputs = group.querySelectorAll('input');
-    newInputs.forEach(input => {
-      input.addEventListener('input', function() {
-        if (this.checkValidity()) {
-          this.classList.remove('is-invalid');
-        } else {
-          this.classList.add('is-invalid');
-        }
-      });
-    });
-  });
-
-  // Remove variant functionality
-  document.addEventListener('click', function (e) {
-    if (e.target.classList.contains('remove-variant')) {
-      e.target.closest('.variant-group').remove();
+// Field validation event listeners
+document.querySelectorAll('#productForm input, #productForm select, #productForm textarea').forEach(field => {
+  field.addEventListener('input', function() {
+    if (this.checkValidity()) {
+      this.classList.remove('is-invalid');
+    } else {
+      this.classList.add('is-invalid');
     }
   });
-
-  // Field validation event listeners
-  document.querySelectorAll('#productForm input, #productForm select, #productForm textarea').forEach(field => {
-    field.addEventListener('input', function() {
-      if (this.checkValidity()) {
-        this.classList.remove('is-invalid');
-      } else {
-        this.classList.add('is-invalid');
-      }
-    });
-  });
+});
 </script>
 {% endblock %}

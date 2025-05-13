@@ -2,9 +2,97 @@
 {% load static %}
 
 {% block content %}
+<head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .breadcrumb-container {
+     background: linear-gradient(145deg, #f9f9f9, #ffffff);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(5px); 
+    }
+
+    .custom-breadcrumb {
+      display: flex;
+      flex-wrap: wrap;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      gap: 0.5rem;
+      align-items: center;
+      font-family: "Segoe UI", sans-serif;
+      font-size: 15px;
+    }
+
+    .custom-breadcrumb li {
+      display: flex;
+      align-items: center;
+    }
+
+    .custom-breadcrumb a {
+      text-decoration: none;
+      color: #0d6efd;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .custom-breadcrumb a:hover {
+      background: #0d6efd;
+      color: white;
+    }
+
+    .custom-breadcrumb .separator {
+      margin: 0 0.25rem;
+      color: #999;
+      font-size: 16px;
+    }
+
+    .custom-breadcrumb .active {
+      font-weight: 600;
+      color: #333;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .custom-breadcrumb i {
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<div class="container-fluid">
+<div class="d-flex justify-content-start">
+  <nav aria-label="breadcrumb">
+    <div class="breadcrumb-container ml-1">
+      <ol class="custom-breadcrumb">
+        <li>
+          <a href="/"><i class="bi bi-house-fill"></i>Home</a>
+          <span class="separator">›</span>
+        </li>
+        <li>
+          <a href="{% url 'products:list' %}"><i class="bi bi-box-seam"></i>Products</a>
+          <span class="separator">›</span>
+        </li>
+        <li class="active">
+          <i class="bi bi-tag-fill"></i>{{ product.name }}
+        </li>
+      </ol>
+    </div>
+  </nav>
+  </div>
+  </div>
+
+
+
+
 <div class="container mx-auto px-4 py-8">
+
+    
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <!-- Product Images Section -->
         <div class="flex flex-col items-center space-y-6 relative">
             <!-- Main Image with Zoom -->
             <div id="gallery-main" class="relative w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
@@ -36,7 +124,6 @@
                 <span id="fullscreen-next" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-3xl cursor-pointer">→</span>
             </div>
             
-            <!-- Thumbnails -->
             {% if images %}
             <div class="flex space-x-4">
                 {% for image in images %}
@@ -48,9 +135,7 @@
             {% endif %}
         </div>
 
-        <!-- Product Details Section -->
         <div class="space-y-6">
-            <!-- Product Title & Availability -->
             <div>
                 <div class="flex items-center space-x-2 mb-2">
                     {% if product.is_active %}
@@ -68,7 +153,6 @@
                 {% endif %}
             </div>
 
-            <!-- Ratings -->
             <div class="flex items-center space-x-2">
                 <div class="flex items-center">
                     {% for i in "12345" %}
@@ -87,7 +171,6 @@
                 <span class="text-gray-500">({{ product.reviews.count }} reviews)</span>
             </div>
 
-            <!-- Price Section -->
             <div>
                 <h4 class="text-xl font-semibold text-gray-700">Price</h4>
                 <div class="flex items-center space-x-3 mt-2">
@@ -105,7 +188,6 @@
                 </div>
             </div>
 
-            <!-- Description -->
             <div>
                 <h3 class="text-lg font-semibold text-gray-700 mb-2">Description</h3>
                 <p class="text-gray-600 leading-relaxed">{{ product.description|default:"No description available" }}</p>
@@ -119,7 +201,6 @@
                 </div>
             </div>
 
-            <!-- Stock Indicator -->
             <div class="mt-4">
                 <div class="flex justify-between items-center mb-1">
                     <span id="stockText" class="text-sm font-medium {% if variants.0.quantity_in_stock > 10 %}text-green-600{% elif variants.0.quantity_in_stock > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
@@ -138,7 +219,6 @@
                 </div>
             </div>
 
-            <!-- Variant Selection -->
             {% if variants %}
                 <div class="mt-6">
                     <h4 class="text-xl font-semibold text-gray-700 mb-2">Select Variant</h4>
@@ -157,7 +237,6 @@
                 <p class="text-red-500">No variants available.</p>
             {% endif %}
 
-            <!-- Quantity Selector -->
             <div class="mt-6">
                 <h4 class="text-lg font-semibold text-gray-700 mb-2">Quantity</h4>
                 <div class="flex items-center space-x-2">
@@ -167,7 +246,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="mt-8 flex space-x-4">
                 <button id="addToCartBtn"
                     onclick="event.preventDefault(); addCartItem({{ variants.0.id }}, document.getElementById('quantity').value)"
@@ -193,7 +271,6 @@
         animation: fadeIn 0.3s ease-in-out;
     }
 
-    /* Zoom Styles */
     #gallery-main {
         position: relative;
         cursor: crosshair;
@@ -269,7 +346,6 @@
         padding: 10px;
     }
 
-    /* Thumbnail Styles */
     .thumbnail-transition {
         transition: all 0.3s ease;
     }
@@ -295,18 +371,8 @@
     }
 </style>
 
-<!-- Custom JavaScript -->
 <script>
-    // // Product Data for Images
-    // const productData = {
-    //     images: [
-    //         {% for image in images %}
-    //             { url: "{{ image.image.url }}" }{% if not forloop.last %},{% endif %}
-    //         {% endfor %}
-    //     ]
-    // };
-
-    // Product Image Zoom Functionality
+   
     let currentImageIndex = 0;
 
     // Initialize on document load

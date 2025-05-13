@@ -433,7 +433,6 @@
       return false;
     }
     
-    // Check file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       input.classList.add('is-invalid');
@@ -442,7 +441,7 @@
     }
     
     // Check file size (5MB max)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    const maxSize = 5 * 1024 * 1024; 
     if (file.size > maxSize) {
       input.classList.add('is-invalid');
       alert('Image file size must be less than 5MB');
@@ -453,7 +452,7 @@
     return true;
   }
 
-  // Add Variant functionality
+  // Add Variant 
   document.getElementById('add-variant').addEventListener('click', function () {
     const section = document.getElementById('variant-section');
 
@@ -461,8 +460,12 @@
     group.classList.add('row', 'variant-group', 'mb-2');
     group.innerHTML = `
      <div class="col-md-3">
-  <input type="number" name="variants_weight[]" placeholder="Weight" min="0.01" step="0.01" class="form-control" required maxlength="50">
-  <div class="invalid-feedback">Weight must be greater than zero.</div>
+  <input type="text" name="variants_weight[]" placeholder="Weight" 
+       class="form-control" required maxlength="50"
+       pattern="^(?!-)[A-Za-z0-9. ]+$"
+       title="Only letters, numbers, spaces, and dots allowed. No negative values.">
+<div class="invalid-feedback">Weight must be a positive value and contain only letters, numbers, and dots.</div>
+
 </div>
 
       <div class="col-md-3">

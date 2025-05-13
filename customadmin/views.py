@@ -430,8 +430,21 @@ def save_cropped_image(base64_data):
         return cloudinary_url
     except Exception as e:
         raise ValueError(f"Error processing image: {str(e)}")
+    
+    ######################
 
-
+def save_cropped_image(base64_data):
+    try:
+        format, imgstr = base64_data.split(';base64,')  
+        imgdata = base64.b64decode(imgstr)
+        image = Image.open(BytesIO(imgdata))
+        upload_result = cloudinary.uploader.upload(imgdata, resource_type="image")
+        print(upload_result)  # Debug: Log the upload result
+        cloudinary_url = upload_result['secure_url']
+        return cloudinary_url
+    except Exception as e:
+        print(f"Error: {str(e)}")  # Debug: Log any errors
+        raise ValueError(f"Error processing image: {str(e)}")
 
 
 @admin_required
@@ -439,90 +452,159 @@ def edit_product(request, product_id):
     product = get_object_or_404(Products, id=product_id)
 
     if request.method == "POST":
-        name = request.POST.get('name')
-        description = request.POST.get('description', '')
-        category_id = request.POST.get('category')
-        brand_id = request.POST.get('brand')
-        product_type = request.POST.get('product_type')
-        stock = request.POST.get('stock')
-
-        # Basic product field validation
-        if not all([name, category_id, product_type, stock]):
-            messages.error(request, "Please fill in all required fields.")
-            return redirect('customadmin:edit_product', product_id=product.id)
-        
-        if Products.objects.filter(name__iexact=name).exclude(id=product.id).exists():
-            messages.error(request, f"A product with the name '{name}' already exists.")
-            return redirect('customadmin:edit_product', product_id=product.id)
-        
-
         try:
-            stock = int(stock)
-            if stock < 0:
-                raise ValueError("Stock cannot be negative.")
-        except ValueError:
-            messages.error(request, "Stock must be a non-negative integer.")
-            return redirect('customadmin:edit_product', product_id=product.id)
+            # Handle form fields
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            category_id = request.POST.get('category')
+            brand_id = request.POST.get('brand')
+            product_type = request.POST.get('product_type')
+            
+            # Validate required fields
+            if not all([name, category_id, product_type]):
+                messages.error(request, "Please fill in all required fields.")
+                return redirect('customadmin:edit_product', product_id=product.id)
+            
+            # Check for duplicate product name (excluding current product)
+            if Products.objects.filter(name__iexact=name).exclude(id=product.id).exists():
+                messages.error(request, f"A product with the name '{name}' already exists.")
+                return redirect('customadmin:edit_product', product_id=product.id)
 
-        # Update product
-        product.name = name
-        product.description = description
-        product.category_id = category_id
-        product.brand_id = brand_id if brand_id else None
-        product.product_type = product_type
-        product.stock = stock
-        product.save()
+            # Get variant data
+            variant_ids = request.POST.getlist('variant_ids[]', [])
+            variants_weight = request.POST.getlist('variants_weight[]', [])
+            variants_price = request.POST.getlist('variants_price[]', [])
+            variants_stock = request.POST.getlist('variants_stock[]', [])
+            
+            # Clean and validate variants
+            variants_weight = [w.strip() for w in variants_weight if w.strip()]
+            variants_price = [p.strip() for p in variants_price if p.strip()]
+            variants_stock = [s.strip() for s in variants_stock if s.strip()]
+            
+            if not all([variants_weight, variants_price, variants_stock]):
+                messages.error(request, "At least one variant is required.")
+                return redirect('customadmin:edit_product', product_id=product.id)
 
-        # Variant handling
-        variants_ids = request.POST.getlist('variant_ids[]')
-        variants_weight = request.POST.getlist('variants_weight[]')
-        variants_price = request.POST.getlist('variants_price[]')
-        variants_stock = request.POST.getlist('variants_stock[]')
-
-        for v_id, w, p, s in zip(variants_ids, variants_weight, variants_price, variants_stock):
-            if w.strip() and p.strip() and s.strip():
+            for w, p, s in zip(variants_weight, variants_price, variants_stock):
                 try:
-                    price = float(p)
-                    quantity = int(s)
-
-                    if price < 0 or quantity < 0:
-                        raise ValueError("Price and quantity must be non-negative.")
-
+                    if float(p) < 0:
+                        messages.error(request, "Variant price cannot be negative.")
+                        return redirect('customadmin:edit_product', product_id=product.id)
+                    if int(s) < 0:
+                        messages.error(request, "Variant stock cannot be negative.")
+                        return redirect('customadmin:edit_product', product_id=product.id)
                 except ValueError:
-                    messages.error(request, "Each variant must have valid non-negative price and quantity.")
+                    messages.error(request, "Variant weight, price, and stock must be valid numbers.")
                     return redirect('customadmin:edit_product', product_id=product.id)
 
-                if v_id:  # Update existing variant
-                    variant = Variant.objects.filter(id=v_id, product=product).first()
-                    if variant:
-                        variant.weight = w.strip()
-                        variant.variant_price = price
-                        variant.quantity_in_stock = quantity
-                        variant.save()
-                else:  # Create new variant
-                    Variant.objects.create(
-                        product=product,
-                        weight=w.strip(),
-                        variant_price=price,
-                        quantity_in_stock=quantity,
-                        is_active=True,
-                    )
+            try:
+                total_stock = sum(int(s) for s in variants_stock if s)
+            except ValueError:
+                messages.error(request, "Variant stock must be valid numbers.")
+                return redirect('customadmin:edit_product', product_id=product.id)
 
-        # Handle main image
-        main_image = request.FILES.get('main_image')
-        if main_image:
-            ProductImage.objects.filter(product=product, is_primary=True).delete()
-            ProductImage.objects.create(product=product, image=main_image, is_primary=True)
+            # Update product
+            product.name = name
+            product.description = description
+            product.category_id = category_id
+            product.brand_id = brand_id or None
+            product.product_type = product_type
+            product.stock = total_stock
+            product.save()
 
-        # Handle other images
-        ProductImage.objects.filter(product=product, is_primary=False).delete()
-        for i in range(1, 4):
-            other_image = request.FILES.get(f'other_image_{i}')
-            if other_image:
-                ProductImage.objects.create(product=product, image=other_image, is_primary=False)
+            # Handle variants - first make a list of existing variants
+            existing_variant_ids = list(Variant.objects.filter(product=product).values_list('id', flat=True))
+            updated_variant_ids = []
+            
+            # Update or create variants
+            for i, (w, p, s) in enumerate(zip(variants_weight, variants_price, variants_stock)):
+                try:
+                    v_id = variant_ids[i] if i < len(variant_ids) and variant_ids[i] else None
+                    price = float(p)
+                    stock = int(s)
+                    
+                    if v_id and v_id.isdigit():
+                        # Update existing variant
+                        v_id = int(v_id)
+                        variant = Variant.objects.filter(id=v_id, product=product).first()
+                        if variant:
+                            variant.weight = w
+                            variant.variant_price = price
+                            variant.quantity_in_stock = stock
+                            variant.save()
+                            updated_variant_ids.append(v_id)
+                    else:
+                        # Create new variant
+                        variant = Variant.objects.create(
+                            product=product,
+                            weight=w,
+                            variant_price=price,
+                            quantity_in_stock=stock,
+                        )
+                        updated_variant_ids.append(variant.id)
+                except (ValueError, IndexError) as e:
+                    messages.error(request, f"Error with variant {i+1}: {str(e)}")
+                    return redirect('customadmin:edit_product', product_id=product.id)
+            
+            # Delete variants that were not updated
+            variants_to_delete = set(existing_variant_ids) - set(updated_variant_ids)
+            Variant.objects.filter(id__in=variants_to_delete).delete()
 
-        messages.success(request, f"Product '{name}' updated successfully.")
-        return redirect('customadmin:product_list')
+            # Handle image removal
+            remove_image_ids = request.POST.getlist('remove_image_ids[]', [])
+            if remove_image_ids:
+                ProductImage.objects.filter(id__in=remove_image_ids, product=product).delete()
+
+            # Handle main image and cropping
+            main_image_data = request.POST.get('main_image_data')
+            if main_image_data:
+                # Delete current primary image
+                ProductImage.objects.filter(product=product, is_primary=True).delete()
+                
+                # Save cropped image
+                main_image = save_cropped_image(main_image_data)
+                ProductImage.objects.create(product=product, image=main_image, is_primary=True)
+            else:
+                main_image = request.FILES.get('main_image')
+                if main_image:
+                    # Delete current primary image
+                    ProductImage.objects.filter(product=product, is_primary=True).delete()
+                    
+                    # Save new main image
+                    ProductImage.objects.create(product=product, image=main_image, is_primary=True)
+
+            # Handle additional images and cropping
+            for i in range(1, 4):
+                other_image_data = request.POST.get(f'other_image_data_{i}')
+                if other_image_data:
+                    # Save cropped image
+                    other_image = save_cropped_image(other_image_data)
+                    ProductImage.objects.create(product=product, image=other_image, is_primary=False)
+                else:
+                    other_image = request.FILES.get(f'other_image_{i}')
+                    if other_image:
+                        ProductImage.objects.create(product=product, image=other_image, is_primary=False)
+
+            messages.success(request, f"Product '{product.name}' updated successfully.")
+            
+            # AJAX response support
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': f"Product '{product.name}' updated successfully.",
+                    'redirect_url': reverse('customadmin:product_list')
+                })
+                
+            return redirect('customadmin:product_list')
+
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}"
+            messages.error(request, error_message)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+                
+            return redirect('customadmin:edit_product', product_id=product.id)
 
     # GET method: load data
     categories = Category.objects.filter(is_active=True)
@@ -537,7 +619,6 @@ def edit_product(request, product_id):
         'variants': variants,
         'images': images,
     })
-
 
 @admin_required
 def soft_delete_product(request, product_id):
@@ -727,7 +808,7 @@ def add_brands(request):
 
         Brand.objects.create(name=name, image=image if image else 'category/default_image.jpg')
         messages.success(request, "Category added successfully.")
-        return redirect('customadmin:brands')
+        return redirect('customadmin:brands_list')
 
     return render(request, 'brand/add_brands.html')
 
