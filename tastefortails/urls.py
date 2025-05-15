@@ -28,6 +28,7 @@ urlpatterns = [
     path('admin-login/', admin_login, name='admin_login'), 
     path('cart/', include('cart.urls', namespace=  'cart')) ,
     path('wishlist/', include('wishlist.urls'), name='wishlist'),
+    # path('user_profile/', include('user_profile.urls'), name='user_profile')
 
 
 

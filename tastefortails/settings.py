@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'customadmin',
     'cart',
     'wishlist',
+    # 'user_profile',
 
 
     'django.contrib.sites',

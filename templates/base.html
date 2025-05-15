@@ -91,7 +91,16 @@
                     <div class="dropdown">
                         <a class="dropdown-toggle d-flex align-items-center text-white hover:text-yellow-200 transition" href="#" role="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="far fa-user text-xl"></i>
-                            <span class="ms-2 d-none d-md-inline">{{ request.user.full_name }}</span>
+                            <span class="ms-2 d-none d-md-inline">
+    {% if request.user.first_name and request.user.last_name %}
+        {{ request.user.first_name }} {{ request.user.last_name }}
+    {% elif request.user.first_name %}
+        {{ request.user.first_name }}
+    {% else %}
+        {{ request.user.email }}
+    {% endif %}
+</span>
+
                         </a>
 
                         <ul class="dropdown-menu dropdown-menu-end mt-2 rounded-md shadow-md animate-fadeIn" aria-labelledby="userDropdown">
