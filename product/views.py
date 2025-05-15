@@ -14,6 +14,19 @@ from django.shortcuts import render
 from django.db.models import Q, Min
 from .models import Products, Brand, Category
 
+
+
+##### decaortor for making login mandatory ###
+from functools import wraps
+
+def login_required_custom(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('/login/')  
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
 def product_list_view(request):
     search_query = request.GET.get('search', '')
     brand_filter = request.GET.get('brand', '')
@@ -84,19 +97,19 @@ def product_list_view(request):
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Avg
 import logging
-from .models import Products
+
 
 
 
 
 
 logger = logging.getLogger(__name__)
-@login_required
+@login_required_custom
 def product_detail_view(request, slug):
     logger.info(f"Loading product details for slug: {slug}")
     
     try:
-        # Fetch the product and related data
+
         product = get_object_or_404(
             Products.objects.select_related('brand', 'category')
                             .prefetch_related('variants', 'reviews__user', 'images'),

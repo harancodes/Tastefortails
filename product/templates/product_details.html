@@ -294,12 +294,14 @@
 
     #zoom-result {
         top: 0;
-        right: -350px;
-        width: 300px;
-        height: 300px;
+        right: -350;
+        width: 1000px;
+        height: 1000px;
         border: 2px solid #333;
         background-repeat: no-repeat;
         z-index: 100;
+        cursor: crosshair;
+        position: absolute;
     }
 
     #zoom-toggle {
@@ -351,7 +353,7 @@
     }
     .thumbnail-active {
         transform: scale(1.1);
-        box servizio: 0 4px 6px rgba(0, 0, 0, 0.1);
+         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     @media (max-width: 991px) {
@@ -416,7 +418,9 @@
             return;
         }
         
-        const zoomLevel = 3;
+        const zoomLevel = 2;
+        const ratioX = zoomLevel
+        const ratioY = zoomLevel
         
         container.addEventListener('mouseenter', function(e) {
             if (window.innerWidth >= 992) { // Only on desktop
@@ -474,11 +478,11 @@
             lens.style.left = `${lensX}px`;
             lens.style.top = `${lensY}px`;
             
-            const ratioX = result.offsetWidth / lensWidth;
-            const ratioY = result.offsetHeight / lensHeight;
+            // const ratioX = result.offsetWidth / lensWidth;
+            // const ratioY = result.offsetHeight / lensHeight;
             
             result.style.backgroundImage = `url(${mainImage.src})`;
-            result.style.backgroundSize = `${rect.width * ratioX}px ${rect.height * ratioY}px`;
+            result.style.backgroundSize = `${rect.width * zoomLevel}px ${rect.height * zoomLevel}px`;
             result.style.backgroundPosition = `-${lensX * ratioX}px -${lensY * ratioY}px`;
         }
     }
@@ -662,7 +666,7 @@
                         setTimeout(() => variantPriceDisplay.classList.remove("animate-fadeIn"), 500);
                     }
 
-                    const offerPercentage = {{ product.brand.offer_percentage|default:0 }};
+                    const offerPercentage = {{ product.brands.offer_percentage|default:0 }};
                     if (offerPercentage > 0 && originalPriceDisplay) {
                         const originalPrice = (parseFloat(price) * 100) / (100 - offerPercentage);
                         originalPriceDisplay.textContent = `₹${originalPrice.toFixed(2)}`;
@@ -688,7 +692,7 @@
                 });
             });
         }
-
+    
         if (decreaseQtyBtn && increaseQtyBtn && quantityInput) {
             decreaseQtyBtn.addEventListener("click", function() {
                 const currentValue = parseInt(quantityInput.value);

@@ -21,11 +21,13 @@ from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
 from authentication.views import block_superuser_navigation
 from customadmin.models import Coupon, UsedCoupon
+from product.views import login_required_custom
+
 # 
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def add_to_cart(request, variant_id):
 
     if request.method == 'POST':
@@ -71,7 +73,7 @@ def add_to_cart(request, variant_id):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 @require_POST
 def update_quantity(request):
     try:
@@ -113,7 +115,7 @@ def update_quantity(request):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def remove_cart_item(request, item_id):
     if request.method == 'POST':
         # Fetch the CartItem object
@@ -136,7 +138,7 @@ def remove_cart_item(request, item_id):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def view_cart(request):
     cart = Cart.objects.filter(user=request.user).first()
     if cart:
@@ -150,7 +152,7 @@ def view_cart(request):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def checkout(request):
     try:
         user_cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -387,7 +389,7 @@ def checkout(request):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def buy_now(request, variant_id):
     try:
         variant = get_object_or_404(Variant, id=variant_id)

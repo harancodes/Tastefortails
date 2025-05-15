@@ -8,11 +8,12 @@ from django.http import JsonResponse
 from product.models import Products, Variant
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
+from product.views import login_required_custom
 
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 
 def wishlist_view(request):
     if request.user.is_authenticated:
@@ -21,14 +22,12 @@ def wishlist_view(request):
     return render(request, 'wishlist.html', {'wishlist': None})
 
 
-@block_superuser_navigation
-@never_cache
-@login_required 
+
 
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 def wishlist_add(request, variant_id):
     if request.method == 'POST':
         variant = get_object_or_404(Variant, id=variant_id)
@@ -52,7 +51,7 @@ def wishlist_add(request, variant_id):
 
 @block_superuser_navigation
 @never_cache
-@login_required
+@login_required_custom
 
 def wishlist_remove(request, variant_id):
     if request.method == 'POST':
@@ -65,7 +64,7 @@ def wishlist_remove(request, variant_id):
 
 @block_superuser_navigation  
 @never_cache
-@login_required
+@login_required_custom
 def wishlist_status(request):
     """Return a list of product variant IDs in the user's wishlist"""
     wishlist_items = WishlistItem.objects.filter(
