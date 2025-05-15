@@ -1,0 +1,396 @@
+{% extends "home.html" %}
+
+{% block product %}
+  <style>
+    :root {
+      --primary: #2A3F5F;    /* Navy blue */
+      --secondary: #4A5568;  /* Slate gray */
+      --accent: #2C7A7B;     /* Teal */
+      --light: #F8FAFC;      /* Off white */
+    }
+
+    body {
+      background: var(--light);
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hover-effect {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .hover-effect:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+
+    .cart-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem;
+      background: white;
+      border-radius: 0.75rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+
+    .cart-item:hover {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .cart-item img {
+      width: 100%;
+      max-width: 120px;
+      height: auto;
+      object-fit: cover;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .cart-item-details {
+      text-align: center;
+    }
+
+    .cart-item-details h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .cart-item-details p {
+      font-size: 0.875rem;
+      color: var(--secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .cart-item-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .cart-item-actions input {
+      width: 60px;
+      padding: 0.5rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+
+    .cart-item-actions button {
+      padding: 0.5rem 1rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .cart-item-actions button:hover {
+      background: #2a5f5f;
+    }
+
+    .cart-summary {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .cart-summary h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .cart-summary p {
+      font-size: 0.875rem;
+      color: var(--secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .cart-summary button {
+      width: 100%;
+      padding: 1rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .cart-summary button:hover {
+      background: #2a5f5f;
+    }
+
+    /* Quantity Control Styles */
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quantity-control button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .quantity-control button:hover {
+      background: #2a5f5f;
+    }
+
+    .quantity-control button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .quantity-control input {
+      width: 50px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .cart-item {
+        flex-direction: row;
+        align-items: flex-start;
+        text-align: left;
+      }
+
+      .cart-item img {
+        margin-bottom: 0;
+        margin-right: 1.5rem;
+      }
+
+      .cart-item-details {
+        text-align: left;
+      }
+
+      .cart-item-actions {
+        flex-direction: row;
+        margin-top: 0;
+      }
+    }
+  </style>
+
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6 gradient-text">Your Cart</h1>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2">
+        {% if cart.items.all %}
+          {% for item in cart.items.all %}
+            <div class="cart-item hover-effect" data-item-id="{{ item.id }}" data-available-stock="{{ item.product_variant.stock }}">
+              <img src="{{ item.product_variant.image1.url }}" alt="{{ item.product_variant.product.name }}">
+              <div class="cart-item-details">
+                <h3>{{ item.product_variant.product.name }}</h3>
+                <p>{{ item.product_variant.product.description|truncatewords:20 }}</p>
+                <p class="font-semibold">${{ item.product_variant.product.sales_price }}</p>
+                <p class="item-total-price">Total: ${{ item.total_price }}</p>
+              </div>
+              <div class="cart-item-actions">
+                <div class="quantity-control">
+                  <button class="decrement-quantity" data-item-id="{{ item.id }}">
+                    <i class="fas fa-minus"></i>
+                  </button>
+                  <input type="number" value="{{ item.quantity }}" min="1" class="quantity-input" data-item-id="{{ item.id }}">
+                  <button class="increment-quantity" data-item-id="{{ item.id }}">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </div>
+                <button class="bg-red-500 text-white px-3 py-1 rounded-lg remove-item" data-item-id="{{ item.id }}">Remove</button>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-gray-600">Your cart is empty.</p>
+        {% endif %}
+      </div>
+      <div class="lg:col-span-1">
+        <div class="cart-summary hover-effect">
+          <h2 class="text-2xl font-semibold mb-4">Order Summary</h2>
+          <p>Subtotal: <span class="float-right" id="subtotal">${{ cart.total_price }}</span></p>
+          <p>Shipping: <span class="float-right">$0.00</span></p>
+          <p>Tax: <span class="float-right">$0.00</span></p>
+          <hr class="my-4">
+          <p class="font-bold">Total: <span class="float-right" id="total_cart_price">${{ cart.total_price }}</span></p>
+          <button onclick="window.location.href='{% url 'checkout' %}'">Proceed to Checkout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Font Awesome for Icons -->
+  <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+
+  <!-- Toastify for Notifications -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+  <!-- JavaScript for Quantity Control and AJAX -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Function to show Toastify notifications
+      function showToast(message, type = 'success') {
+        Toastify({
+          text: message,
+          duration: 3000,
+          close: true,
+          gravity: "bottom",
+          position: "right",
+          backgroundColor: type === 'success' ? '#4CAF50' : '#F44336',
+        }).showToast();
+      }
+
+      // Function to update quantity via AJAX
+      function updateQuantity(itemId, quantity) {
+        fetch("{% url 'update_quantity' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({
+            item_id: itemId,
+            quantity: quantity
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            showToast(data.error, 'error');
+          } else {
+            // Update the item's total price
+            const itemTotalPrice = document.querySelector(`.cart-item[data-item-id="${itemId}"] .item-total-price`);
+            if (itemTotalPrice) itemTotalPrice.textContent = `Total: $${data.item_total_price}`;
+
+            // Update the cart's subtotal and total price
+            const subtotal = document.getElementById('subtotal');
+            const totalCartPrice = document.getElementById('total_cart_price');
+            if (subtotal) subtotal.textContent = `$${data.cart_total_price}`;
+            if (totalCartPrice) totalCartPrice.textContent = `$${data.cart_total_price}`;
+
+            // Disable the increment button if the quantity reaches the available stock
+            const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+            const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
+            if (incrementButton && quantity >= availableStock) {
+              incrementButton.disabled = true;
+            } else if (incrementButton) {
+              incrementButton.disabled = false;
+            }
+
+            showToast('Quantity updated successfully.');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showToast('Failed to update quantity. Please try again.', 'error');
+        });
+      }
+
+      // Increment Quantity
+      document.querySelectorAll('.increment-quantity').forEach(button => {
+        button.addEventListener('click', function () {
+          const itemId = this.getAttribute('data-item-id');
+          const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+          let value = parseInt(input.value);
+          const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
+
+          if (value < availableStock) {
+            input.value = value + 1;
+            updateQuantity(itemId, input.value);
+          }
+        });
+      });
+
+      // Decrement Quantity
+      document.querySelectorAll('.decrement-quantity').forEach(button => {
+        button.addEventListener('click', function () {
+          const itemId = this.getAttribute('data-item-id');
+          const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+          let value = parseInt(input.value);
+          if (value > 1) {
+            input.value = value - 1;
+            updateQuantity(itemId, input.value);
+
+            // Enable the increment button if it was previously disabled
+            const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+            if (incrementButton && incrementButton.disabled) {
+              incrementButton.disabled = false;
+            }
+          }
+        });
+      });
+
+      // Remove Item
+      document.querySelectorAll('.remove-item').forEach(button => {
+        button.addEventListener('click', function () {
+          const itemId = this.getAttribute('data-item-id');
+          fetch("{% url 'remove_cart_item' 0 %}".replace("0", itemId), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.message) {
+              // Remove the item from the DOM
+              const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+              if (cartItem) cartItem.remove();
+
+              // Update the cart's subtotal and total price
+              const subtotal = document.getElementById('subtotal');
+              const totalCartPrice = document.getElementById('total_cart_price');
+              if (subtotal) subtotal.textContent = `$${data.cart_total_price}`;
+              if (totalCartPrice) totalCartPrice.textContent = `$${data.cart_total_price}`;
+
+              showToast(data.message);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to remove item. Please try again.', 'error');
+          });
+        });
+      });
+
+      // Disable increment buttons for items where quantity >= available stock on page load
+      document.querySelectorAll('.cart-item').forEach(item => {
+        const itemId = item.getAttribute('data-item-id');
+        const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+        const availableStock = parseInt(item.getAttribute('data-available-stock'));
+        const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+
+        if (quantityInput && incrementButton && parseInt(quantityInput.value) >= availableStock) {
+          incrementButton.disabled = true;
+        }
+      });
+    });
+  </script>
+{% endblock product %}

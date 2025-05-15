@@ -1,0 +1,462 @@
+{% extends "user_profile/account_overview.html" %}
+{% block user %}
+<!-- Load Razorpay script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<div class="animate-fade-in">
+    <!-- Breadcrumbs -->
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-6">
+        <a href="{% url 'order_list' %}" class="hover:text-blue-600 transition-colors">My Orders</a>
+        <span>/</span>
+        <span>Order #{{ order_item.order.id }}</span>
+        <span>/</span>
+        <span>Item Details</span>
+    </div>
+
+    <!-- Order Item Detail Card -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <!-- Status header -->
+        <div class="bg-gray-50 px-6 py-4 border-b border-gray-100">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Order Item Details</h2>
+                    <p class="text-sm text-gray-500">Order #{{ order_item.order.id }} • Placed on {{ order_item.order.created_at|date:"F d, Y" }}</p>
+                </div>
+                <div>
+                    <span class="px-3 py-1 rounded-full text-sm font-medium
+                        {% if order_item.status == 'delivered' %}bg-green-100 text-green-700
+                        {% elif order_item.status == 'processing' %}bg-blue-100 text-blue-700
+                        {% elif order_item.status == 'shipped' %}bg-purple-100 text-purple-700
+                        {% elif order_item.status == 'cancelled' %}bg-red-100 text-red-700
+                        {% elif order_item.status == 'returned' %}bg-yellow-100 text-yellow-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ order_item.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Item Details Section -->
+        <div class="p-6">
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Product Image -->
+                <div class="md:w-1/3">
+                    <div class="bg-gray-50 rounded-xl overflow-hidden">
+                        {% if order_item.product_variant.image1 %}
+                            <img src="{{ order_item.product_variant.image1.url }}" alt="{{ order_item.product_variant.product.name }}" class="w-full h-64 object-contain p-4">
+                        {% else %}
+                            <div class="w-full h-64 flex items-center justify-center bg-gray-100">
+                                <i class="fas fa-image text-gray-300 text-4xl"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Thumbnail gallery -->
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        {% if order_item.product_variant.image1 %}
+                        <div class="bg-gray-50 rounded-lg overflow-hidden border-2 border-blue-500">
+                            <img src="{{ order_item.product_variant.image1.url }}" alt="" class="w-full h-16 object-cover">
+                        </div>
+                        {% endif %}
+                        {% if order_item.product_variant.image2 %}
+                        <div class="bg-gray-50 rounded-lg overflow-hidden">
+                            <img src="{{ order_item.product_variant.image2.url }}" alt="" class="w-full h-16 object-cover">
+                        </div>
+                        {% endif %}
+                        {% if order_item.product_variant.image3 %}
+                        <div class="bg-gray-50 rounded-lg overflow-hidden">
+                            <img src="{{ order_item.product_variant.image3.url }}" alt="" class="w-full h-16 object-cover">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="md:w-2/3">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">{{ order_item.product_variant.product.name }}</h3>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <p class="text-sm text-gray-500">Category</p>
+                            <p class="font-medium">{{ order_item.product_variant.product.category.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Variant</p>
+                            <p class="font-medium">{{ order_item.product_variant.color }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Unit Price</p>
+                            <p class="font-medium">${{ order_item.product_variant.product.sales_price }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Quantity</p>
+                            <p class="font-medium">{{ order_item.quantity }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Total Price</p>
+                            <p class="font-bold text-blue-600">${{ order_item.total_price }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Date Ordered</p>
+                            <p class="font-medium">{{ order_item.order.created_at|date:"F d, Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Payment Status</p>
+                            <p class="font-medium">
+                                {% if order_item.order.payment.status == 'completed' %}
+                                    <span class="text-green-600">Paid</span>
+                                {% else %}
+                                    <span class="text-red-600">Pending</span>
+                                {% endif %}
+                            </p>                            
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Shipping Address</p>
+                            <p class="font-medium">
+                                {{ order_item.order.shipping_address.street_address }}, 
+                                {{ order_item.order.shipping_address.city }}, 
+                                {{ order_item.order.shipping_address.state }}, 
+                                {{ order_item.order.shipping_address.postal_code }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Status Timeline -->
+                    <div class="mt-8">
+                        <h4 class="text-lg font-semibold mb-4">Delivery Status</h4>
+                        <div class="relative">
+                            <!-- Status Line -->
+                            <div class="absolute top-5 left-5 h-full w-0.5 bg-gray-200"></div>
+                            
+                            <!-- Status Steps -->
+                            <div class="space-y-8">
+                                <!-- Ordered Step -->
+                                <div class="flex items-start relative">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h5 class="font-medium text-gray-800">Order Placed</h5>
+                                    </div>
+                                </div>
+                                
+                                <!-- Processing Step -->
+                                <div class="flex items-start relative">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                                        {% if order_item.status == 'processing' or order_item.status == 'shipped' or order_item.status == 'delivered' %}
+                                        bg-blue-500 text-white
+                                        {% else %}
+                                        bg-gray-200 text-gray-500
+                                        {% endif %}">
+                                        <i class="fas fa-box-open"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h5 class="font-medium {% if order_item.status == 'processing' or order_item.status == 'shipped' or order_item.status == 'delivered' %}
+                                            text-gray-800
+                                            {% else %}
+                                            text-gray-500
+                                            {% endif %}">
+                                            Processing
+                                        </h5>
+                                    </div>
+                                </div>
+                                
+                                <!-- Shipped Step -->
+                                <div class="flex items-start relative">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                                        {% if order_item.status == 'shipped' or order_item.status == 'delivered' %}
+                                        bg-purple-500 text-white
+                                        {% else %}
+                                        bg-gray-200 text-gray-500
+                                        {% endif %}">
+                                        <i class="fas fa-truck"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h5 class="font-medium {% if order_item.status == 'shipped' or order_item.status == 'delivered' %}
+                                            text-gray-800
+                                            {% else %}
+                                            text-gray-500
+                                            {% endif %}">
+                                            Shipped
+                                        </h5>
+                                    </div>
+                                </div>
+                                
+                                <!-- Delivered Step -->
+                                <div class="flex items-start relative">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                                        {% if order_item.status == 'delivered' %}
+                                        bg-green-500 text-white
+                                        {% else %}
+                                        bg-gray-200 text-gray-500
+                                        {% endif %}">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h5 class="font-medium {% if order_item.status == 'delivered' %}
+                                            text-gray-800
+                                            {% else %}
+                                            text-gray-500
+                                            {% endif %}">
+                                            Delivered
+                                        </h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div class="mt-8 flex flex-wrap gap-3 justify-end">
+                        {% if order_item.status == 'shipped' %}
+                            <a href="#" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                Track Package
+                            </a>
+                        {% endif %}
+                        
+                        {% if order_item.status == 'delivered' %}
+                            
+                            {% if order_item.can_be_returned %}
+                                <form method="post" action="{% url 'return_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to return this item?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-4 py-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors text-sm">
+                                        Return Item
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                        
+                        {% if order_item.can_be_cancelled %}
+                            <form method="post" action="{% url 'cancel_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to cancel this item?');">
+                                {% csrf_token %}
+                                <button type="submit" class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm">
+                                    Cancel Item
+                                </button>
+                            </form>
+                        {% endif %}
+
+                        <!-- Pay Later and Retry Payment Buttons -->
+                        {% if order_item.order.payment.status != 'completed' %}
+                        <button onclick="retryPayment({{ order_item.order.id }})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                            Retry Payment
+                        </button>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if order_item.status == 'delivered' %}
+    <div class="mt-8 bg-gray-50 p-6 rounded-xl shadow-md">
+        <h4 class="text-lg font-semibold mb-4">Rate & Review This Product</h4>
+        
+        <form method="post" action="{% url 'submit_review' order_item.id %}">
+            {% csrf_token %}
+            
+            <!-- Star Rating -->
+            <div class="flex items-center space-x-2 mb-4">
+                <p class="text-sm text-gray-500">Your Rating:</p>
+                <div class="flex stars-container">
+                    <input type="radio" name="rating" value="1" id="star1" class="hidden star-input">
+                    <label for="star1" data-value="1" class="star-label cursor-pointer text-gray-400 text-2xl hover:text-yellow-500">&#9733;</label>
+                    
+                    <input type="radio" name="rating" value="2" id="star2" class="hidden star-input">
+                    <label for="star2" data-value="2" class="star-label cursor-pointer text-gray-400 text-2xl hover:text-yellow-500">&#9733;</label>
+
+                    <input type="radio" name="rating" value="3" id="star3" class="hidden star-input">
+                    <label for="star3" data-value="3" class="star-label cursor-pointer text-gray-400 text-2xl hover:text-yellow-500">&#9733;</label>
+
+                    <input type="radio" name="rating" value="4" id="star4" class="hidden star-input">
+                    <label for="star4" data-value="4" class="star-label cursor-pointer text-gray-400 text-2xl hover:text-yellow-500">&#9733;</label>
+
+                    <input type="radio" name="rating" value="5" id="star5" class="hidden star-input">
+                    <label for="star5" data-value="5" class="star-label cursor-pointer text-gray-400 text-2xl hover:text-yellow-500">&#9733;</label>
+                </div>
+            </div>
+            <input type="hidden" value="{{order_item.product_variant.product.id}}" name="product_id">
+            <!-- Review Input -->
+            <div class="mb-4">
+                <label for="review" class="block text-sm text-gray-500 mb-1">Write your review:</label>
+                <textarea name="review" id="review" rows="3" class="w-full border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                Submit Review
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+
+    <!-- Additional Information Card -->
+    {% if order_item.status == 'cancelled' %}
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+            <div class="p-6">
+                <div class="flex items-center text-red-600 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <h3 class="text-lg font-semibold">Cancellation Information</h3>
+                </div>
+                <p class="text-gray-600">This item has been cancelled. If you've been charged for this item, a refund will be initiated shortly.</p>
+                <p class="text-gray-600 mt-2">Refunds typically reflect in your account within 5-7 business days.</p>
+            </div>
+        </div>
+    {% elif order_item.status == 'returned' %}
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+            <div class="p-6">
+                <div class="flex items-center text-yellow-600 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <h3 class="text-lg font-semibold">Return Information</h3>
+                </div>
+                <p class="text-gray-600">This item has been returned. Once we receive the item back, a refund will be initiated to your original payment method.</p>
+                <p class="text-gray-600 mt-2">Refunds typically reflect in your account within 5-7 business days after inspection.</p>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Customer Support Card -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Need Help?</h3>
+            <p class="text-gray-600 mb-4">If you have any questions about this order, our customer support team is ready to assist you.</p>
+            <div class="flex justify-start">
+                <a href="#" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                    Contact Support
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    function retryPayment(orderId) {
+        fetch(`/cart/retry-payment/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.razorpay_order_id) {
+                const options = {
+                    key: '{{ RAZORPAY_KEY_ID }}',
+                    amount: data.amount * 100,
+                    currency: 'INR',
+                    order_id: data.razorpay_order_id,
+                    name: 'Your Company Name',
+                    description: 'Order Payment',
+                    handler: function (response) {
+                        fetch(`/cart/verify-payment/${orderId}/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                            }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Toastify({
+                                    text: "Payment successful!",
+                                    duration: 3000,
+                                    close: true,
+                                    gravity: "top",
+                                    position: "right",
+                                    backgroundColor: "#10B981",
+                                }).showToast();
+                                // Redirect to the same order item detail page after a short delay
+                                setTimeout(() => {
+                                    window.location.href = "{% url 'order_item_detail' order_item.id %}";
+                                }, 3000);
+                            } else {
+                                Toastify({
+                                    text: "Payment verification failed.",
+                                    duration: 3000,
+                                    close: true,
+                                    gravity: "top",
+                                    position: "right",
+                                    backgroundColor: "#EF4444",
+                                }).showToast();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Toastify({
+                                text: "An error occurred. Please try again.",
+                                duration: 3000,
+                                close: true,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#EF4444",
+                            }).showToast();
+                        });
+                    },
+                    prefill: {
+                        email: '{{ request.user.email }}',
+                        contact: '{{ request.user.phone_number }}',
+                    },
+                    theme: {
+                        color: '#3399cc',
+                    },
+                };
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } else {
+                Toastify({
+                    text: data.error,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#EF4444",
+                }).showToast();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Toastify({
+                text: "An error occurred. Please try again.",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#EF4444",
+            }).showToast();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const starLabels = document.querySelectorAll('.star-label');
+        const starInputs = document.querySelectorAll('.star-input');
+
+        starLabels.forEach(label => {
+            label.addEventListener('click', () => {
+                const selectedValue = parseInt(label.getAttribute('data-value'));
+
+                // Update star colors
+                starLabels.forEach((starLabel, index) => {
+                    if (index < selectedValue) {
+                        starLabel.classList.remove('text-gray-400');
+                        starLabel.classList.add('text-yellow-500');
+                    } else {
+                        starLabel.classList.remove('text-yellow-500');
+                        starLabel.classList.add('text-gray-400');
+                    }
+                });
+
+                // Check the corresponding radio input
+                starInputs[selectedValue - 1].checked = true;
+            });
+        });
+    });
+</script>
+{% endblock user %}

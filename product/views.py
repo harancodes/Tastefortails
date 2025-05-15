@@ -61,7 +61,8 @@ def product_list_view(request):
     else:
         products = products.order_by('-created_at')
 
-    paginator = Paginator(products, 5)  # 10 products per page
+    paginator = Paginator(products, 8)  
+
     page_obj = paginator.get_page(page_number)
     context = {
         'page_obj': page_obj, 

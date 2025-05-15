@@ -94,17 +94,13 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
         <div class="flex flex-col items-center space-y-6 relative">
-            <!-- Main Image with Zoom -->
             <div id="gallery-main" class="relative w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
                 {% if primary_image %}
                     <img id="main-image" src="{{ primary_image.image.url }}" 
                          class="w-full h-full rounded-lg object-cover cursor-zoom-in" 
                          alt="{{ product.name }}">
-                    <!-- Zoom Lens -->
                     <div id="zoom-lens" class="absolute hidden"></div>
-                    <!-- Zoom Result -->
                     <div id="zoom-result" class="absolute hidden"></div>
-                    <!-- Zoom Toggle Button -->
                     <a href="#" id="zoom-toggle" class="absolute top-4 right-4 text-white bg-black bg-opacity-60 rounded-full p-2 hover:bg-opacity-80 flex items-center justify-center">
                         <i class="fas fa-search-plus text-xl"></i>
                     </a>
@@ -115,7 +111,6 @@
                 {% endif %}
             </div>
 
-            <!-- Fullscreen Zoom Modal -->
             <div id="fullscreen-zoom" class="hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-90 z-50 flex items-center justify-center">
                 <img id="fullscreen-image" src="" alt="{{ product.name }} - fullscreen" class="max-w-[80%] max-h-[80%] object-contain">
                 <div id="fullscreen-zoom-lens" class="absolute hidden"></div>
@@ -262,6 +257,11 @@
     </div>
 </div>
 
+ 
+      
+
+
+
 <style>
     @keyframes fadeIn {
         from { opacity: 0; }
@@ -354,7 +354,6 @@
         box servizio: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    /* Responsive Adjustments */
     @media (max-width: 991px) {
         #zoom-result {
             display: none !important;
@@ -375,14 +374,12 @@
    
     let currentImageIndex = 0;
 
-    // Initialize on document load
     document.addEventListener('DOMContentLoaded', function() {
         initImageZoom();
         initFullscreenZoom();
         initThumbnails();
     });
 
-    // Initialize thumbnail click events
     function initThumbnails() {
         const thumbnails = document.querySelectorAll('.thumbnail');
         const thumbnailContainers = document.querySelectorAll('.thumbnail-container');
@@ -407,7 +404,6 @@
         });
     }
 
-    // Initialize image zoom functionality
     function initImageZoom() {
         const container = document.getElementById('gallery-main');
         const mainImage = document.getElementById('main-image');
@@ -420,10 +416,8 @@
             return;
         }
         
-        // Set up the zoom functionality
         const zoomLevel = 3;
         
-        // Show lens and result on mouseenter
         container.addEventListener('mouseenter', function(e) {
             if (window.innerWidth >= 992) { // Only on desktop
                 lens.style.display = 'block';
@@ -432,16 +426,13 @@
             }
         });
         
-        // Hide lens and result on mouseleave
         container.addEventListener('mouseleave', function() {
             lens.style.display = 'none';
             result.style.display = 'none';
         });
         
-        // Update zoom on mousemove
         container.addEventListener('mousemove', updateZoom);
         
-        // Toggle fullscreen zoom on click
         if (zoomToggle) {
             zoomToggle.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -449,7 +440,6 @@
             });
         }
         
-        // Also allow clicking on the image to open fullscreen
         mainImage.addEventListener('click', function(e) {
             if (window.innerWidth >= 768) {
                 e.preventDefault();
@@ -460,26 +450,22 @@
         function updateZoom(e) {
             if (lens.style.display === 'none') return;
             
-            // Get cursor position
             const rect = mainImage.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            // Ensure cursor is within bounds
             if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
                 lens.style.display = 'none';
                 result.style.display = 'none';
                 return;
             }
             
-            // Position lens
             const lensWidth = lens.offsetWidth;
             const lensHeight = lens.offsetHeight;
             
             let lensX = x - lensWidth / 2;
             let lensY = y - lensHeight / 2;
             
-            // Prevent lens from going outside the image
             if (lensX < 0) lensX = 0;
             if (lensY < 0) lensY = 0;
             if (lensX > rect.width - lensWidth) lensX = rect.width - lensWidth;
@@ -488,18 +474,15 @@
             lens.style.left = `${lensX}px`;
             lens.style.top = `${lensY}px`;
             
-            // Calculate the ratio of the result div size to the lens size
             const ratioX = result.offsetWidth / lensWidth;
             const ratioY = result.offsetHeight / lensHeight;
             
-            // Set background properties for the result div
             result.style.backgroundImage = `url(${mainImage.src})`;
             result.style.backgroundSize = `${rect.width * ratioX}px ${rect.height * ratioY}px`;
             result.style.backgroundPosition = `-${lensX * ratioX}px -${lensY * ratioY}px`;
         }
     }
 
-    // Initialize fullscreen zoom
     function initFullscreenZoom() {
         const fullscreenZoom = document.getElementById('fullscreen-zoom');
         const fullscreenImage = document.getElementById('fullscreen-image');
@@ -513,29 +496,24 @@
             return;
         }
         
-        // Close fullscreen on close button click
         closeBtn.addEventListener('click', closeFullscreenZoom);
         
-        // Close fullscreen on background click
         fullscreenZoom.addEventListener('click', function(e) {
             if (e.target === fullscreenZoom) {
                 closeFullscreenZoom();
             }
         });
         
-        // Navigate to previous image
         prevBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             navigateFullscreenImage(-1);
         });
         
-        // Navigate to next image
         nextBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             navigateFullscreenImage(1);
         });
         
-        // Handle keyboard navigation
         document.addEventListener('keydown', function(e) {
             if (fullscreenZoom.style.display === 'flex') {
                 if (e.key === 'Escape') {
@@ -548,7 +526,6 @@
             }
         });
         
-        // Handle zoom lens in fullscreen
         fullscreenImage.addEventListener('mousemove', function(e) {
             updateFullscreenZoom(e);
         });
@@ -566,20 +543,17 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            // Ensure cursor is within bounds
             if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
                 fullscreenLens.style.display = 'none';
                 return;
             }
             
-            // Position lens
             const lensWidth = fullscreenLens.offsetWidth;
             const lensHeight = fullscreenLens.offsetHeight;
             
             let lensX = x - lensWidth / 2;
             let lensY = y - lensHeight / 2;
             
-            // Prevent lens from going outside the image
             if (lensX < 0) lensX = 0;
             if (lensY < 0) lensY = 0;
             if (lensX > rect.width - lensWidth) lensX = rect.width - lensWidth;
@@ -588,37 +562,30 @@
             fullscreenLens.style.left = `${lensX}px`;
             fullscreenLens.style.top = `${lensY}px`;
             
-            // Calculate zoom ratio
             const zoomLevel = 2.5;
             
-            // Set background properties for the lens
             fullscreenLens.style.backgroundImage = `url(${fullscreenImage.src})`;
             fullscreenLens.style.backgroundSize = `${rect.width * zoomLevel}px ${rect.height * zoomLevel}px`;
             
-            // Calculate background position
             const bgX = (x / rect.width) * 100;
             const bgY = (y / rect.height) * 100;
             fullscreenLens.style.backgroundPosition = `${bgX}% ${bgY}%`;
         }
     }
 
-    // Open fullscreen zoom
     function openFullscreenZoom() {
         const fullscreenZoom = document.getElementById('fullscreen-zoom');
         const fullscreenImage = document.getElementById('fullscreen-image');
         
         if (!fullscreenZoom || !fullscreenImage) return;
         
-        // Get current image source
         const mainImage = document.getElementById('main-image');
         if (mainImage) {
             fullscreenImage.src = mainImage.src;
             
-            // Show fullscreen zoom
             fullscreenZoom.style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
-            // Update current image index
             const thumbSlides = document.querySelectorAll('.thumb-slide');
             thumbSlides.forEach((slide, index) => {
                 if (slide.classList.contains('active')) {
@@ -628,7 +595,6 @@
         }
     }
 
-    // Close fullscreen zoom
     function closeFullscreenZoom() {
         const fullscreenZoom = document.getElementById('fullscreen-zoom');
         if (fullscreenZoom) {
@@ -637,15 +603,12 @@
         }
     }
 
-    // Navigate fullscreen image
     function navigateFullscreenImage(direction) {
         const images = productData.images || [];
         if (images.length <= 1) return;
         
-        // Calculate new index
         currentImageIndex = (currentImageIndex + direction + images.length) % images.length;
         
-        // Update fullscreen image
         const fullscreenImage = document.getElementById('fullscreen-image');
         const mainImage = document.getElementById('main-image');
         if (fullscreenImage && images[currentImageIndex]) {
@@ -653,7 +616,6 @@
             mainImage.src = images[currentImageIndex].url;
         }
         
-        // Update thumbnail active state
         const thumbSlides = document.querySelectorAll('.thumb-slide');
         thumbSlides.forEach((slide, index) => {
             if (index === currentImageIndex) {
@@ -666,7 +628,6 @@
         });
     }
 
-    // Existing JavaScript for Variant Selection, Quantity, and Cart
     document.addEventListener("DOMContentLoaded", function () {
         const variantOptions = document.querySelectorAll(".variant-option");
         const variantPriceDisplay = document.getElementById("variantPrice");
@@ -681,7 +642,6 @@
         const addToCartBtn = document.getElementById("addToCartBtn");
         const buyNowBtn = document.getElementById("buyNowBtn");
 
-        // Variant Selection
         if (variantOptions.length > 0) {
             variantOptions.forEach(option => {
                 option.addEventListener("click", function() {
@@ -713,7 +673,6 @@
                     buyNowBtn.disabled = stock < 1;
                     addToCartBtn.disabled = stock < 1;
 
-                    // Update current quantity if it exceeds new stock
                     if (parseInt(quantityInput.value) > stock) {
                         quantityInput.value = stock > 0 ? stock : 1;
                     }
@@ -730,7 +689,6 @@
             });
         }
 
-        // Quantity controls
         if (decreaseQtyBtn && increaseQtyBtn && quantityInput) {
             decreaseQtyBtn.addEventListener("click", function() {
                 const currentValue = parseInt(quantityInput.value);

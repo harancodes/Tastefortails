@@ -64,7 +64,6 @@
 
     <h4>Variants</h4>
     <div id="variant-section">
-      <!-- No variants initially for new product -->
     </div>
 
     <button type="button" class="btn btn-secondary mb-3" id="add-variant">+ Add Variant</button>
@@ -73,7 +72,6 @@
 
     <h4>Images</h4>
     
-    <!-- Main Image with Cropping -->
     <div class="mb-4">
       <label class="form-label">Main Image *</label>
       <div class="row">
@@ -83,7 +81,6 @@
           <div class="invalid-feedback">Please select a valid image file (JPG, PNG, or WebP).</div>
         </div>
         <div class="col-md-6">
-          <!-- Main Image Cropper Container -->
           <div id="main-image-container" style="display: none;">
             <img id="main-image-preview" style="max-width: 100%;" />
             <div class="mt-2">
@@ -91,7 +88,6 @@
               <button type="button" class="btn btn-secondary btn-sm" id="cancel-main-crop">Cancel</button>
             </div>
           </div>
-          <!-- Cropped Main Image Preview -->
           <div id="main-image-cropped-container" style="display: none;">
             <p class="text-success">Image cropped successfully!</p>
             <img id="main-image-cropped-preview" style="max-width: 100%; max-height: 300px;" />
@@ -101,7 +97,6 @@
       </div>
     </div>
 
-    <!-- Additional Images with Cropping -->
     <div class="mb-4">
       <label class="form-label">Additional Images</label>
       
@@ -111,7 +106,6 @@
             <input type="file" name="other_image_{{ i }}" id="other_image_{{ i }}" class="form-control" accept="image/*">
             <div class="form-text">Max size: 5MB</div>
             
-            <!-- Additional Image Cropper Container -->
             <div id="other-image-container-{{ i }}" style="display: none;">
               <img id="other-image-preview-{{ i }}" style="max-width: 100%;" />
               <div class="mt-2">
@@ -120,7 +114,6 @@
               </div>
             </div>
             
-            <!-- Cropped Additional Image Preview -->
             <div id="other-image-cropped-container-{{ i }}" style="display: none;">
               <p class="text-success">Image cropped successfully!</p>
               <img id="other-image-cropped-preview-{{ i }}" style="max-width: 100%; max-height: 200px;" />
@@ -148,7 +141,6 @@
   document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('productForm');
     
-    // Form validation before s
     form.addEventListener('submit', function(event) {
       if (!validateForm()) {
         event.preventDefault();
@@ -160,29 +152,23 @@
         return false;
       }
       
-      // Validate main image is provided
       if (!validateMainImage()) {
         event.preventDefault();
         return false;
       }
       
-      // Submit if everything is valid
       return true;
     });
     
-    // Main image upload and cropping
     setupMainImageCropper();
     
-    // Additional images upload and cropping
     setupAdditionalImageCroppers();
   });
   
-  // Validate the entire form
   function validateForm() {
     const form = document.getElementById('productForm');
     let isValid = true;
     
-    // Check required fields
     const requiredFields = form.querySelectorAll('[required]');
     requiredFields.forEach(field => {
       if (!field.value.trim()) {
@@ -193,14 +179,12 @@
       }
     });
     
-    // Validate product name
     const nameField = document.getElementById('name');
     if (nameField.value.length < 3 || nameField.value.length > 100) {
       nameField.classList.add('is-invalid');
       isValid = false;
     }
     
-    // Validate stock
     const stockField = document.getElementById('stock');
     if (isNaN(stockField.value) || parseInt(stockField.value) < 0) {
       stockField.classList.add('is-invalid');
@@ -210,7 +194,6 @@
     return isValid;
   }
   
-  // Validate variants
   function validateVariants() {
     let isValid = true;
     const variants = document.querySelectorAll('.variant-group');
@@ -244,12 +227,10 @@
     return isValid;
   }
   
-  // Validate that the main image is provided
   function validateMainImage() {
     const mainImageInput = document.getElementById('main_image');
     const mainImageData = document.getElementById('main_image_data');
     
-    // Check if either a file is selected or cropped data exists
     if ((mainImageInput.files.length === 0) && (!mainImageData.value)) {
       mainImageInput.classList.add('is-invalid');
       alert('Please select a main image for the product.');
@@ -259,7 +240,6 @@
     return true;
   }
   
-  // Setup main image cropper
   function setupMainImageCropper() {
     const mainImageInput = document.getElementById('main_image');
     const mainImageContainer = document.getElementById('main-image-container');
@@ -280,17 +260,14 @@
       const reader = new FileReader();
       
       reader.onload = function(e) {
-        // Show preview container
         mainImageContainer.style.display = 'block';
         mainImageCroppedContainer.style.display = 'none';
         mainImagePreview.src = e.target.result;
         
-        // Initialize cropper
         if (mainImageCropper) {
           mainImageCropper.destroy();
         }
         
-        // Create new cropper with 1:1 aspect ratio for product images
         mainImageCropper = new Cropper(mainImagePreview, {
           aspectRatio: 1,
           viewMode: 2,
@@ -302,7 +279,6 @@
       reader.readAsDataURL(file);
     });
     
-    // Crop button handler
     cropMainImageBtn.addEventListener('click', function() {
       if (!mainImageCropper) return;
       
@@ -311,8 +287,8 @@
         height: 800,
         minWidth: 256,
         minHeight: 256,
-        maxWidth: 4096,
-        maxHeight: 4096,
+        maxWidth: 7000,
+        maxHeight: 7000,
         fillColor: '#fff',
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
@@ -321,15 +297,12 @@
       mainImageCroppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
       mainImageData.value = canvas.toDataURL('image/jpeg', 0.8);
       
-      // Hide cropper and show cropped result
       mainImageContainer.style.display = 'none';
       mainImageCroppedContainer.style.display = 'block';
       
-      // Remove required from file input since we have cropped data
       mainImageInput.removeAttribute('required');
     });
     
-    // Cancel button handler
     cancelMainCropBtn.addEventListener('click', function() {
       if (mainImageCropper) {
         mainImageCropper.destroy();
@@ -341,7 +314,6 @@
     });
   }
   
-  // Setup additional image croppers
   function setupAdditionalImageCroppers() {
     for (let i = 1; i <= 3; i++) {
       setupSingleAdditionalImageCropper(i);
@@ -380,9 +352,9 @@
         
         // Create new cropper with 4:3 aspect ratio for additional images
         additionalImageCroppers[index] = new Cropper(preview, {
-          aspectRatio: 4/3,
+          aspectRatio: 1,
           viewMode: 2,
-          autoCropArea: 0.8,
+          autoCropArea: 1,
           responsive: true
         });
       };
@@ -390,7 +362,6 @@
       reader.readAsDataURL(file);
     });
     
-    // Crop button handler
     cropBtn.addEventListener('click', function() {
       if (!additionalImageCroppers[index]) return;
       
@@ -409,12 +380,10 @@
       croppedPreview.src = canvas.toDataURL('image/jpeg', 0.8);
       imageData.value = canvas.toDataURL('image/jpeg', 0.8);
       
-      // Hide cropper and show cropped result
       container.style.display = 'none';
       croppedContainer.style.display = 'block';
     });
     
-    // Cancel button handler
     cancelBtn.addEventListener('click', function() {
       if (additionalImageCroppers[index]) {
         additionalImageCroppers[index].destroy();
@@ -425,7 +394,6 @@
     });
   }
   
-  // Validate image file type and size
   function validateImageFile(input) {
     const file = input.files[0];
     
@@ -440,7 +408,6 @@
       return false;
     }
     
-    // Check file size (5MB max)
     const maxSize = 5 * 1024 * 1024; 
     if (file.size > maxSize) {
       input.classList.add('is-invalid');
@@ -452,7 +419,6 @@
     return true;
   }
 
-  // Add Variant 
   document.getElementById('add-variant').addEventListener('click', function () {
     const section = document.getElementById('variant-section');
 
@@ -482,7 +448,6 @@
     `;
     section.appendChild(group);
 
-    // Add validation listeners to new fields
     const newInputs = group.querySelectorAll('input');
     newInputs.forEach(input => {
       input.addEventListener('input', function() {
@@ -495,14 +460,12 @@
     });
   });
 
-  // Remove variant functionality
   document.addEventListener('click', function (e) {
     if (e.target.classList.contains('remove-variant')) {
       e.target.closest('.variant-group').remove();
     }
   });
 
-  // Field validation event listeners
   document.querySelectorAll('#productForm input, #productForm select, #productForm textarea').forEach(field => {
     field.addEventListener('input', function() {
       if (this.checkValidity()) {
@@ -513,7 +476,6 @@
     });
   });
   
-  // Add the first variant row by default
   document.getElementById('add-variant').click();
 </script>
 {% endblock %}

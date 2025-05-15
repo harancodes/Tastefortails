@@ -13,17 +13,17 @@
     {% csrf_token %}
 
     <div class="mb-3">
-      <label for="name" class="form-label">Product Name *</label>
+      <label for="name" class="form-label">Product Name </label>
       <input type="text" class="form-control" id="name" name="name" value="{{ product.name }}" required
-             minlength="3" maxlength="100" pattern="[A-Za-z0-9\s\-_,.&]+" 
-             title="Name should be 3-100 characters and contain only letters, numbers, spaces, and basic punctuation">
+             minlength="3" maxlength="250" pattern="[A-Za-z0-9\s\-_,.&]+" 
+             title="Name should be 3-250   characters and contain only letters, numbers, spaces, and basic punctuation">
       <div class="invalid-feedback">Please enter a valid product name (3-100 characters).</div>
     </div>
 
     <div class="mb-3">
       <label for="description" class="form-label">Description</label>
-      <textarea class="form-control" id="description" name="description" maxlength="2000">{{ product.description }}</textarea>
-      <div class="form-text">Maximum 2000 characters</div>
+      <textarea class="form-control" id="description" name="description" maxlength="100000">{{ product.description }}</textarea>
+      <div class="form-text">Maximum 200000 characters</div>
     </div>
 
     <div class="mb-3">
@@ -186,60 +186,60 @@
   </form>
 </div>
 
-<!-- Load Cropper.js -->
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
-<!-- Form Validation and Image Handling Script -->
+
 <script>
-// Current croppers
+
 let mainImageCropper = null;
 let additionalImageCroppers = {};
 
-// Initialize form validation
+
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('productForm');
   
-  // Form validation before submit
+  
   form.addEventListener('submit', function(event) {
     if (!validateForm()) {
       event.preventDefault();
       return false;
     }
     
-    // Additional validation for variants
+    
     if (!validateVariants()) {
       event.preventDefault();
       return false;
     }
     
-    // Disable submit button to prevent double submission
+    
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').innerHTML = 'Updating...';
     
-    // Submit if everything is valid
+    
     return true;
   });
   
-  // Main image upload and cropping
+  
   setupMainImageCropper();
   
-  // Additional images upload and cropping
+  
   setupAdditionalImageCroppers();
   
-  // Setup handlers for removing existing images
+  
   setupExistingImageRemovers();
   
-  // Setup handlers for adding and removing variants
+  
   setupVariantHandlers();
 });
 
-// Validate the entire form
+
 function validateForm() {
   const form = document.getElementById('productForm');
   let isValid = true;
   
-  // Check required fields
+  
   const requiredFields = form.querySelectorAll('[required]');
   requiredFields.forEach(field => {
     if (!field.value.trim()) {
@@ -250,21 +250,21 @@ function validateForm() {
     }
   });
   
-  // Validate product name
+  
   const nameField = document.getElementById('name');
   if (nameField.value.length < 3 || nameField.value.length > 100) {
     nameField.classList.add('is-invalid');
     isValid = false;
   }
   
-  // Validate stock
+  
   const stockField = document.getElementById('stock');
   if (stockField && (isNaN(stockField.value) || parseInt(stockField.value) < 0)) {
     stockField.classList.add('is-invalid');
     isValid = false;
   }
   
-  // Validate main image
+  
   const mainImageInput = document.getElementById('main_image');
   const mainImageData = document.getElementById('main_image_data');
   const currentMainImageContainer = document.getElementById('current-main-image-container');
@@ -280,7 +280,7 @@ function validateForm() {
   return isValid;
 }
 
-// Validate variants
+
 function validateVariants() {
   let isValid = true;
   const variants = document.querySelectorAll('.variant-group');
@@ -314,9 +314,9 @@ function validateVariants() {
   return isValid;
 }
 
-// Setup handlers for adding and removing variants
+
 function setupVariantHandlers() {
-  // Add Variant functionality
+  
   const addVariantBtn = document.getElementById('add-variant');
   if (addVariantBtn) {
     addVariantBtn.addEventListener('click', function() {
@@ -350,7 +350,7 @@ function setupVariantHandlers() {
       `;
       section.appendChild(group);
 
-      // Add validation listeners to new fields
+      
       const newInputs = group.querySelectorAll('input');
       newInputs.forEach(input => {
         input.addEventListener('input', function() {
@@ -364,7 +364,7 @@ function setupVariantHandlers() {
     });
   }
 
-  // Remove variant functionality - use event delegation
+  
   document.addEventListener('click', function(e) {
     if (e.target.classList.contains('remove-variant')) {
       e.target.closest('.variant-group').remove();
@@ -372,7 +372,7 @@ function setupVariantHandlers() {
   });
 }
 
-// Setup main image cropper
+
 function setupMainImageCropper() {
   const mainImageInput = document.getElementById('main_image');
   const mainImageContainer = document.getElementById('main-image-container');
@@ -384,7 +384,7 @@ function setupMainImageCropper() {
   const mainImageData = document.getElementById('main_image_data');
   const currentMainImageContainer = document.getElementById('current-main-image-container');
   
-  if (!mainImageInput) return; // Safety check
+  if (!mainImageInput) return; 
   
   mainImageInput.addEventListener('change', function(e) {
     if (!validateImageFile(this)) {
@@ -398,7 +398,6 @@ function setupMainImageCropper() {
     const reader = new FileReader();
     
     reader.onload = function(e) {
-      // Hide current image and show preview container
       if (currentMainImageContainer) {
         currentMainImageContainer.style.display = 'none';
       }
@@ -406,12 +405,10 @@ function setupMainImageCropper() {
       mainImageCroppedContainer.style.display = 'none';
       mainImagePreview.src = e.target.result;
       
-      // Initialize cropper
       if (mainImageCropper) {
         mainImageCropper.destroy();
       }
       
-      // Create new cropper with 1:1 aspect ratio for product images
       mainImageCropper = new Cropper(mainImagePreview, {
         aspectRatio: 1,
         viewMode: 2,
@@ -423,7 +420,6 @@ function setupMainImageCropper() {
     reader.readAsDataURL(file);
   });
   
-  // Crop button handler
   if (cropMainImageBtn) {
     cropMainImageBtn.addEventListener('click', function() {
       if (!mainImageCropper) return;
@@ -433,19 +429,17 @@ function setupMainImageCropper() {
         height: 800,
         minWidth: 256,
         minHeight: 256,
-        maxWidth: 4096,
-        maxHeight: 4096,
+        maxWidth: 7000,
+        maxHeight: 7000,
         fillColor: '#fff',
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
       });
       
-      // Convert canvas to base64
       const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       mainImageCroppedPreview.src = imageDataUrl;
       mainImageData.value = imageDataUrl;
       
-      // Hide cropper and show cropped result
       mainImageContainer.style.display = 'none';
       mainImageCroppedContainer.style.display = 'block';
     });
@@ -461,7 +455,7 @@ function setupMainImageCropper() {
       mainImageInput.value = '';
       mainImageContainer.style.display = 'none';
       
-      // Show original image if it exists
+      
       if (currentMainImageContainer) {
         currentMainImageContainer.style.display = 'block';
       }
@@ -469,7 +463,7 @@ function setupMainImageCropper() {
   }
 }
 
-// Setup additional image croppers
+
 function setupAdditionalImageCroppers() {
   for (let i = 1; i <= 3; i++) {
     setupSingleAdditionalImageCropper(i);
@@ -501,21 +495,21 @@ function setupSingleAdditionalImageCropper(index) {
     const reader = new FileReader();
     
     reader.onload = function(e) {
-      // Show preview container
+      
       container.style.display = 'block';
       croppedContainer.style.display = 'none';
       preview.src = e.target.result;
       
-      // Initialize cropper
+      
       if (additionalImageCroppers[index]) {
         additionalImageCroppers[index].destroy();
       }
       
-      // Create new cropper with 4:3 aspect ratio for additional images
+      
       additionalImageCroppers[index] = new Cropper(preview, {
-        aspectRatio: 4/3,
+        aspectRatio: 1,
         viewMode: 2,
-        autoCropArea: 0.8,
+        autoCropArea: 1,
         responsive: true
       });
     };
@@ -523,33 +517,33 @@ function setupSingleAdditionalImageCropper(index) {
     reader.readAsDataURL(file);
   });
   
-  // Crop button handler
+  
   cropBtn.addEventListener('click', function() {
     if (!additionalImageCroppers[index]) return;
     
     const canvas = additionalImageCroppers[index].getCroppedCanvas({
       width: 800,
-      height: 600,
+      height: 800,
       minWidth: 256,
       minHeight: 192,
-      maxWidth: 4096,
-      maxHeight: 3072,
+      maxWidth: 10000,
+      maxHeight: 10000,
       fillColor: '#fff',
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high'
     });
     
-    // Convert canvas to base64
+    
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     croppedPreview.src = imageDataUrl;
     imageData.value = imageDataUrl;
     
-    // Hide cropper and show cropped result
+    
     container.style.display = 'none';
     croppedContainer.style.display = 'block';
   });
   
-  // Cancel button handler
+  
   cancelBtn.addEventListener('click', function() {
     if (additionalImageCroppers[index]) {
       additionalImageCroppers[index].destroy();
@@ -560,7 +554,7 @@ function setupSingleAdditionalImageCropper(index) {
   });
 }
 
-// Setup handlers for removing existing images
+
 function setupExistingImageRemovers() {
   const removeButtons = document.querySelectorAll('.remove-existing-image');
   
@@ -569,20 +563,20 @@ function setupExistingImageRemovers() {
       const imageId = this.getAttribute('data-image-id');
       const parent = this.closest('.col-md-3');
       
-      // Create hidden input to track removed images
+      
       const hiddenInput = document.createElement('input');
       hiddenInput.type = 'hidden';
       hiddenInput.name = 'remove_image_ids[]';
       hiddenInput.value = imageId;
       document.getElementById('productForm').appendChild(hiddenInput);
       
-      // Hide the image from UI
+      
       parent.style.display = 'none';
     });
   });
 }
 
-// Validate image file type and size
+
 function validateImageFile(input) {
   const file = input.files[0];
   
@@ -590,7 +584,6 @@ function validateImageFile(input) {
     return false;
   }
   
-  // Check file type
   const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
   if (!validTypes.includes(file.type)) {
     input.classList.add('is-invalid');
@@ -598,8 +591,7 @@ function validateImageFile(input) {
     return false;
   }
   
-  // Check file size (5MB max)
-  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+  const maxSize = 5 * 1024 * 1024; 
   if (file.size > maxSize) {
     input.classList.add('is-invalid');
     alert('Image file size must be less than 5MB');
@@ -610,7 +602,6 @@ function validateImageFile(input) {
   return true;
 }
 
-// Field validation event listeners
 document.querySelectorAll('#productForm input, #productForm select, #productForm textarea').forEach(field => {
   field.addEventListener('input', function() {
     if (this.checkValidity()) {

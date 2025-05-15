@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Your Wishlist</h1>
+<div id="wishlist-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {% if wishlist.items.all %}
+        {% for item in wishlist.items.all %}
+        <div class="product-card bg-white rounded-lg overflow-hidden shadow-md transition duration-300 hover:shadow-lg" id="wishlist-item-{{ item.variant.id }}">
+            <div class="relative">
+                {% if item.variant.image1 %}
+                    <img src="{{ item.variant.image1.url }}" alt="{{ item.variant.product.name }}" class="w-full h-64 object-cover">
+                {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
+                {% endif %}
+                <div class="absolute top-2 right-2">
+                    <button onclick="removeFromWishlist({{ item.variant.id }})" class="remove-wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transform hover:scale-110 transition duration-300">
+                        <i class="fas fa-trash text-red-500 text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <h3 class="font-medium text-gray-800 mb-2">{{ item.variant.product.name }}</h3>
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-gray-800">₹{{ item.variant.product.sales_price }}</span>
+                    <div class="flex space-x-2">
+                        <button onclick="removeFromWishlist({{ item.variant.id }})" class="text-sm text-red-500 hover:text-red-700">
+                            Remove
+                        </button>
+                        <button onclick="addToCart({{ item.variant.id }})" class="text-sm bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700">
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-span-full text-center py-16">
+            <p class="text-gray-600 text-lg mb-6" id="empty-wishlist-message">Your wishlist is empty.</p>
+            <a href="{% url 'products:list' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300">
+                Browse Products
+            </a>
+        </div>
+    {% endif %}
+</div>
+</div>
+<!-- Toast Notification Container -->
+<div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+<script>
+    function removeFromWishlist(variantId) {
+        // Get CSRF token
+        const csrftoken = getCookie('csrftoken');
+
+        fetch(`/wishlist/remove/${variantId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove item from wishlist page
+                const wishlistItem = document.getElementById(`wishlist-item-${variantId}`);
+                if (wishlistItem) {
+                    wishlistItem.remove();
+                }
+
+                // Check if wishlist is now empty
+                const wishlistContainer = document.getElementById('wishlist-container');
+                if (wishlistContainer && wishlistContainer.querySelectorAll('.product-card').length === 0) {
+                    wishlistContainer.innerHTML = `
+                        <div class="col-span-full text-center py-16">
+                            <p class="text-gray-600 text-lg mb-6" id="empty-wishlist-message">Your wishlist is empty.</p>
+                            <a href="{% url 'products:list' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300">
+                                Browse Products
+                            </a>
+                        </div>
+                    `;
+                }
+
+                // Show success toast
+                showToast('Item removed from wishlist', 'success');
+            } else {
+                // Show error toast
+                showToast('Failed to remove item: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred', 'error');
+        });
+    }
+
+    function addToCart(variantId) {
+        // Get CSRF token
+        const csrftoken = getCookie('csrftoken');
+        
+        fetch(`/cart/add/${variantId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ quantity: 1 }),
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Product added to cart!', 'success');
+            } else {
+                showToast('Error: ' + (data.error || 'Failed to add to cart'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred', 'error');
+        });
+    }
+
+    // Helper function to get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Toast Notification Function
+    function showToast(message, type) {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type} p-4 rounded-lg shadow-md text-white flex items-center justify-between`;
+        toast.innerHTML = `
+            <span>${message}</span>
+            <button onclick="this.parentElement.remove()" class="ml-4">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Automatically remove toast after 3 seconds
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+</script>
+<style>
+    /* Toast Styles */
+    .toast {
+        animation: slideIn 0.5s ease-out;
+    }
+
+    .toast.success {
+        background-color: #48BB78; /* Green */
+    }
+
+    .toast.error {
+        background-color: #F56565; /* Red */
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+</style>
+{% endblock %}

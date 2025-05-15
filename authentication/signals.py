@@ -32,3 +32,22 @@ def debug_google_login(sender, request, sociallogin, **kwargs):
     logger.info("==== Google OAuth Response ====")
     logger.info(sociallogin.account.extra_data)
 
+
+# authentication/signals.py
+
+from allauth.socialaccount.signals import social_account_updated
+from django.dispatch import receiver
+from allauth.socialaccount.models import SocialAccount
+
+@receiver(social_account_updated)
+def social_account_updated_handler(request, social_account, **kwargs):
+    user = social_account.user
+    extra_data = social_account.extra_data  
+    print(f"Extra Data: {extra_data}")  
+
+    # Extract the first name from Google account data (extra_data)
+    if not user.first_name:  # Only update if first_name is empty
+        user.first_name = extra_data.get('given_name', '')
+        user.save()
+
+

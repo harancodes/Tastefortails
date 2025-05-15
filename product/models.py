@@ -62,7 +62,7 @@ class Products(models.Model):
     slug = models.SlugField(max_length=255, unique=True, blank=True)  
     category = models.ForeignKey('Category', on_delete=models.CASCADE, related_name='products')
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
-    description = models.CharField(max_length=500, blank=True)
+    description = models.CharField(max_length=10000, blank=True)
     product_type = models.CharField(max_length=20, choices=PRODUCT_TYPES, default='dry')
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -80,10 +80,24 @@ class Products(models.Model):
         img = self.images.filter(is_primary=True).first()
         return img.image.url if img else None
 
+    # def save(self, *args, **kwargs):
+    #     if not self.slug:
+    #         self.slug = slugify(self.name)
+    #     super().save(*args, **kwargs)
+
     def save(self, *args, **kwargs):
-        if not self.slug:
+        if not self.slug or self.name_has_changed():
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    def name_has_changed(self):
+        if not self.pk:
+            return True  # It's a new object
+        try:
+            old_name = Products.objects.get(pk=self.pk).name
+            return old_name != self.name
+        except Products.DoesNotExist:
+            return True
 
     # @property
     def main_image(self):

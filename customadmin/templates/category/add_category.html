@@ -50,7 +50,6 @@
     </div>
 </div>
 
-<!-- JavaScript: Image Preview + Validation -->
 <script>
     document.getElementById('imageInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -99,5 +98,24 @@
             event.preventDefault(); // Prevent form submission
         }
     });
+
+    document.getElementById('name').addEventListener('blur', function () {
+    const nameInput = this;
+    const name = nameInput.value.trim();
+
+    if (name.length >= 3) {
+        fetch(`/customadmin/check-category-exists/?name=${encodeURIComponent(name)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    document.getElementById('nameError').textContent = 'This category already exists.';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking category:', error);
+            });
+    }
+});
+
 </script>
 {% endblock %}

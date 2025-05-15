@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect , get_object_or_404
-from django.contrib.auth import authenticate, login , logout
+from django.contrib.auth import authenticate, login , logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import CustomUser
@@ -28,6 +28,7 @@ from django.http import HttpResponse
 from django.contrib.auth import login
 from authentication.models import CustomUser  
 from product.models import Brand, ProductImage,Products,Category
+from django.db.models import Min
 
 
 
@@ -47,6 +48,13 @@ def admin_required(view_func):
 
 
 
+from django.contrib.auth import authenticate, login, get_user_model
+from django.shortcuts import render, redirect
+from django.views.decorators.cache import never_cache
+
+User = get_user_model()
+
+
 @never_cache
 @block_superuser_navigation
 def user_login(request):
@@ -56,25 +64,28 @@ def user_login(request):
     login_error = None
 
     if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        user = authenticate(request, username=email, password=password)
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
 
-        if user is not None:
-            if user.is_blocked:
-                login_error = "This account is inactive. Please contact support."
-            elif user.is_blocked:
-                login_error = "This account is blocked. Please contact support."
-            else:
-                login(request, user)
-                return redirect('home')
+        if not email or not password:
+            login_error = "Email and password are required."
         else:
-            login_error = "Invalid email or password. Please try again."
+            try:
+                user_obj = User.objects.get(email=email)
+            except User.DoesNotExist:
+                login_error = "No user found with this email."
+            else:
+                if getattr(user_obj, 'is_blocked', False):
+                    login_error = "This account is blocked. Please contact support."
+                elif not user_obj.check_password(password):
+                    login_error = "Incorrect password. Please try again."
+                else:
+                    
+                    user_obj.backend = 'django.contrib.auth.backends.ModelBackend'
+                    login(request, user_obj)
+                    return redirect('home')
 
     return render(request, 'user_auth/login.html', {'login_error': login_error})
-
-
-
 
 
 @never_cache
@@ -335,21 +346,27 @@ def admin_login(request):
 
 def home(request):
     
-    if not request.user.is_authenticated:
-        print("User is not authenticated, redirecting to login.")
-        return redirect('user_login')  
+    # if not request.user.is_authenticated:
+    #     print("User is not authenticated, redirecting to login.")
+    #     return redirect('user_login') 
+    
+ 
     
     print("User is authenticated, rendering home.")
     
 
-    new_products = Products.objects.filter(is_active=True)[:8]   
+    new_products = Products.objects.filter(is_active=True)[:8]  
+    lowest_price_products = Products.objects.filter(is_active=True) \
+        .annotate(min_price=Min('variants__variant_price')) \
+        .order_by('min_price') 
     categories = Category.objects.filter(is_active=True)  
     
 
     context = {
         'user': request.user,
-        'new_products': new_products,
+        'new_products': new_products [:4],
         'categories': categories,
+        'lowest_price_products' : lowest_price_products[:5],
     }
 
     return render(request, 'user_auth/home.html', context)

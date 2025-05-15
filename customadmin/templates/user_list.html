@@ -9,26 +9,28 @@
         </div>
     </div>
 
-    <div class="row mb-3">
+    <div class="row mb-3 pb-2">
         <div class="col-md-8">
             <form method="GET" class="d-flex align-items-center">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input type="text" name="search" class="form-control border-start-0" placeholder="Search customer..." value="{{ search_query }}">
+                    <input type="text" name="search" class="form-control border-start-0 " placeholder="Search customer..." value="{{ search_query }}">
                     {% if search_query %}
                     <a href="{% url 'customadmin:user_list' %}" class="btn btn-outline-secondary">Clear</a>
                     {% endif %}
                 </div>
             </form>
         </div>
-        <div class="col-md-4 text-end">
+        <!-- <div class="col-md-4 text-end">
             <button type="button" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-funnel"></i> Filters
             </button>
         </div>
-    </div>
+    </div> -->
+
+    <div class="pt-1">
 
     <div class="card shadow-sm">
         <div class="table-responsive">
@@ -52,11 +54,16 @@
                                     {% if user.full_name %}
                                         <span class="text-muted">{{ user.full_name|slice:":1" }}</span>
                                     {% else %}
-                                        <span class="text-muted">-</span>
+                                        <span class="text-muted">H</span>
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <div class="fw-bold">{{ user.full_name|default:"Unnamed" }}</div>
+                                    <div class="fw-bold">
+    {{ user.email|slice:":user.email|split:'@'|first"|slice:":5" }}
+</div>
+
+
+
                                     <div class="text-muted small">{{ user.email|default:"No Email" }}</div>
                                     
                                 </div>
@@ -64,20 +71,23 @@
                         </td>
                         <td class="py-3">{{ user.phone_number|default:"-" }}</td>
                         <td class="py-3">{{ user.orders_count|default:"0" }}</td>
-                        <td class="py-3">${{ user.balance|default:"0.00" }}</td>
+                        <td class="py-3">₹{{ user.balance|default:"0.00" }}</td>
                         <td class="py-3">
 
-
-                                  <button type="button" 
-   class="btn {% if user.is_active %}btn-danger{% else %}btn-success{% endif %} btn-sm rounded-pill px-3"
+<button type="button" 
+   class="btn {% if user.is_blocked %}btn-success{% else %}btn-danger{% endif %} btn-sm rounded-pill px-3"
    data-bs-toggle="modal" 
    data-bs-target="#confirmBlockModal"
    data-user-id="{{ user.id }}" 
-   data-is-active="{{ user.is_active }}"
+   data-is-blocked="{{ user.is_blocked }}"
    data-href="{% url 'customadmin:block_user' user.id %}">
-   {% if user.is_active %}BLOCK{% else %}UNBLOCK{% endif %}
+   {% if user.is_blocked %}
+       UNBLOCK
+   {% else %}
+       BLOCK
+   {% endif %}
 </button>
- 
+
                         </td>
 
 <div class="modal fade" id="confirmBlockModal" tabindex="-1" aria-labelledby="confirmBlockModalLabel" aria-hidden="true">
@@ -151,6 +161,7 @@
         </nav>
     </div>
 </div>
+    </div>
 
 <style>
     .avatar {

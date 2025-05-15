@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'customadmin',
     # 'Cart',
+    'wishlist',
 
 
     'django.contrib.sites',
@@ -234,6 +235,7 @@ SOCIALACCOUNT_PROVIDERS = {
         },
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
+        'OAUTH_PKCE_ENABLED': True,
     }
 }
 

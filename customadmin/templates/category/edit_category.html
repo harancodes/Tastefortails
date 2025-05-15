@@ -1,7 +1,4 @@
-<!-- templates/customadmin/edit_category.html -->
-
 {% extends 'admin_base.html' %}
-
 
 {% block content %}
 <div class="container mt-4">
@@ -10,28 +7,41 @@
             <h5 class="mb-0">Update Category</h5>
             <a href="{% url 'customadmin:category_list' %}" class="btn btn-light btn-sm">← Back to Category List</a>
         </div>
+
         <div class="card-body">
-            <form method="POST" enctype="multipart/form-data">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data" id="editCategoryForm">
                 {% csrf_token %}
                 
-               <div class="mb-3">
-    <label for="name" class="form-label">Category Name</label>
-    <input type="text" name="name" class="form-control" id="name" required placeholder="Enter category name">
-    <div class="text-danger small mt-1" id="nameError"></div>
-</div>
+                <div class="mb-3">
+                    <label for="name" class="form-label">Category Name</label>
+                    <input type="text" name="name" class="form-control" id="name" required placeholder="Enter category name" value="{{ category.name }}">
+                    <div class="text-danger small mt-1" id="nameError"></div>
+                </div>
 
-<div class="mb-3">
-    <label for="image" class="form-label">Category Image</label>
-    <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
-    <div class="text-danger small mt-1" id="imageError"></div>
-    <div class="mt-3">
-        <img id="imagePreview" src="" class="img-thumbnail pi page-item" style="max-height: 200px;">
-    </div>
-</div>
- 
+                <div class="mb-3">
+                    <label for="image" class="form-label">Category Image</label>
+                    <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
+                    <div class="text-danger small mt-1" id="imageError"></div>
+                    <div class="mt-3">
+                        {% if category.image %}
+                            <img id="imagePreview" src="{{ category.image.url }}" class="img-thumbnail" style="max-height: 200px;">
+                        {% else %}
+                            <img id="imagePreview" src="" class="img-thumbnail" style="max-height: 200px; display: none;">
+                        {% endif %}
+                    </div>
+                </div>
 
                 <div class="d-flex justify-content-between">
-                    <button type="submit" class="btn btn-success">Create Category</button>
+                    <button type="submit" class="btn btn-success">Update Category</button>
                     <a href="{% url 'customadmin:category_list' %}" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
@@ -39,18 +49,9 @@
     </div>
 </div>
 
-<!-- JS for Image Preview -->
+<!-- Client-side Validation & Image Preview -->
 <script>
-    document.getElementById('imageInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            document.getElementById('imagePreview').src = URL.createObjectURL(file);
-        }
-    });
-</script>
-
-<script>
-    document.querySelector('form').addEventListener('submit', function (event) {
+    document.getElementById('editCategoryForm').addEventListener('submit', function (event) {
         let isValid = true;
 
         // Clear previous errors
@@ -60,7 +61,6 @@
         const nameInput = document.getElementById('name');
         const imageInput = document.getElementById('imageInput');
 
-        // Validate Category Name
         const name = nameInput.value.trim();
         if (!name) {
             document.getElementById('nameError').textContent = 'Category name is required.';
@@ -70,7 +70,7 @@
             isValid = false;
         }
 
-        // Validate image file type if a new image is uploaded
+        // Validate image file type
         if (imageInput.files.length > 0) {
             const file = imageInput.files[0];
             const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -81,18 +81,20 @@
         }
 
         if (!isValid) {
-            event.preventDefault(); // Stop form submission if validation fails
+            event.preventDefault(); // Prevent form submission
         }
     });
 
-    // Image preview
-    document.getElementById('imageInput').addEventListener('change', function(e) {
+    // Image Preview
+    document.getElementById('imageInput').addEventListener('change', function (e) {
         const file = e.target.files[0];
+        const preview = document.getElementById('imagePreview');
         if (file) {
-            document.getElementById('imagePreview').src = URL.createObjectURL(file);
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
         }
     });
 </script>
-
-
 {% endblock %}

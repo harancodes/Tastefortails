@@ -8,21 +8,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <title>Taste for Tails Admin Dashboard</title>
-    <!-- Cropper.js CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
-    <!-- Cropper.js Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 </head>
 <body class="bg-gray-100">
 
-        <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden lg:ml-64">
 
-            <!-- Main Content Area -->
             <main class="flex-1 p-6 bg-gray-100 overflow-y-auto">
                 {% block admin_side %}
                 <div class="container mx-auto p-6">
-                    <!-- Summary Section -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                         <div class="bg-white p-4 shadow-md rounded-lg">
                             <h2 class="text-lg font-semibold">Total Orders</h2>
@@ -38,7 +33,6 @@
                         </div>
                     </div>
 
-                    <!-- Filter Buttons -->
                     <div class="flex flex-wrap gap-4 mb-6">
                         <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="today">Today</button>
                         <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="week">Last 7 Days</button>
@@ -48,30 +42,25 @@
                         <a href="#`" class="px-4 py-2 bg-green-600 text-white rounded">Download Excel</a>
                     </div>
 
-                    <!-- Sales Chart -->
                     <div class="bg-white p-6 shadow-md rounded-lg">
                         <canvas id="salesChart"></canvas>
                     </div>
 
-                    <!-- Top Selling Products Chart -->
                     <div class="bg-white p-6 shadow-md rounded-lg mt-6">
                         <h2 class="text-lg font-semibold mb-4">Top Selling Products</h2>
                         <canvas id="topSellingProductsChart"></canvas>
                     </div>
 
-                    <!-- Top Selling Categories Chart -->
                     <div class="bg-white p-6 shadow-md rounded-lg mt-6">
                         <h2 class="text-lg font-semibold mb-4">Top Selling Categories</h2>
                         <canvas id="topSellingCategoriesChart"></canvas>
                     </div>
 
-                    <!-- Top Selling Brands Chart -->
                     <div class="bg-white p-6 shadow-md rounded-lg mt-6">
                         <h2 class="text-lg font-semibold mb-4">Top Selling Brands</h2>
                         <canvas id="topSellingBrandsChart"></canvas>
                     </div>
 
-                    <!-- Low Stock Alerts -->
                     <div class="bg-white p-6 shadow-md rounded-lg mt-6">
                         <h2 class="text-lg font-semibold mb-4">Low Stock Products</h2>
                         <ul id="low-stock-products">
@@ -87,14 +76,12 @@
                 {% endblock %}
             </main>
 
-            <!-- Footer -->
             <footer class="bg-white text-center p-4 shadow-md">
                 <p class="text-gray-600">&copy; 2025 Evotime. All rights reserved.</p>
             </footer>
         </div>
     </div>
 
-    <!-- Sidebar Toggle Button for Mobile -->
     <button class="lg:hidden fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg" id="sidebarToggle">
         ☰
     </button>

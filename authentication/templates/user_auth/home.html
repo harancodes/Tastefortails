@@ -237,43 +237,202 @@
     </div>
 </section>
 
-
 <section id="collections" class="py-16 bg-gray-50">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">
-            <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Our Collections</h2>
+            <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Best Budget Picks</h2>
             <p data-aos="fade-up" data-aos-delay="200" class="text-gray-600 max-w-2xl mx-auto">
-                Discover the perfect timepiece from our curated collections, each crafted to complement your unique lifestyle.
+                Discover our most affordable products without compromising on quality!
             </p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {% for category in categories %}
-            {% if category.is_listed%}
-            {% if category.is_active %}
-            <div data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:0 }}" class="group cursor-pointer relative overflow-hidden rounded-xl">
-                <img src="{{ category.image.url }}" alt="{{ category.name }}" class="w-full h-96 object-cover transform transition duration-500 group-hover:scale-110">
+       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8" id="product-grid">
+            {% for product in lowest_price_products %}
+            {% if product.is_active and product.is_listed %}
+            <a href="{% url 'products:detail' product.slug %}" class="group relative block">
+                <div class="product-card bg-white rounded-xl overflow-hidden shadow-lg transition-all duration-500 hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02]">
+                    {% with primary_image=product.images.first %}
+                        {% if primary_image %}
+                        <div class="relative overflow-hidden">
+                            <img 
+                                src="{{ primary_image.image.url }}" 
+                                alt="{{ product.name }}" 
+                                class="w-full h-72 object-cover transition-all duration-700 group-hover:scale-110"
+                            >
+                            <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                <div class="p-2 bg-white bg-opacity-90 rounded-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                    <span class="text-sm font-medium text-gray-800">View Details</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endwith %}
 
-                    <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
-                    
+                    {% with first_variant=product.variants.first %}
+                    <div class="p-5">
+                        <h3 class="font-medium text-gray-800 text-lg line-clamp-1 group-hover:text-blue-600 transition-colors duration-300 mb-2">{{ product.name }}</h3>
 
-                <div class="absolute bottom-0 left-0 p-6">
-                    <h3 class="text-xl font-semibold text-white mb-2">{{ category.name }}</h3>
-                    <p class="text-gray-300 mb-4">{{ category.description }}</p>
-                    <a href="{% url 'products:list'}" data-category="{{ category.id }}" class="inline-block bg-white text-indigo-600 py-2 px-4 rounded-full text-sm font-medium transform transition duration-300 hover:scale-105 category-link">Explore</a>
+                        <!-- Rating Stars -->
+                        <div class="flex text-sm text-yellow-400 mb-3">
+                            {% for i in "12345" %}
+                                {% if i|add:0 <= product.average_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% elif i|add:"-0.5"|add:0 <= product.average_rating %}
+                                    <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span class="text-gray-500 ml-1">({{ product.reviews.count }})</span>
+                        </div>
 
+                        <!-- Price & Discount with "Budget Pick" Label -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <span class="text-2xl font-bold text-gray-900">₹{{ first_variant.variant_price }}</span>
+                                {% if product.brand.offer_percentage > 0 %}
+                                    <span class="text-sm text-gray-400 line-through ml-2">₹{{ first_variant.original_price|floatformat:2 }}</span>
+                                    <span class="ml-2 px-2 py-0.5 text-xs font-semibold text-white bg-red-500 rounded">
+                                        {{ product.brand.offer_percentage }}% OFF
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <!-- Budget Tag -->
+                            <span class="px-2 py-1 text-xs font-bold text-white bg-green-500 rounded-full">
+                                Budget Pick
+                            </span>
+                        </div>
+
+                        <!-- Add to Cart Button -->
+                        <div class="flex justify-between items-center">
+                            {% if first_variant.stock > 0 %}
+                            <button 
+                                id="addToCartBtn_{{ product.id }}"
+                                onclick="event.stopPropagation(); event.preventDefault(); addCartItem({{ first_variant.id }})"
+                                data-stock="{{ first_variant.stock }}"
+                                class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-300 flex items-center gap-2 shadow-md"
+                            >
+                                <i class="fas fa-shopping-cart text-lg"></i>
+                                <span class="text-sm font-medium">Add</span>
+                            </button>
+                            {% else %}
+                            <!-- <span class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-full text-xs font-medium">Out of Stock</span> -->
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endwith %}
                 </div>
-            </div>
-            {% endif %}
+
+                <!-- Wishlist Button (outside card for absolute positioning) -->
+                <div class="absolute top-3 right-3 z-10">
+                    <button 
+                        class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
+                        onclick="event.stopPropagation(); event.preventDefault(); toggleWishlist({{ product.variants.first.id }})"
+                        data-variant-id="{{ product.variants.first.id }}"
+                        data-in-wishlist="false"
+                    >
+                        <i class="far fa-heart text-red-500 text-lg"></i>
+                    </button>
+                </div>
+            </a>
             {% endif %}
             {% endfor %}
         </div>
     </div>
+</section>
 
-
+<!-- Coupons Section -->
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Special Deals & Coupons</h2>
+            <p data-aos="fade-up" data-aos-delay="200" class="text-gray-600 max-w-2xl mx-auto">Save more on your furry friend's favorite food with our exclusive offers and limited-time discounts.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Coupon 1 -->
+            <div data-aos="fade-up" data-aos-delay="0" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 shadow-lg border-2 border-dashed border-orange-400 transform transition-all duration-500 hover:-translate-y-2">
+                <div class="absolute top-0 right-0">
+                    <div class="w-16 h-16 bg-orange-500 rotate-45 transform origin-bottom-left"></div>
+                    <span class="absolute top-3 right-2 text-white text-xs font-bold">NEW</span>
+                </div>
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-orange-600">WELCOME15</h3>
+                            <p class="text-sm text-gray-600 mt-1">New Customer Discount</p>
+                        </div>
+                        <div class="text-orange-600">
+                            <i class="fas fa-paw text-4xl"></i>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <p class="text-gray-700">Get 15% off on your first order when you sign up today!</p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-500">Valid until: 31/05/2025</span>
+                        <button class="px-4 py-2 bg-orange-500 text-white rounded-full text-sm hover:bg-orange-600 transition duration-300 flex items-center gap-1">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coupon 2 -->
+            <div data-aos="fade-up" data-aos-delay="100" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 shadow-lg border-2 border-dashed border-blue-400 transform transition-all duration-500 hover:-translate-y-2">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500 rounded-full opacity-20"></div>
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-blue-600">BUY2GET1</h3>
+                            <p class="text-sm text-gray-600 mt-1">Bundle Offer</p>
+                        </div>
+                        <div class="text-blue-600">
+                            <i class="fas fa-bone text-4xl"></i>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <p class="text-gray-700">Buy 2 large bags of premium dog food and get 1 small bag free!</p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-500">Valid until: 30/06/2025</span>
+                        <button class="px-4 py-2 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 transition duration-300 flex items-center gap-1">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coupon 3 -->
+            <div data-aos="fade-up" data-aos-delay="200" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-100 to-green-50 shadow-lg border-2 border-dashed border-green-400 transform transition-all duration-500 hover:-translate-y-2">
+                <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-green-500 rounded-full opacity-20"></div>
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-green-600">FRESH20</h3>
+                            <p class="text-sm text-gray-600 mt-1">Fresh Food Discount</p>
+                        </div>
+                        <div class="text-green-600">
+                            <i class="fas fa-dog text-4xl"></i>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <p class="text-gray-700">Save 20% on all fresh and organic dog food selections this month!</p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-500">Valid until: 31/05/2025</span>
+                        <button class="px-4 py-2 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 transition duration-300 flex items-center gap-1">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+       
+</section>
 <section id="featured" class="py-16 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">
-            <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Special Offer</h2>
+            <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Our Newest </h2>
             <p data-aos="fade-up" data-aos-delay="200" class="text-gray-600 max-w-2xl mx-auto">
                 Discover our most coveted designs that blend artistry with precision engineering.
             </p>
@@ -376,6 +535,9 @@
     </div>
     <div class="p-4"></div>
 </section>
+
+
+
 
 
     <!-- Contact Section -->
@@ -656,14 +818,14 @@ function showToast(message, type = 'info') {
 document.addEventListener('DOMContentLoaded', function() {
     async function checkWishlistStatus() {
         try {
-            const response = await fetch('/wishlist/status/', {
+            const response = await fetch("{% url 'wishlist:wishlist_status' %}", {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' },
                 credentials: 'same-origin'
             });
-    
+
             let wishlistItems = new Set();
-    
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.items && Array.isArray(data.items)) {
@@ -673,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 fallbackToLocalWishlist();
             }
-    
+
             document.querySelectorAll('.wishlist-btn').forEach(button => {
                 const variantId = parseInt(button.getAttribute('data-variant-id'));
                 if (!isNaN(variantId)) {
@@ -684,36 +846,36 @@ document.addEventListener('DOMContentLoaded', function() {
                         : '<i class="far fa-heart text-red-500 text-lg"></i>';
                 }
             });
-    
+
         } catch (error) {
             console.error('Error checking wishlist status:', error);
             fallbackToLocalWishlist();
         }
     }
-    
-    
+
     function fallbackToLocalWishlist() {
-        try {
-            const storedWishlist = localStorage.getItem('userWishlist');
-            if (!storedWishlist) return;
-            
-            const wishlistItems = new Set(JSON.parse(storedWishlist).map(id => parseInt(id)));
-            
-            document.querySelectorAll('.wishlist-btn').forEach(button => {
-                const variantId = parseInt(button.getAttribute('data-variant-id'));
-                if (!isNaN(variantId)) {
-                    const isInWishlist = wishlistItems.has(variantId);
-                    
-                    button.setAttribute('data-in-wishlist', isInWishlist.toString());
-                    button.innerHTML = isInWishlist 
-                        ? '<i class="fas fa-heart text-red-500 text-lg"></i>'
-                        : '<i class="far fa-heart text-red-500 text-lg"></i>';
-                }
-            });
-        } catch (e) {
-            console.error('Error in local wishlist fallback:', e);
+        const saved = localStorage.getItem('userWishlist');
+        let wishlistItems = new Set();
+        if (saved) {
+            try {
+                JSON.parse(saved).forEach(id => wishlistItems.add(parseInt(id)));
+            } catch (e) {
+                console.warn("Invalid local wishlist data");
+            }
         }
+
+        document.querySelectorAll('.wishlist-btn').forEach(button => {
+            const variantId = parseInt(button.getAttribute('data-variant-id'));
+            if (!isNaN(variantId)) {
+                const isInWishlist = wishlistItems.has(variantId);
+                button.setAttribute('data-in-wishlist', isInWishlist.toString());
+                button.innerHTML = isInWishlist 
+                    ? '<i class="fas fa-heart text-red-500 text-lg"></i>'
+                    : '<i class="far fa-heart text-red-500 text-lg"></i>';
+            }
+        });
     }
+
 
     checkWishlistStatus();
 
@@ -815,6 +977,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+function toggleWishlist(variantId) {
+    fetch(`/add/${variantId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Added to wishlist');
+            // You can toggle the icon or button state here
+        } else {
+            console.error(data.error);
+        }
+    });
+}
 
     </script>
 </body>

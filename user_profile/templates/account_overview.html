@@ -1,0 +1,359 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="icon" type="image/jpg" href="{% static 'evo_time-removebg.png' %}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .nav-link {
+            position: relative;
+        }
+        
+        .nav-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: #3B82F6;
+            transition: width 0.3s;
+        }
+        
+        .nav-link:hover:after {
+            width: 100%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 1s ease-in-out;
+        }
+        .delay-200 {
+            animation-delay: 0.2s;
+        }
+    </style>
+</head>
+<div id="alert-container" class="fixed top-4 right-4 z-50 space-y-2 min-w-[320px] max-w-md"></div>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo and Website Name -->
+                <div class="flex items-center space-x-2">
+                    <div class="text-blue-600 text-3xl">
+                        <img src="{% static 'evo_time.jpg' %}" alt="EvoTime Logo" class="w-10 h-10 rounded-full">
+                    </div>
+                    <a href="{% url 'home' %}" class="text-2xl font-bold text-gray-800">EvoTime</a>
+                </div>
+                
+                <!-- Navigation Links - Desktop -->
+                <nav class="hidden md:flex space-x-8">
+                    <a href="{% url 'home' %}" class="nav-link font-medium text-gray-800 hover:text-blue-600 transition pb-1">Home</a>
+                    <a href="{% url 'brand_list' %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">Brands</a>
+                    <a href="{% url "all_products" %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">All Products</a>
+                    <a href="{% url "about" %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">About Us</a>
+                </nav>
+                
+                <!-- Icons -->
+                <div class="flex items-center space-x-6">
+                    <a href="{% url 'wishlist' %}" class="text-gray-600 hover:text-blue-600 transition">
+                        <i class="far fa-heart text-xl"></i>
+                    </a>
+                    <a href="{% url 'view_cart' %}" class="text-gray-600 hover:text-blue-600 transition relative">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        {% if cart_item_count > 0 %}
+                            <span class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                {{ cart_item_count }}
+                            </span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'account_overview' %}" class="text-gray-600 hover:text-blue-600 transition">
+                        <i class="far fa-user text-xl"></i>
+                    </a>
+                    
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-button" class="md:hidden text-gray-600 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation - Hidden by default -->
+            <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2">
+                <a href="{% url 'home' %}" class="block py-2 text-gray-800 font-medium">Home</a>
+                <a href="{% url 'brand_list' %}" class="block py-2 text-gray-600">Brands</a>
+                <a href="{% url "all_products" %}" class="block py-2 text-gray-600">All Products</a>
+                <a href="{% url "about" %}" class="block py-2 text-gray-600">About Us</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <div class="w-full md:w-64 bg-white shadow-lg">
+            <div class="flex flex-col items-center pt-8 pb-4 border-b">
+                <div class="relative group cursor-pointer">
+                    <label for="profileImageInput" class="cursor-pointer">
+                        {% if user.profile_image %}
+                        <img id="profileImagePreview" src="{{ user.profile_image.url }}" alt="Profile"
+                            class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
+                        {% else %}
+                        <img id="profileImagePreview" src="#" alt="Profile"
+                            class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
+                        {% endif %}
+                        <div class="absolute inset-0 rounded-full bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <i class="fas fa-camera text-white"></i>
+                        </div>
+                    </label>
+                    <input type="file" id="profileImageInput" class="hidden" accept="image/*">
+                </div>
+                <h3 class="mt-4 font-semibold text-gray-800">{{ user.full_name }}</h3>
+                <p class="text-sm text-gray-500">{{ user.email }}</p>
+            
+                <!-- Hidden Save Button (Visible After Image Selection) -->
+                <button id="saveProfileImageBtn" class="mt-3 bg-blue-500 text-white px-4 py-1 rounded hidden">
+                    Save Profile Image
+                </button>
+            </div>
+            
+            
+            <nav class="mt-6">
+                <a href="{% url 'account_overview' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                    <i class="fas fa-user-circle w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+                    Account Overview
+                </a>
+                <a href="{% url 'order_list' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                    <i class="fas fa-shopping-bag w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+                    Order List
+                </a>
+                <a href="{% url 'manage_address' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                    <i class="fas fa-map-marker-alt w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+                    Manage Address
+                </a>
+                <a href="{% url 'wallet_page' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                    <i class="fas fa-wallet w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+                    Wallet
+                </a>
+                <a href="{% url 'user_logout' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group mt-auto border-t">
+                    <i class="fas fa-sign-out-alt w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+                    Logout
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 p-4 md:p-8">
+            {% block user %}
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Profile Settings</h2>
+            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                <!-- Profile Picture Section -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Profile Picture</h3>
+                    <div class="flex flex-col md:flex-row items-start space-y-4 md:space-y-0 md:space-x-6">
+                        <div class="relative group cursor-pointer">
+                            {% if user.profile_image and user.profile_image.url %}
+                                <img src="{{ user.profile_image.url }}" alt="Profile" class="w-32 h-32 rounded-lg object-cover">
+                            {% else %}
+                                <img src="" alt="Profile" class="w-32 h-32 rounded-lg object-cover">
+                            {% endif %}
+                            <div class="absolute inset-0 rounded-lg bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <i class="fas fa-camera text-white text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-600 mb-3">Upload a new profile picture. Recommended size: 400x400px</p>
+                            <input type="file" name="profile_image" class="hidden" id="profile-upload" accept="image/*">
+                            <button type="button" onclick="document.getElementById('profile-upload').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                                <i class="fas fa-upload mr-2"></i>
+                                Upload New Picture
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Contact Information</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Alternate Phone Number</label>
+                            <div class="relative">
+                                <input type="text" name="alternate_phone_number" value="{{ user.alternate_phone_number }}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="+1 (234) 567-8900">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-phone text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date of Birth -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                        <div class="relative">
+                            <input type="date" name="dob" value="{{ user.dob|date:'Y-m-d' }}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                <i class="fas fa-calendar text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Changes Button -->
+                <button type="submit" class="bg-black text-white hover:bg-gray-800 font-medium py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    Save Changes
+                </button>
+            </form>
+            {% endblock %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="text-xl font-bold mb-4">
+                        <span class="text-indigo-600">Evo</span>Time
+                    </div>
+                    <p class="text-gray-400">Your destination for premium timepieces that redefine elegance and precision.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="{% url 'home' %}" class="text-gray-400 hover:text-white transition">Home</a></li>
+                        <li><a href="{% url 'brand_list' %}" class="text-gray-400 hover:text-white transition">Brands</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">About</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Shipping Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Return Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">FAQs</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Follow Us</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-facebook-f text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-twitter text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-instagram text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-pinterest text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center">
+                <p class="text-gray-400">&copy; 2024 EvoTime. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle Mobile Menu
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+
+        // Initialize date picker
+        flatpickr("#datepicker", {
+            dateFormat: "Y-m-d",
+            maxDate: "today",
+            animate: true
+        });
+
+        // Profile picture upload preview
+        document.getElementById('profile-upload').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.group img').src = e.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        document.getElementById("profileImageInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById("profileImagePreview").src = e.target.result;
+                    document.getElementById("saveProfileImageBtn").classList.remove("hidden"); // Show Save Button
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        document.getElementById("saveProfileImageBtn").addEventListener("click", function () {
+            const fileInput = document.getElementById("profileImageInput");
+            const file = fileInput.files[0];
+        
+            if (file) {
+                const formData = new FormData();
+                formData.append("profile_image", file);
+        
+                fetch("{% url 'update_profile_image' %}", {  // Replace with your actual URL
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-CSRFToken": "{{ csrf_token }}" // Ensure CSRF token is included
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log("Profile image updated successfully");
+                        document.getElementById("saveProfileImageBtn").classList.add("hidden"); // Hide Save Button after saving
+                    } else {
+                        console.log("Error updating profile image");
+                    }
+                })
+                .catch(error => console.log("Error:", error));
+            }
+        });
+    </script>
+</body>
+</html>

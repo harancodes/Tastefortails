@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 app_name = 'products'
 
 urlpatterns = [
-    path('list/', views.product_list_view, name='list'),  # Added trailing slash for consistency
+    path('list/', views.product_list_view, name='list'),  
     path('<slug:slug>/', views.product_detail_view, name='detail'),
     path('about', views.about, name='about'),
     #  path('product/<int:id>/', views.product_detail_view, name='product_detail_view'),
