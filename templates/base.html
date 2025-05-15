@@ -72,7 +72,8 @@
                     <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition">
                         <i class="far fa-heart text-xl"></i>
                     </a>
-                    <a href="#" class="text-white hover:text-yellow-200 transition relative">
+                <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
+
                         <i class="fas fa-shopping-cart text-xl"></i>
                         {% if cart_item_count > 0 %}
                         <span class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -134,10 +135,8 @@
         </div>
     </header>
 
-    <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 space-y-2"></div>
 
-    <!-- Main Content -->
     <main class="flex-grow">
         {% block content %}
         {% endblock %}

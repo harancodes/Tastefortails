@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 from .models import Products, Category  
 
-
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.db.models import Q, Min
 from .models import Products, Brand, Category
@@ -79,20 +79,19 @@ def product_list_view(request):
     return render(request, 'product_list.html', context)
 
 
-from django.shortcuts import render, get_object_or_404
-from django.db.models import Avg
-import logging
-from .models import Products
 
-logger = logging.getLogger(__name__)
 
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Avg
 import logging
 from .models import Products
 
-logger = logging.getLogger(__name__)
 
+
+
+
+logger = logging.getLogger(__name__)
+@login_required
 def product_detail_view(request, slug):
     logger.info(f"Loading product details for slug: {slug}")
     

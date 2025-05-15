@@ -1,6 +1,6 @@
 from django.db import models
 from authentication.models import CustomUser, Address
-from product.models import ProductVariant , Product
+from product.models import Variant , Products
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
@@ -25,7 +25,7 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
-    product_variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name="cart_items")
+    product_variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="cart_items")
     quantity = models.PositiveIntegerField(default=1)
 
     @property
@@ -89,7 +89,7 @@ class OrderItem(models.Model):
     ]
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product_variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name="order_items")
+    product_variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="order_items")
     quantity = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="pending")
     updated_at = models.DateTimeField(auto_now=True)
@@ -227,15 +227,15 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_type} - {self.amount} - {self.timestamp}"
     
-class ProductReview(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reviews")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
-    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    review = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+# class ProductReview(models.Model):
+#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reviews")
+#     product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name="reviews")
+#     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+#     review = models.TextField(blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ('user', 'product')  
+#     class Meta:
+#         unique_together = ('user', 'product')  
 
-    def __str__(self):
-        return f"{self.user.email} - {self.product.name} ({self.rating} Stars)"
+#     def __str__(self):
+#         return f"{self.user.email} - {self.product.name} ({self.rating} Stars)"

@@ -12,7 +12,6 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import OrderItem, Order
-from customadmin.models import Coupon , UsedCoupon
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -21,8 +20,8 @@ from .models import Wallet
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
 from authentication.views import block_superuser_navigation
-
-# Create your views here.
+from customadmin.models import Coupon, UsedCoupon
+# 
 
 @block_superuser_navigation
 @never_cache
@@ -38,10 +37,10 @@ def add_to_cart(request, variant_id):
         except Variant.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Product variant not found'}, status=404)
 
-        # Ensure the user has a cart
+
         cart, created = Cart.objects.get_or_create(user=request.user)
 
-        # Check if the variant is already in the cart
+        
         cart_item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
 
         if created:
@@ -417,5 +416,3 @@ def buy_now(request, variant_id):
 
 
 
-
-@

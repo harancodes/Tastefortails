@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'product',
     'corsheaders',
     'customadmin',
-    # 'Cart',
+    'cart',
     'wishlist',
 
 

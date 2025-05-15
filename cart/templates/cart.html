@@ -1,6 +1,6 @@
-{% extends "home.html" %}
+{% extends "base.html" %}
 
-{% block product %}
+{% block content %}
   <style>
     :root {
       --primary: #2A3F5F;    /* Navy blue */
@@ -198,8 +198,11 @@
     }
   </style>
 
+  
+
   <div class="container mx-auto p-6">
     <h1 class="text-3xl font-bold mb-6 gradient-text">Your Cart</h1>
+    <h1></h1>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2">
         {% if cart.items.all %}
@@ -233,12 +236,12 @@
       <div class="lg:col-span-1">
         <div class="cart-summary hover-effect">
           <h2 class="text-2xl font-semibold mb-4">Order Summary</h2>
-          <p>Subtotal: <span class="float-right" id="subtotal">${{ cart.total_price }}</span></p>
-          <p>Shipping: <span class="float-right">$0.00</span></p>
-          <p>Tax: <span class="float-right">$0.00</span></p>
+          <p>Subtotal: <span class="float-right" id="subtotal">₹{{ cart.total_price }}</span></p>
+          <p>Shipping: <span class="float-right">₹0.00</span></p>
+          <p>Tax: <span class="float-right">₹0.00</span></p>
           <hr class="my-4">
-          <p class="font-bold">Total: <span class="float-right" id="total_cart_price">${{ cart.total_price }}</span></p>
-          <button onclick="window.location.href='{% url 'checkout' %}'">Proceed to Checkout</button>
+          <p class="font-bold">Total: <span class="float-right" id="total_cart_price">₹{{ cart.total_price }}</span></p>
+          <button onclick="window.location.href='{% url 'cart:checkout' %}'">Proceed to Checkout</button>
         </div>
       </div>
     </div>
@@ -268,7 +271,7 @@
 
       // Function to update quantity via AJAX
       function updateQuantity(itemId, quantity) {
-        fetch("{% url 'update_quantity' %}", {
+        fetch("{% url 'cart:update_quantity' %}", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -350,7 +353,7 @@
       document.querySelectorAll('.remove-item').forEach(button => {
         button.addEventListener('click', function () {
           const itemId = this.getAttribute('data-item-id');
-          fetch("{% url 'remove_cart_item' 0 %}".replace("0", itemId), {
+          fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -393,4 +396,4 @@
       });
     });
   </script>
-{% endblock product %}
+{% endblock %}
