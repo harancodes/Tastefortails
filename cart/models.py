@@ -23,23 +23,50 @@ class Cart(models.Model):
         return total
 
 
+from django.db import models
+from django.core.exceptions import ValidationError
+
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
-    product_variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="cart_items")
+    cart = models.ForeignKey(
+        'cart.Cart',  # Update this if Cart is in a different app
+        on_delete=models.CASCADE,
+        related_name="items"
+    )
+    product_variant = models.ForeignKey(
+        'product.Variant',  # Make sure 'products' is the actual app label
+        on_delete=models.CASCADE,
+        related_name="cart_items"
+    )
     quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "Cart Item"
+        verbose_name_plural = "Cart Items"
+        ordering = ['-id']
 
     @property
     def total_price(self):
-        return self.product_variant.product.sales_price * self.quantity
+        """Return total price of this item (unit price * quantity)."""
+        return self.product_variant.variant_price * self.quantity
 
     def __str__(self):
-        return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.color})"
+        return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.weight})"
 
     def clean(self):
+        """Validates quantity and stock before saving."""
         if self.quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
-        if self.product_variant.stock < self.quantity:
-            raise ValidationError(f"Not enough stock for {self.product_variant.product.name} ({self.product_variant.color}).")
+        if self.product_variant.quantity_in_stock < self.quantity:
+            raise ValidationError(
+                f"Not enough stock for {self.product_variant.product.name} ({self.product_variant.weight})."
+            )
+
+    def save(self, *args, **kwargs):
+        """Ensure model is clean before saving."""
+        self.clean()
+        super().save(*args, **kwargs)
+
+
 
 
 

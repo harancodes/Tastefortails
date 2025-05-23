@@ -8,28 +8,40 @@
             <a href="{% url 'customadmin:banner_list' %}" class="btn btn-light btn-sm">← Back to Banner List</a>
         </div>
         <div class="card-body">
+
+            <!-- Error alert banner -->
+            <div id="formErrorAlert" class="alert alert-danger d-none" role="alert">
+                Please fix the errors in the form before submitting.
+            </div>
+
             <form method="POST" enctype="multipart/form-data" id="addBannerForm" novalidate>
                 {% csrf_token %}
-                
+
+                <!-- Banner Name -->
                 <div class="mb-3">
                     <label for="name" class="form-label">Banner Name</label>
-                    <input type="text" name="name" class="form-control" id="name" required minlength="3" maxlength="100"
+                    <input type="text" name="name" class="form-control" id="name"
+                           required minlength="3" maxlength="100"
                            placeholder="Enter banner name">
                     <div class="invalid-feedback">
                         Please enter a valid banner name (3–100 characters).
                     </div>
                 </div>
 
+                <!-- Banner Image -->
                 <div class="mb-3">
                     <label for="image" class="form-label">Banner Image</label>
-                    <input type="file" name="image" class="form-control" id="imageInput" accept="image/jpeg,image/png,image/gif,image/webp" required>
+                    <input type="file" name="image" class="form-control" id="imageInput"
+                           accept="image/jpeg,image/png,image/gif,image/webp" required>
                     <small class="form-text text-muted">Accepted formats: JPG, PNG, GIF, WebP. Max size: 2MB.</small>
                     <div class="invalid-feedback" id="imageError"></div>
                     <div class="mt-3">
-                        <img id="imagePreview" src="#" alt="Image preview" class="img-thumbnail" style="max-height: 200px; display: none;">
+                        <img id="imagePreview" src="#" alt="Image preview"
+                             class="img-thumbnail" style="max-height: 200px; display: none;">
                     </div>
                 </div>
 
+                <!-- Buttons -->
                 <div class="d-flex justify-content-between">
                     <button type="submit" class="btn btn-success">Create Banner</button>
                     <a href="{% url 'customadmin:banner_list' %}" class="btn btn-secondary">Cancel</a>
@@ -39,7 +51,7 @@
     </div>
 </div>
 
-<!-- JS for Image Preview and Validation -->
+<!-- JavaScript validation -->
 <script>
     document.getElementById('imageInput').addEventListener('change', function (e) {
         const file = e.target.files[0];
@@ -68,10 +80,22 @@
 
     document.getElementById('addBannerForm').addEventListener('submit', function (event) {
         const form = event.target;
-        if (!form.checkValidity()) {
+        const errorAlert = document.getElementById('formErrorAlert');
+        let isValid = form.checkValidity();
+
+        const imageInput = document.getElementById('imageInput');
+        if (imageInput.classList.contains('is-invalid')) {
+            isValid = false;
+        }
+
+        if (!isValid) {
             event.preventDefault();
             event.stopPropagation();
+            errorAlert.classList.remove('d-none');
+        } else {
+            errorAlert.classList.add('d-none');
         }
+
         form.classList.add('was-validated');
     }, false);
 </script>

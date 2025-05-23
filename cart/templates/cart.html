@@ -175,6 +175,38 @@
       padding: 0.5rem;
     }
 
+    /* Variant Selection Styles */
+    .variant-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .variant-option {
+      border: 2px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: white;
+    }
+
+    .variant-option:hover {
+      border-color: var(--accent);
+    }
+
+    .variant-option.selected {
+      border-color: var(--accent);
+      background-color: rgba(44, 122, 123, 0.1);
+    }
+
+    .variant-option.unavailable {
+      opacity: 0.5;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
     @media (min-width: 768px) {
       .cart-item {
         flex-direction: row;
@@ -198,23 +230,45 @@
     }
   </style>
 
-  
-
   <div class="container mx-auto p-6">
     <h1 class="text-3xl font-bold mb-6 gradient-text">Your Cart</h1>
-    <h1></h1>
+    
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2">
         {% if cart.items.all %}
           {% for item in cart.items.all %}
-            <div class="cart-item hover-effect" data-item-id="{{ item.id }}" data-available-stock="{{ item.product_variant.stock }}">
-              <img src="{{ item.product_variant.image1.url }}" alt="{{ item.product_variant.product.name }}">
+            <div class="cart-item hover-effect" data-item-id="{{ item.id }}" data-available-stock="{% if item.product_variant.stock %}{{ item.product_variant.stock }}{% elif item.product_variant.quantity_in_stock %}{{ item.product_variant.quantity_in_stock }}{% else %}0{% endif %}">
+        {% with item.product_variant.product.images.all|first as primary_image %}
+    {% if primary_image %}
+        <img src="{{ primary_image.image.url }}" alt="{{ item.product_variant.product.name }}">
+    {% endif %}
+{% endwith %}
+
+
               <div class="cart-item-details">
                 <h3>{{ item.product_variant.product.name }}</h3>
                 <p>{{ item.product_variant.product.description|truncatewords:20 }}</p>
-                <p class="font-semibold">${{ item.product_variant.product.sales_price }}</p>
-                <p class="item-total-price">Total: ${{ item.total_price }}</p>
+                <p class="font-semibold mt-2">Price: ₹{{ item.product_variant.product.variant_price }}</p>
+                <p class="text-sm mt-1">Current variant: {{ item.product_variant.weight }}</p>
+                
+                <!-- Variant Selection -->
+                <div class="mt-4">
+                  <h4 class="text-md font-semibold mb-2">Select Weight Variant:</h4>
+                  <div class="variant-options" data-product-id="{{ item.product_variant.product.id }}" data-current-variant-id="{{ item.product_variant.id }}">
+                    {% for variant in item.product_variant.product.variants.all %}
+                      {% with stock=variant.stock|default:variant.quantity_in_stock|default:0 %}
+                      <div class="variant-option {% if variant.id == item.product_variant.id %}selected{% endif %} {% if stock <= 0 %}unavailable{% endif %}" 
+                           data-variant-id="{{ variant.id }}" 
+                           data-item-id="{{ item.id }}"
+                           data-stock="{{ stock }}">
+                        {{ variant.weight }}
+                      </div>
+                      {% endwith %}
+                    {% endfor %}
+                  </div>
+                </div>
               </div>
+
               <div class="cart-item-actions">
                 <div class="quantity-control">
                   <button class="decrement-quantity" data-item-id="{{ item.id }}">
@@ -236,12 +290,15 @@
       <div class="lg:col-span-1">
         <div class="cart-summary hover-effect">
           <h2 class="text-2xl font-semibold mb-4">Order Summary</h2>
-          <p>Subtotal: <span class="float-right" id="subtotal">₹{{ cart.total_price }}</span></p>
+          <p>Subtotal: <span id="subtotal" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span></p>
           <p>Shipping: <span class="float-right">₹0.00</span></p>
           <p>Tax: <span class="float-right">₹0.00</span></p>
           <hr class="my-4">
-          <p class="font-bold">Total: <span class="float-right" id="total_cart_price">₹{{ cart.total_price }}</span></p>
-          <button onclick="window.location.href='{% url 'cart:checkout' %}'">Proceed to Checkout</button>
+          <p class="font-semibold text-lg">Total: <span id="total_cart_price" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span></p>
+       <a href="{% url 'cart:checkout' %}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded">
+  Proceed to Checkout
+</a>
+
         </div>
       </div>
     </div>
@@ -254,7 +311,6 @@
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
-  <!-- JavaScript for Quantity Control and AJAX -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Function to show Toastify notifications
@@ -269,7 +325,6 @@
         }).showToast();
       }
 
-      // Function to update quantity via AJAX
       function updateQuantity(itemId, quantity) {
         fetch("{% url 'cart:update_quantity' %}", {
           method: 'POST',
@@ -287,17 +342,16 @@
           if (data.error) {
             showToast(data.error, 'error');
           } else {
-            // Update the item's total price
+            
             const itemTotalPrice = document.querySelector(`.cart-item[data-item-id="${itemId}"] .item-total-price`);
-            if (itemTotalPrice) itemTotalPrice.textContent = `Total: $${data.item_total_price}`;
+            if (itemTotalPrice) itemTotalPrice.textContent = `Total: ₹${data.item_total_price}`;
 
-            // Update the cart's subtotal and total price
+            
             const subtotal = document.getElementById('subtotal');
             const totalCartPrice = document.getElementById('total_cart_price');
-            if (subtotal) subtotal.textContent = `$${data.cart_total_price}`;
-            if (totalCartPrice) totalCartPrice.textContent = `$${data.cart_total_price}`;
+            if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
+            if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
 
-            // Disable the increment button if the quantity reaches the available stock
             const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
             const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
             if (incrementButton && quantity >= availableStock) {
@@ -315,16 +369,87 @@
         });
       }
 
+      function updateVariant(itemId, variantId) {
+        fetch("{% url 'cart:update_variant' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({
+            item_id: itemId,
+            variant_id: variantId
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            showToast(data.error, 'error');
+          } else {
+            const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+            if (cartItem) {
+              cartItem.setAttribute('data-available-stock', data.variant_stock);
+              
+              const variantDisplay = cartItem.querySelector('.cart-item-details p.text-sm');
+              if (variantDisplay) {
+                variantDisplay.textContent = `Current variant: ${data.variant_weight}`;
+              }
+              
+              const productImage = cartItem.querySelector('img');
+              if (productImage && data.variant_image) {
+                productImage.src = data.variant_image;
+              }
+              
+              // Reset quantity to 1 or update max if needed
+              const quantityInput = cartItem.querySelector('.quantity-input');
+              if (quantityInput) {
+                if (parseInt(quantityInput.value) > data.variant_stock) {
+                  quantityInput.value = data.variant_stock > 0 ? data.variant_stock : 1;
+                }
+              }
+              
+              // Update variant options highlight
+              const variantOptions = cartItem.querySelectorAll('.variant-option');
+              variantOptions.forEach(option => {
+                if (option.getAttribute('data-variant-id') == variantId) {
+                  option.classList.add('selected');
+                } else {
+                  option.classList.remove('selected');
+                }
+              });
+              
+              // Update cart totals
+              const subtotal = document.getElementById('subtotal');
+              const totalCartPrice = document.getElementById('total_cart_price');
+              if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
+              if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
+              
+              showToast('Variant updated successfully.');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showToast('Failed to update variant. Please try again.', 'error');
+        });
+      }
+
       // Increment Quantity
       document.querySelectorAll('.increment-quantity').forEach(button => {
         button.addEventListener('click', function () {
+          console.log('Increment button clicked'); // Debug logging
           const itemId = this.getAttribute('data-item-id');
+          console.log('Item ID:', itemId); // Debug logging
           const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+          console.log('Input element:', input); // Debug logging
           let value = parseInt(input.value);
+          console.log('Current value:', value); // Debug logging
           const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
+          console.log('Available stock:', availableStock); // Debug logging
 
           if (value < availableStock) {
             input.value = value + 1;
+            console.log('New value:', input.value); // Debug logging
             updateQuantity(itemId, input.value);
           }
         });
@@ -349,6 +474,30 @@
         });
       });
 
+      // Variant Selection
+document.addEventListener('click', function (e) {
+  const option = e.target.closest('.variant-option:not(.unavailable)');
+  if (option) {
+    const variantId = option.getAttribute('data-variant-id');
+    const itemId = option.getAttribute('data-item-id');
+    const variantContainer = option.closest('.variant-options');
+    const currentVariantId = variantContainer.getAttribute('data-current-variant-id');
+
+    if (variantId !== currentVariantId) {
+      updateVariant(itemId, variantId);
+
+      // Update the current variant id in the DOM
+      variantContainer.setAttribute('data-current-variant-id', variantId);
+
+      // Optional: update UI to reflect the selection
+      variantContainer.querySelectorAll('.variant-option').forEach(el => el.classList.remove('selected'));
+      option.classList.add('selected');
+    }
+  }
+});
+
+ 
+
       // Remove Item
       document.querySelectorAll('.remove-item').forEach(button => {
         button.addEventListener('click', function () {
@@ -370,8 +519,8 @@
               // Update the cart's subtotal and total price
               const subtotal = document.getElementById('subtotal');
               const totalCartPrice = document.getElementById('total_cart_price');
-              if (subtotal) subtotal.textContent = `$${data.cart_total_price}`;
-              if (totalCartPrice) totalCartPrice.textContent = `$${data.cart_total_price}`;
+              if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
+              if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
 
               showToast(data.message);
             }
@@ -383,7 +532,6 @@
         });
       });
 
-      // Disable increment buttons for items where quantity >= available stock on page load
       document.querySelectorAll('.cart-item').forEach(item => {
         const itemId = item.getAttribute('data-item-id');
         const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);

@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Avg, Count, Min, Max
 from django.core.paginator import Paginator
 from .models import Products, Category, Brand
+from wishlist.models import WishlistItem, Wishlist
 
 
 from django.db.models import Avg
@@ -27,27 +28,30 @@ def login_required_custom(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+
+
 def product_list_view(request):
     search_query = request.GET.get('search', '')
     brand_filter = request.GET.get('brand', '')
     category_filter = request.GET.get('category', '')
-    price_filter = request.GET.get('price', '')  # e.g., "100-500"
+    price_filter = request.GET.get('price', '')
     sort_by = request.GET.get('sort', '')
     page_number = request.GET.get('page')
 
-    
-
-    # Annotate products with the lowest variant_price
-    products = Products.objects.filter(is_active=True) \
-        .select_related('brand', 'category') \
-        .prefetch_related('variants', 'images') \
-        .annotate(min_price=Min('variants__variant_price'))
+    products = Products.objects.filter(
+        is_active=True,
+        brand__is_active=True,
+        brand__is_listed=True,
+        category__is_active=True,
+        category__is_listed=True,
+    ).select_related('brand', 'category') \
+     .prefetch_related('variants', 'images') \
+     .annotate(min_price=Min('variants__variant_price'))
 
     if search_query:
         products = products.filter(
-            Q(name__icontains=search_query) | Q(description__icontains=search_query )
-            
-
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
         )
 
     if brand_filter:
@@ -61,8 +65,9 @@ def product_list_view(request):
             min_p, max_p = map(float, price_filter.split('-'))
             products = products.filter(min_price__gte=min_p, min_price__lte=max_p)
         except ValueError:
-            pass  # Invalid price input
+            pass
 
+    # Sorting
     if sort_by == 'price_asc':
         products = products.order_by('min_price')
     elif sort_by == 'price_desc':
@@ -74,19 +79,26 @@ def product_list_view(request):
     else:
         products = products.order_by('-created_at')
 
-    paginator = Paginator(products, 8)  
-
+    paginator = Paginator(products, 8)
     page_obj = paginator.get_page(page_number)
+
+    # Get wishlist variant ids for logged in user
+    wishlist_variant_ids = []
+    if request.user.is_authenticated:
+        wishlist_variant_ids = WishlistItem.objects.filter(
+            wishlist__user=request.user
+        ).values_list('variant_id', flat=True)
+
     context = {
-        'page_obj': page_obj, 
-        # 'products': products,
-        'brands': Brand.objects.all(),
-        'categories': Category.objects.all(),
+        'page_obj': page_obj,
+        'brands': Brand.objects.filter(is_active=True, is_listed=True),
+        'categories': Category.objects.filter(is_active=True, is_listed=True),
         'search_query': search_query,
         'brand_filter': brand_filter,
         'category_filter': category_filter,
         'price_filter': price_filter,
         'sort_by': sort_by,
+        'wishlist_variant_ids': list(wishlist_variant_ids),
     }
 
     return render(request, 'product_list.html', context)
@@ -94,22 +106,18 @@ def product_list_view(request):
 
 
 
+
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Avg
+from django.db.models import Avg, Min
 import logging
 
-
-
-
-
-
 logger = logging.getLogger(__name__)
+
 @login_required_custom
 def product_detail_view(request, slug):
     logger.info(f"Loading product details for slug: {slug}")
     
     try:
-
         product = get_object_or_404(
             Products.objects.select_related('brand', 'category')
                             .prefetch_related('variants', 'reviews__user', 'images'),
@@ -132,12 +140,10 @@ def product_detail_view(request, slug):
         if not variants:
             logger.warning("No variants found")
 
-        # Reviews and ratings
+        min_price = variants.aggregate(Min('variant_price'))['variant_price__min']
+
         reviews = product.reviews.all().order_by('-created_at')
         average_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0
-
-
-        # stock = product.stock.all()
 
         rating_counts = []
         total_reviews = reviews.count()
@@ -151,7 +157,6 @@ def product_detail_view(request, slug):
                     'percentage': percentage
                 })
 
-        # Similar products
         similar_products = (
             Products.objects.filter(category=product.category, is_active=True)
             .exclude(id=product.id)
@@ -174,6 +179,7 @@ def product_detail_view(request, slug):
             'average_rating': average_rating,
             'rating_counts': rating_counts,
             'similar_products': similar_products,
+            'min_price': min_price,  
         }
 
         return render(request, 'product_details.html', context)
@@ -181,6 +187,7 @@ def product_detail_view(request, slug):
     except Exception as e:
         logger.error(f"Error loading product detail: {str(e)}")
         raise
+
 
 
 def about(request):

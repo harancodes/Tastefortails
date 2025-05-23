@@ -45,6 +45,11 @@ path('products/<int:product_id>/toggle/', views.toggle_product_status, name='tog
 
 
 
+path('orders/', views.admin_order_list_view, name='admin_order_list_view'),
+    path('orders/change-status/<int:order_item_id>/', views.admin_change_order_item_status_view, name='admin_change_orderitem_status'),
+    path('return-requests/', views.admin_return_requests, name='admin_return_requests'),
+    path('handle-return-request/<int:item_id>/', views.admin_handle_return_request, name='admin_handle_return_request'),
+
 
 
 

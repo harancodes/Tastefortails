@@ -9,6 +9,33 @@
         </div>
     </div>
 
+
+<style>
+  .fade-out {
+    animation: fadeOut 1s ease-in-out forwards;
+    animation-delay: 1s;
+  }
+
+  @keyframes fadeOut {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+</style>
+
+{% if messages %}
+  <div id="messages-container">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade-out" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
     <div class="row mb-3 pb-2">
         <div class="col-md-8">
             <form method="GET" class="d-flex align-items-center">

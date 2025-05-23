@@ -15,6 +15,9 @@ from customadmin.models import Banner
 from django.urls import reverse
 import logging
 from django.db.models import Sum
+from django.core.paginator import PageNotAnInteger, Paginator, EmptyPage
+from cart.models import Order, OrderItem, Wallet, Payment, transaction
+
 
 def block_superuser_navigation(view_func):
     def wrapper(request, *args, **kwargs):
@@ -51,12 +54,12 @@ def admin_login(request):
         else:
             messages.error(request, "Invalid username or password")
 
-    # 🔧 Important: Always return something for GET or after failed POST
     return render(request, 'admin_login.html')
 
 
 
 @admin_required
+@never_cache
 def admin_dashboard(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to access this page")
@@ -453,6 +456,7 @@ def save_cropped_image(base64_data):
 
 
 @admin_required
+
 def edit_product(request, product_id):
     product = get_object_or_404(Products, id=product_id)
 
@@ -604,6 +608,7 @@ def edit_product(request, product_id):
         'images': images,
     })
 
+@never_cache
 @admin_required
 def soft_delete_product(request, product_id):
     try:
@@ -637,7 +642,6 @@ def soft_delete_product(request, product_id):
 #     product.save()
 #     messages.success(request, f"{'Listed' if product.is_listed else 'Unlisted'} banner successfully.")
 #     return redirect('customadmin:banner_list')
-
 
 def admin_logout(request):
     logout(request)
@@ -791,7 +795,7 @@ def add_brands(request):
     
 
         Brand.objects.create(name=name, image=image if image else 'category/default_image.jpg')
-        messages.success(request, "Category added successfully.")
+        messages.success(request, "Brand added successfully.")
         return redirect('customadmin:brands_list')
 
     return render(request, 'brand/add_brands.html')
@@ -838,7 +842,7 @@ def edit_brands(request, brand_id):
         if name:
             brands.name = name
             brands.save()
-            messages.success(request, "Category updated successfully.")
+            messages.success(request, "Brand updated successfully.")
             return redirect('customadmin:brands_list')
         else:
             messages.error(request, "Category name cannot be empty.")
@@ -874,4 +878,157 @@ def toggle_active_status(request, brand_id):
         return JsonResponse({'status': 'success', 'is_active': brand.is_active})
     except Brand.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Brand not found'}, status=404)
+
+
+
+######## order list starts ######3
+
+
+
+@admin_required
+@never_cache
+def admin_order_list_view(request):
+    # Fetch all orders with related user and order items
+    orders_list = Order.objects.select_related('user').prefetch_related('items__product_variant__product').order_by('-created_at')
+    
+
+    paginator = Paginator(orders_list, 5)  # Show 10 orders per page
+    page_number = request.GET.get('page')
+    try:
+        orders = paginator.page(page_number)
+    except PageNotAnInteger:
+        orders = paginator.page(1)
+    except EmptyPage:
+        orders = paginator.page(paginator.num_pages)
+
+    return render(request, 'orders/admin_order.html', {'orders': orders})
+
+
+@admin_required
+@never_cache   
+def admin_change_order_item_status_view(request, order_item_id):
+    try:
+        # Fetch the order item with related order and payment
+        order_item = get_object_or_404(OrderItem, id=order_item_id)
+        order = order_item.order
+
+        if request.method == 'POST':
+            new_status = request.POST.get('status', '').strip()
+
+            # Validate status choice
+            if new_status not in dict(OrderItem.STATUS_CHOICES).keys():
+                messages.error(request, "Invalid status selected.")
+                return redirect('customadmin:admin_order_list_view')
+
+            # Prevent changing to 'cancelled' status
+            if new_status == 'cancelled':
+                messages.error(request, "Cannot manually change status to cancelled.")
+                return redirect('customadmin:admin_order_list_view')
+
+            # Comprehensive Status Change Logic
+            try:
+                with transaction.atomic():
+                    # Update Order Item Status
+                    order_item.status = new_status
+                    order_item.save()
+
+                    # Handle Payment Status for COD Orders
+                    try:
+                        payment = order.payment
+                        
+                        # Update payment status based on order item status and payment method
+                        if payment.payment_method == 'cod':
+                            if new_status in ['shipped', 'delivered']:
+                                payment.status = 'completed'
+                            payment.save()
+
+                    except Payment.DoesNotExist:
+                        # Log or handle case where payment doesn't exist
+                        messages.warning(request, "No payment record found for this order.")
+
+                    # Optional: Update overall order status if all items are in same status
+                    order_statuses = order.items.values_list('status', flat=True).distinct()
+                    if len(order_statuses) == 1:
+                        # If all items have same status, potentially update order status
+                        if new_status == 'delivered':
+                            # Mark order as fully delivered
+                            order.status = 'completed'
+                            order.save()
+
+                messages.success(request, f"Order item status updated to {new_status}.")
+            
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+
+        return redirect('customadmin:admin_order_list_view')
+
+    except Exception as e:
+        messages.error(request, f"An unexpected error occurred: {str(e)}")
+        return redirect('customadmin:admin_order_list_view')
+
+@admin_required
+@never_cache   
+def admin_return_requests(request):
+    return_requests = OrderItem.objects.filter(return_status="requested")
+    return render(request, 'orders/admin_return_requests.html', {'return_requests': return_requests})
+
+
+@admin_required
+@never_cache   
+def admin_handle_return_request(request, item_id):
+    if request.method != 'POST':
+        messages.error(request, "Invalid request method.")
+        return redirect('admin_return_requests')
+
+    order_item = get_object_or_404(OrderItem, id=item_id)
+    action = request.POST.get('action')
+
+    if action not in ['approve', 'reject']:
+        messages.error(request, "Invalid action.")
+        return redirect('admin_return_requests')
+
+    try:
+        with transaction.atomic():
+            if action == 'approve':
+                # **1. Restock the product**
+                product_variant = order_item.product_variant
+                product_variant.stock += order_item.quantity
+                product_variant.save()
+
+                # **2. Calculate Refund (Item Price + Shipping Share)**
+                order = order_item.order
+                total_items = order.items.filter(status__in=["pending", "processing", "shipped", "delivered"]).count()
+
+                if total_items > 1:
+                    per_item_shipping_charge = order.shipping_charge / Decimal(total_items)
+                else:
+                    per_item_shipping_charge = order.shipping_charge  # If only one item, refund full shipping charge
+
+                refund_amount = (order_item.product_variant.product.variant_price * Decimal(order_item.quantity)) + per_item_shipping_charge
+
+                # **3. Check if the order has a valid payment**
+                payment = getattr(order, "payment", None)  # Safely get the payment attribute
+                if payment and payment.status == "completed":
+                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                    wallet.add_amount(refund_amount, reason="Order Return Refund")
+                else:
+                    messages.warning(request, "Order has no valid payment. Refund not processed.")
+
+                # **4. Mark the order item as returned**
+                order_item.return_status = "approved"
+                order_item.status = "returned"
+                order_item.save()
+
+                messages.success(request, "Return request approved. Refund processed if payment exists.")
+            else:
+                order_item.return_status = "rejected"
+                order_item.save()
+                messages.success(request, "Return request rejected.")
+
+    except Exception as e:
+        print(f"Exception: {e}")  # Debugging
+        messages.error(request, "An error occurred while processing the return request.")
+
+    return redirect('admin_return_requests')
+
 

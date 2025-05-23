@@ -1,10 +1,10 @@
-{% extends "user_profile/account_overview.html" %}
+{% extends "account_overview.html" %}
 
 {% block user %}
 <div class="animate-fade-in">
     <!-- Breadcrumbs -->
     <div class="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-        <a href="{% url 'account_overview' %}" class="hover:text-blue-600 transition-colors">Account Overview</a>
+        <a href="{% url 'user_profile:account_overview' %}" class="hover:text-blue-600 transition-colors">Account Overview</a>
         <span>/</span>
         <span>Wallet</span>
     </div>

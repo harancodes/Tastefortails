@@ -1,14 +1,22 @@
 {% extends 'admin_base.html' %}
 {% block content %}
 <div class="container mt-5">
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li>
+      <li class="breadcrumb-item active "  aria-current="page"><a href="{% url 'customadmin:product_list' %}" >Product List</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Add Product </li>
+    </ol>
+  </nav>
   <h2>Add New Product</h2>
   
   {% if messages %}
     {% for message in messages %}
-      <div class="tex-danger alert-{{ message.tags }}">{{ message }}</div>
+      <div class="text-danger alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
   
+
   <form method="post" enctype="multipart/form-data" id="productForm">
     {% csrf_token %}
 
@@ -340,17 +348,14 @@
       const reader = new FileReader();
       
       reader.onload = function(e) {
-        // Show preview container
         container.style.display = 'block';
         croppedContainer.style.display = 'none';
         preview.src = e.target.result;
         
-        // Initialize cropper
         if (additionalImageCroppers[index]) {
           additionalImageCroppers[index].destroy();
         }
         
-        // Create new cropper with 4:3 aspect ratio for additional images
         additionalImageCroppers[index] = new Cropper(preview, {
           aspectRatio: 1,
           viewMode: 2,
@@ -427,7 +432,7 @@
     group.innerHTML = `
      <div class="col-md-3">
   <input type="text" name="variants_weight[]" placeholder="Weight" 
-       class="form-control" required maxlength="50"
+       class="form-control" maxlength="50"
        pattern="^(?!-)[A-Za-z0-9. ]+$"
        title="Only letters, numbers, spaces, and dots allowed. No negative values.">
 <div class="invalid-feedback">Weight must be a positive value and contain only letters, numbers, and dots.</div>
@@ -435,11 +440,11 @@
 </div>
 
       <div class="col-md-3">
-        <input type="number" name="variants_price[]" placeholder="Price" min="0.01" step="0.01" class="form-control" required>
+        <input type="number" name="variants_price[]" placeholder="Price" min="0.01" step="0.01" class="form-control" >
         <div class="invalid-feedback">Price must be greater than zero.</div>
       </div>
       <div class="col-md-3">
-        <input type="number" name="variants_stock[]" placeholder="Stock" min="0" class="form-control" required>
+        <input type="number" name="variants_stock[]" placeholder="Stock" min="0" class="form-control" >
         <div class="invalid-feedback">Stock must be a non-negative number.</div>
       </div>
       <div class="col-md-3">

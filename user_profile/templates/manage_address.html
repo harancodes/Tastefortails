@@ -1,8 +1,64 @@
-{% extends "user_profile/account_overview.html" %}
+{% extends "account_overview.html" %}
 
 <!-- Main Content -->
 {% block user %}
+
 <main class="flex-1 p-6 bg-gray-50 min-h-screen">
+
+
+{% if messages %}
+  
+  <div id="messageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+      <h2 class="text-xl font-semibold text-danger mb-4">Hurray !! </h2>
+      
+      {% for message in messages %}
+        <div class="mb-2 p-4 rounded 
+          {% if message.tags == 'error' or message.tags == 'danger' %}
+            bg-red-100 text-red-800
+          {% elif message.tags == 'success' %}
+            bg-green-100 text-green-800
+          {% elif message.tags == 'warning' %}
+            bg-yellow-100 text-yellow-800
+          {% else %}
+            bg-blue-100 text-blue-800
+          {% endif %}
+        ">
+          {{ message }}
+        </div>
+      {% endfor %}
+
+      <button id="closeModal" class="mt-4 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">Close</button>
+    </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('messageModal');
+    const closeBtn = document.getElementById('closeModal');
+
+    modal.style.display = 'flex'; 
+
+    
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+
+
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 5000);
+  });
+</script>
+
+{% endif %}
     <div class="max-w-4xl mx-auto">
         <!-- Page Title -->
         <h1 class="text-3xl font-bold text-gray-800 mb-8">Manage Addresses</h1>
@@ -61,6 +117,7 @@
                     <input type="text" name="phone" placeholder="Phone" class="w-full p-2 border border-gray-300 rounded-md" required>
                     <input type="text" name="address_line" placeholder="Address Line" class="w-full p-2 border border-gray-300 rounded-md" required>
                     <select name="address_type" class="w-full p-2 border border-gray-300 rounded-md" required>
+                        <option value="">Select Address Type</option>
                         <option value="home">Home</option>
                         <option value="work">Work</option>
                         <option value="other">Other</option>
@@ -195,13 +252,30 @@
         document.getElementById('deleteConfirmModal').style.display = 'none';
     }
 
-    // Handle Add Address Form Submission
+    // Handle Add Address Form Submission (Single, improved handler)
+    // Handle Add Address Form Submission (Single, improved handler)
     document.getElementById('addAddressForm').addEventListener('submit', async function(e) {
         e.preventDefault();
+        
         const formData = new FormData(this);
         
+        // Log form data for debugging
+        console.log('Form data being sent:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+
+        // Show loading state
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Saving...';
+        submitButton.disabled = true;
+
+        // ✅ Use Django's URL resolver here
+        const addAddressUrl = "{% url 'user_profile:add_address' %}";  // Or just 'add_address' if not namespaced
+        
         try {
-            const response = await fetch('/add-address/', {
+            const response = await fetch(addAddressUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -209,29 +283,62 @@
                 }
             });
             
-            const data = await response.json();
+            // Log response details for debugging
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
             
-            if (response.ok) {
+            let data;
+            try {
+                data = await response.json();
+                console.log('Response data:', data);
+            } catch (parseError) {
+                console.error('Error parsing JSON:', parseError);
+                const textResponse = await response.text();
+                console.error('Response text:', textResponse);
+                throw new Error('Invalid response format');
+            }
+            
+            if (response.ok && data.success) {
                 showToast('Address added successfully!', 'success');
+                closeAddModal();
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
             } else {
-                showToast(data.error || 'Error adding address', 'error');
+                const errorMessage = data.error || `Server error: ${response.status}`;
+                showToast(errorMessage, 'error');
+                console.error('Server returned error:', data);
             }
         } catch (error) {
-            showToast('Something went wrong. Please try again.', 'error');
+            console.error('Fetch error:', error);
+            showToast('Network error. Please check your connection and try again.', 'error');
+        } finally {
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
         }
     });
 
-    // Handle Edit Address Form Submission
+
+    
     document.getElementById('editAddressForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const formData = new FormData(this);
         const addressId = formData.get('address_id');
         
+        // Show loading state
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Updating...';
+        submitButton.disabled = true;
+
+        
+        
         try {
-            const response = await fetch(`/edit-address/${addressId}/`, {
+
+            const editAddressUrl = `{% url 'user_profile:edit_address' 0 %}`.replace('0', addressId);
+
+            const response = await fetch(editAddressUrl, {
+        
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -241,8 +348,9 @@
             
             const data = await response.json();
             
-            if (response.ok) {
+            if (response.ok && data.success) {
                 showToast('Address updated successfully!', 'success');
+                closeEditModal();
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
@@ -250,24 +358,31 @@
                 showToast(data.error || 'Error updating address', 'error');
             }
         } catch (error) {
+            console.error('Edit error:', error);
             showToast('Something went wrong. Please try again.', 'error');
+        } finally {
+            // Restore button state
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
         }
     });
 
-    // Handle Delete Address
     async function deleteAddress() {
         const addressId = document.getElementById('deleteAddressId').value;
-        
+
+
+        const deleteAddressUrl = `{% url 'user_profile:delete_address' 0 %}`.replace('0', addressId);
+
         try {
-            const response = await fetch(`/delete-address/${addressId}/`, {
+            const response = await fetch(deleteAddressUrl, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken')
                 }
             });
-            
+
             const data = await response.json();
-            
+
             if (response.ok) {
                 showToast('Address deleted successfully!', 'success');
                 setTimeout(() => {
@@ -280,19 +395,39 @@
                     showToast(data.error || 'Error deleting address', 'error');
                 }
             }
-            
+
             closeDeleteModal();
         } catch (error) {
+            console.error('Delete error:', error);
             showToast('Something went wrong. Please try again.', 'error');
             closeDeleteModal();
         }
     }
 
-    // Display Django messages if any
-    {% if messages %}
-        {% for message in messages %}
-            showToast('{{ message }}', '{{ message.tags }}');
-        {% endfor %}
-    {% endif %}
+    // Close modals when clicking outside
+    document.addEventListener('click', function(event) {
+        const addModal = document.getElementById('addAddressModal');
+        const editModal = document.getElementById('editAddressModal');
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        
+        if (event.target === addModal) {
+            closeAddModal();
+        } else if (event.target === editModal) {
+            closeEditModal();
+        } else if (event.target === deleteModal) {
+            closeDeleteModal();
+        }
+    });
+
+    // Close modals with ESC key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAddModal();
+            closeEditModal();
+            closeDeleteModal();
+        }
+    });
+
+  
 </script>
 {% endblock user %}

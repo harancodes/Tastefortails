@@ -28,7 +28,7 @@
   background-color: #fff;
   border: 1px solid #dee2e6;
   border-radius: 0.25rem;
-  text-decoration: none;
+  text-decoration: none !important;
   transition: background-color 0.3s, color 0.3s;
 }
 
@@ -146,73 +146,79 @@
       </form>
     </aside>
 
-    <section class="mb-12">
-      <div class="flex justify-between items-center mb-8">
-        <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
-        <span class="text-sm text-gray-500">Showing {{ page_obj.paginator.count }} products</span>
-      </div>
+  <section class="mb-12">
+  <div class="flex justify-between items-center mb-8">
+    <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
+    <span class="text-sm text-gray-500">Showing {{ page_obj.paginator.count }} products</span>
+  </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {% for product in page_obj %}
-        {% if product.is_active %}
-        {% if product.is_listed %}
-          <a href="{% url 'product:detail' product.slug %}" class="group">
-            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
-              <div class="relative">
-                {% if product.thumbnail %}
-                  <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-64 object-cover">
-                {% else %}
-                  <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
-                {% endif %}
-
-                {% if product.offer_percentage > 0 %}
-                  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-                    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
-                  </div>
-                {% endif %}
-
-                <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-                  <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
-                    <span class="text-gray-800 text-sm">View Details</span>
-                  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+    {% for product in page_obj %}
+      {% if product.is_active and product.is_listed %}
+        <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 relative">
+          
+          <a href="{% url 'product:detail' product.slug %}" class="group block">
+            <div class="relative">
+              {% if product.thumbnail %}
+                <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-64 object-cover">
+              {% else %}
+                <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
+              {% endif %}
+              {% if product.offer_percentage > 0 %}
+                <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                  <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
                 </div>
-
-                <div class="absolute top-3 right-3">
-                  <button type="button" onclick="event.preventDefault(); toggleWishlist({{ product.variants.first.id }});" class="bg-white p-2 rounded-full shadow hover:shadow-md">
-                    <i class="far fa-heart text-red-500"></i>
-                  </button>
-                </div>
-              </div>
-
-              <div class="p-4">
-                {% if product.brand %}
-                  <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
-                {% endif %}
-                <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
-                
-                <div class="flex text-yellow-400 text-sm mt-1 mb-2">
-                  <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-                  <span class="ml-1 text-gray-500">(24)</span>
-                </div>
-
-                <div class="flex justify-between items-center">
-                  <p class="text-2xl text-gray-800 font-bold">₹{{ product.min_price }}</p>
-                  {% if product.variants.all %}
-                    <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
-                      <i class="fas fa-shopping-cart"></i> Add
-                    </button>
-                  {% else %}
-                    <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
-                  {% endif %}
+              {% endif %}
+              <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
+                  <span class="text-gray-800 text-sm">View Details</span>
                 </div>
               </div>
             </div>
+
+            <div class="p-4">
+              {% if product.brand %}
+                <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
+              {% endif %}
+              <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
+
+              <div class="flex text-yellow-400 text-sm mt-1 mb-2">
+                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                <span class="ml-1 text-gray-500">(24)</span>
+              </div>
+
+              <div class="flex justify-between items-center">
+                <p class="text-2xl text-gray-800 font-bold">₹{{ product.min_price }}</p>
+                {% if product.variants.all %}
+                  <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+                    <i class="fas fa-shopping-cart"></i> Add
+                  </button>
+                {% else %}
+                  <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
+                {% endif %}
+              </div>
+            </div>
           </a>
-        {% endif %}
-        {% endif %}
-        {% endfor %}
-      </div>
-    </section>
+          <!-- Wishlist button OUTSIDE the <a> to avoid nested clickable -->
+          {% with variant=product.variants.first %}
+            {% if variant %}
+              <button
+                type="button"
+                class="wishlist-toggle-button bg-white p-2 rounded-full shadow hover:shadow-md absolute top-3 right-3"
+                data-variant-id="{{ variant.id }}"
+                data-add-url="{% url 'wishlist:add_to_wishlist' variant.id %}"
+                data-remove-url="{% url 'wishlist:remove_from_wishlist' variant.id %}">
+                <i class="{% if variant.id in wishlist_variant_ids %}fas{% else %}far{% endif %} fa-heart text-red-500"></i>
+              </button>
+            {% endif %}
+          {% endwith %}
+          
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+
 
     <div class="flex justify-center mt-8">
       <nav aria-label="Page navigation">
@@ -245,6 +251,8 @@
 
 {% block extra_js %}
 <script>
+
+  // filter section
   document.addEventListener('DOMContentLoaded', () => {
     const toggleFilters = document.getElementById('toggleFilters');
     const filterSection = document.getElementById('filterSection');
@@ -267,6 +275,8 @@
     // Update wishlist UI on page load
     updateWishlistUI();
   });
+
+  // cart section
 
   function addCartItem(variantId) {
     console.log(`Add to cart: ${variantId}`);
@@ -319,4 +329,91 @@
     }, 3000);
   }
 </script>
+
+<script>
+
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Check if this cookie string starts with the name we want
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.wishlist-toggle-button').forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const variantId = this.dataset.variantId;
+            const icon = this.querySelector('i');
+            const isWishlisted = icon.classList.contains('fas');
+
+            // Choose URL based on current state
+            const url = isWishlisted ? this.dataset.removeUrl : this.dataset.addUrl;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle icon classes
+                    if (isWishlisted) {
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    } else {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    }
+                    showToast(data.message, 'success');
+
+                    // Optional: If on wishlist page and removing, remove product card
+                    if (window.location.pathname.includes('/wishlist') && isWishlisted) {
+                        const card = this.closest('.shadow-lg');
+                        if (card) card.remove();
+                    }
+                } else {
+                    showToast(data.error || 'Something went wrong', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Wishlist toggle error:', error);
+                showToast('Error toggling wishlist', 'error');
+            });
+        });
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+</script>
+
 {% endblock %}

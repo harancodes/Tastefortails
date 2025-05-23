@@ -54,59 +54,148 @@
 </head>
 <div id="alert-container" class="fixed top-4 right-4 z-50 space-y-2 min-w-[320px] max-w-md"></div>
 <body class="bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-md sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-                <!-- Logo and Website Name -->
-                <div class="flex items-center space-x-2">
-                    <div class="text-blue-600 text-3xl">
-                        <img src="{% static 'evo_time.jpg' %}" alt="EvoTime Logo" class="w-10 h-10 rounded-full">
-                    </div>
-                    <a href="{% url 'home' %}" class="text-2xl font-bold text-gray-800">EvoTime</a>
-                </div>
-                
-                <!-- Navigation Links - Desktop -->
-                <nav class="hidden md:flex space-x-8">
-                    <a href="{% url 'home' %}" class="nav-link font-medium text-gray-800 hover:text-blue-600 transition pb-1">Home</a>
-                    <a href="{% url 'brand_list' %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">Brands</a>
-                    <a href="{% url "all_products" %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">All Products</a>
-                    <a href="{% url "about" %}" class="nav-link font-medium text-gray-600 hover:text-blue-600 transition pb-1">About Us</a>
-                </nav>
-                
-                <!-- Icons -->
-                <div class="flex items-center space-x-6">
-                    <a href="{% url 'wishlist' %}" class="text-gray-600 hover:text-blue-600 transition">
-                        <i class="far fa-heart text-xl"></i>
-                    </a>
-                    <a href="{% url 'view_cart' %}" class="text-gray-600 hover:text-blue-600 transition relative">
-                        <i class="fas fa-shopping-cart text-xl"></i>
-                        {% if cart_item_count > 0 %}
-                            <span class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                {{ cart_item_count }}
-                            </span>
-                        {% endif %}
-                    </a>
-                    <a href="{% url 'account_overview' %}" class="text-gray-600 hover:text-blue-600 transition">
-                        <i class="far fa-user text-xl"></i>
-                    </a>
-                    
-                    <!-- Mobile Menu Button -->
-                    <button id="mobile-menu-button" class="md:hidden text-gray-600 focus:outline-none">
-                        <i class="fas fa-bars text-2xl"></i>
-                    </button>
-                </div>
+
+
+{% if messages %}
+  
+  <div id="messageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+      <h2 class="text-xl font-semibold text-danger mb-4">Hurray !! </h2>
+      
+      {% for message in messages %}
+        <div class="mb-2 p-4 rounded 
+          {% if message.tags == 'error' or message.tags == 'danger' %}
+            bg-red-100 text-red-800
+          {% elif message.tags == 'success' %}
+            bg-green-100 text-green-800
+          {% elif message.tags == 'warning' %}
+            bg-yellow-100 text-yellow-800
+          {% else %}
+            bg-blue-100 text-blue-800
+          {% endif %}
+        ">
+          {{ message }}
+        </div>
+      {% endfor %}
+
+      <button id="closeModal" class="mt-4 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">Close</button>
+    </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('messageModal');
+    const closeBtn = document.getElementById('closeModal');
+
+    modal.style.display = 'flex'; 
+
+    
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+
+
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 5000);
+  });
+</script>
+
+{% endif %}
+
+<header class="bg-blue-700 sticky top-0 z-50 shadow-md">
+    <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+            <!-- Logo and Website Name -->
+            <div class="flex items-center space-x-2">
+                <img src="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418804/TAILS_foR_TAILS__2_-removebg-preview_bkyrmx.png" alt="Tastefortails Logo" class="w-10 h-10 rounded-full">
+                <a href="{% url 'home' %}" class="text-2xl font-bold text-white">Tastefortails</a>
             </div>
-            
-            <!-- Mobile Navigation - Hidden by default -->
-            <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2">
-                <a href="{% url 'home' %}" class="block py-2 text-gray-800 font-medium">Home</a>
-                <a href="{% url 'brand_list' %}" class="block py-2 text-gray-600">Brands</a>
-                <a href="{% url "all_products" %}" class="block py-2 text-gray-600">All Products</a>
-                <a href="{% url "about" %}" class="block py-2 text-gray-600">About Us</a>
+
+            <!-- Navigation Menu -->
+            <nav class="hidden md:flex items-center space-x-8">
+                <a href="{% url 'home' %}" class="nav-link text-white font-bold hover:text-yellow-200 transition">Home</a>
+                <a href="{% url 'product:list' %}" class="nav-link text-white font-bold hover:text-yellow-200 transition">Products</a>
+                <a href="{% url 'product:about' %}" class="nav-link text-white font-bold hover:text-yellow-200 transition">About Us</a>
+            </nav>
+
+            <!-- Icons -->
+            <div class="flex items-center space-x-6">
+                <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition">
+                    <i class="far fa-heart text-xl"></i>
+                </a>
+                <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
+                    <i class="fas fa-shopping-cart text-xl"></i>
+                    {% if cart_item_count > 0 %}
+                    <span class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {{ cart_item_count }}
+                    </span>
+                    {% endif %}
+                </a>
+                {% if user.is_authenticated %}
+                <div class="relative group">
+                    <button class="flex items-center text-white hover:text-yellow-200 transition">
+                        <i class="far fa-user text-xl"></i>
+                        <span class="ml-2 hidden md:inline">
+                            {% if request.user.first_name and request.user.last_name %}
+                                {{ request.user.first_name }} {{ request.user.last_name }}
+                            {% elif request.user.first_name %}
+                                {{ request.user.first_name }}
+                            {% else %}
+                                {{ request.user.full_name }}
+                            {% endif %}
+                        </span>
+                        <i class="fas fa-chevron-down ml-1 text-sm"></i>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                        <div class="py-1">
+                            <a href="{% url 'user_profile:account_overview' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user-circle mr-2 text-blue-500"></i> Account
+                            </a>
+                            <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-box mr-2 text-green-500"></i> My Orders
+                            </a>
+                            <div class="border-t border-gray-100"></div>
+                            <form method="POST" action="{% url 'user_logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{% url 'user_login' %}" 
+                   class="bg-red-500 hover:bg-red-600 text-white font-lighter py-2 px-4 rounded-md transition duration-200 flex items-center gap-2">
+                    <i class="fas fa-user-circle text-white text-lg"></i>
+                    LOGIN / SIGNUP
+                </a>
+                {% endif %}
+                
+                <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
             </div>
         </div>
-    </header>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2">
+            <a href="{% url 'home' %}" class="block py-2 text-white font-medium">Home</a>
+            <a href="{% url 'product:list' %}" class="block py-2 text-gray-200">Products</a>
+            <a href="{% url 'product:about' %}" class="block py-2 text-gray-200">About Us</a>
+        </div>
+    </div>
+</header> 
+
+    <div id="toast-container" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 space-y-2"></div>
 
     <!-- Main Content -->
     <div class="flex flex-col md:flex-row min-h-screen">
@@ -139,19 +228,19 @@
             
             
             <nav class="mt-6">
-                <a href="{% url 'account_overview' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                <a href="{% url 'user_profile:account_overview' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
                     <i class="fas fa-user-circle w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                     Account Overview
                 </a>
-                <a href="{% url 'order_list' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                <a href="{% url 'user_profile:order_list' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
                     <i class="fas fa-shopping-bag w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                     Order List
                 </a>
-                <a href="{% url 'manage_address' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                <a href="{% url 'user_profile:manage_address' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
                     <i class="fas fa-map-marker-alt w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                     Manage Address
                 </a>
-                <a href="{% url 'wallet_page' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                <a href="{% url 'user_profile:wallet_page' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
                     <i class="fas fa-wallet w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                     Wallet
                 </a>
@@ -193,7 +282,25 @@
                     </div>
                 </div>
 
-                <!-- Contact Information -->
+
+
+                   <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Chaneg Name </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email </label>
+                            <div class="relative">
+                                <input type="text" name="new_name" value="{{ user.full_name }}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="your name">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-bars text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Contact Information</h3>
                     <div class="space-y-4">
@@ -209,7 +316,22 @@
                     </div>
                 </div>
 
-                <!-- Date of Birth -->
+                   <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Email Change </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email </label>
+                            <div class="relative">
+                                <input type="text" name="new_email" value="{{ user.email }}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="+1 (234) 567-8900">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-bars text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
                     <div>
@@ -223,7 +345,7 @@
                     </div>
                 </div>
 
-                <!-- Save Changes Button -->
+                
                 <button type="submit" class="bg-black text-white hover:bg-gray-800 font-medium py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
                     Save Changes
                 </button>
@@ -232,54 +354,55 @@
         </div>
     </div>
 
+
     <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-12">
+    <footer class="bg-blue-700 text-white py-12">
         <div class="container mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
                     <div class="text-xl font-bold mb-4">
-                        <span class="text-indigo-600">Evo</span>Time
+                        <span class="text-red-500">Taste for</span> Tails
                     </div>
-                    <p class="text-gray-400">Your destination for premium timepieces that redefine elegance and precision.</p>
+                    <p class="text-gray-300">The Best for your best friend</p>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Quick Links</h4>
                     <ul class="space-y-2">
-                        <li><a href="{% url 'home' %}" class="text-gray-400 hover:text-white transition">Home</a></li>
-                        <li><a href="{% url 'brand_list' %}" class="text-gray-400 hover:text-white transition">Brands</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">About</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">Contact</a></li>
+                        <li><a href="{% url 'home' %}" class="text-gray-300 hover:text-white transition">Home</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Brands</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">About</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Contact</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Support</h4>
                     <ul class="space-y-2">
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">Shipping Policy</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">Return Policy</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">FAQs</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Shipping Policy</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Return Policy</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">FAQs</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Privacy Policy</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Follow Us</h4>
                     <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-white transition">
+                        <a href="#" class="text-gray-300 hover:text-white transition">
                             <i class="fab fa-facebook-f text-xl"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
+                        <a href="#" class="text-gray-300 hover:text-white transition">
                             <i class="fab fa-twitter text-xl"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
+                        <a href="https://www.instagram.com/ag_.nel/" target="_blank" class="text-gray-300 hover:text-white transition">
                             <i class="fab fa-instagram text-xl"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
+                        <a href="#" class="text-gray-300 hover:text-white transition">
                             <i class="fab fa-pinterest text-xl"></i>
                         </a>
                     </div>
                 </div>
             </div>
             <div class="border-t border-gray-700 mt-8 pt-8 text-center">
-                <p class="text-gray-400">&copy; 2024 EvoTime. All rights reserved.</p>
+                <p class="text-gray-300">&copy; 2024 Tastefortails. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -335,7 +458,7 @@
                 const formData = new FormData();
                 formData.append("profile_image", file);
         
-                fetch("{% url 'update_profile_image' %}", {  // Replace with your actual URL
+                fetch("{% url 'user_profile:update_profile_image' %}", {  // Replace with your actual URL
                     method: "POST",
                     body: formData,
                     headers: {

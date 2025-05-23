@@ -1,6 +1,14 @@
 {% extends 'admin_base.html' %}
 
 {% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Dashboard</li>
+      <li class="breadcrumb-item active" aria-current="page">Category List</li>
+      <li class="breadcrumb-item active" aria-current="page">Edit Category </li>
+    </ol>
+  </nav>
+
 <div class="container mt-4">
     <div class="card shadow rounded-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -23,7 +31,7 @@
                 
                 <div class="mb-3">
                     <label for="name" class="form-label">Category Name</label>
-                    <input type="text" name="name" class="form-control" id="name" required placeholder="Enter category name" value="{{ category.name }}">
+                    <input type="text" name="name" class="form-control" id="name"  placeholder="Enter category name" value="{{ category.name }}">
                     <div class="text-danger small mt-1" id="nameError"></div>
                 </div>
 

@@ -8,32 +8,46 @@
             <a href="{% url 'customadmin:banner_list' %}" class="btn btn-light btn-sm">← Back to Banner List</a>
         </div>
         <div class="card-body">
+
+            <!-- Global validation error alert -->
+            <div id="formErrorAlert" class="alert alert-danger d-none" role="alert">
+                Please fix the errors in the form before submitting.
+            </div>
+
             <form method="POST" enctype="multipart/form-data" id="bannerForm" novalidate>
                 {% csrf_token %}
-                
+
+                <!-- Banner Name -->
                 <div class="mb-3">
                     <label for="name" class="form-label">Banner Name</label>
-                    <input type="text" name="name" class="form-control" id="name" required minlength="3" maxlength="100"
+                    <input type="text" name="name" class="form-control" id="name"
+                           required minlength="3" maxlength="100"
                            placeholder="Enter banner name" value="{{ banner.name }}">
                     <div class="invalid-feedback">
                         Please enter a valid banner name (3–100 characters).
                     </div>
                 </div>
 
+                <!-- Banner Image -->
                 <div class="mb-3">
                     <label for="image" class="form-label">Banner Image</label>
-                    <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
-                    <small class="form-text text-muted">Accepted formats: JPG, PNG, GIF. Max size: 2MB.</small>
+                    <input type="file" name="image" class="form-control" id="imageInput"
+                           accept="image/jpeg,image/png,image/gif,image/webp">
+                    <small class="form-text text-muted">Accepted formats: JPG, PNG, GIF, WebP. Max size: 2MB.</small>
                     <div class="invalid-feedback" id="imageError"></div>
+
                     <div class="mt-3">
                         {% if banner.image %}
-                            <img id="imagePreview" src="{{ banner.image.url }}" alt="Current Banner" class="img-thumbnail" style="max-height: 200px;">
+                            <img id="imagePreview" src="{{ banner.image.url }}" alt="Current Banner"
+                                 class="img-thumbnail" style="max-height: 200px;">
                         {% else %}
-                            <img id="imagePreview" src="#" alt="Preview" class="img-thumbnail" style="max-height: 200px; display:none;">
+                            <img id="imagePreview" src="#" alt="Preview"
+                                 class="img-thumbnail" style="max-height: 200px; display: none;">
                         {% endif %}
                     </div>
                 </div>
 
+                <!-- Buttons -->
                 <div class="d-flex justify-content-between">
                     <button type="submit" class="btn btn-success">Update Banner</button>
                     <a href="{% url 'customadmin:banner_list' %}" class="btn btn-secondary">Cancel</a>
@@ -43,38 +57,51 @@
     </div>
 </div>
 
+<!-- JavaScript Validation -->
 <script>
-    document.getElementById('imageInput').addEventListener('change', function (e) {
+    const imageInput = document.getElementById('imageInput');
+    const imageError = document.getElementById('imageError');
+    const imagePreview = document.getElementById('imagePreview');
+    const errorAlert = document.getElementById('formErrorAlert');
+
+    imageInput.addEventListener('change', function (e) {
         const file = e.target.files[0];
-        const preview = document.getElementById('imagePreview');
-        const imageError = document.getElementById('imageError');
-        imageError.textContent = "";
-        preview.style.display = 'none';
+        imageInput.classList.remove('is-invalid');
+        imageError.textContent = '';
+        imagePreview.style.display = 'none';
 
         if (file) {
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            const maxSize = 3 * 1024 * 1024; 
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            const maxSize = 2 * 1024 * 1024; // 2MB
 
             if (!validTypes.includes(file.type)) {
-                imageError.textContent = "Only JPG, PNG, or GIF formats are allowed.";
-                e.target.classList.add('is-invalid');
+                imageError.textContent = "Only JPG, PNG, GIF, or WebP formats are allowed.";
+                imageInput.classList.add('is-invalid');
             } else if (file.size > maxSize) {
                 imageError.textContent = "Image size must not exceed 2MB.";
-                e.target.classList.add('is-invalid');
+                imageInput.classList.add('is-invalid');
             } else {
-                e.target.classList.remove('is-invalid');
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
+                imagePreview.src = URL.createObjectURL(file);
+                imagePreview.style.display = 'block';
             }
         }
     });
 
-    // Form validation
     document.getElementById('bannerForm').addEventListener('submit', function (event) {
         const form = event.target;
-        if (!form.checkValidity()) {
+        let isValid = form.checkValidity();
+
+        // Check if image input was invalidated by JS validation
+        if (imageInput.classList.contains('is-invalid')) {
+            isValid = false;
+        }
+
+        if (!isValid) {
             event.preventDefault();
             event.stopPropagation();
+            errorAlert.classList.remove('d-none');
+        } else {
+            errorAlert.classList.add('d-none');
         }
 
         form.classList.add('was-validated');

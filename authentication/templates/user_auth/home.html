@@ -10,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tastefortails </title>
-    <link rel="icon" type="image/jpg" href="{% static 'evo_time-removebg.png' %}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
@@ -103,108 +103,87 @@
     
     {% block product %}
 
+<link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
 
-<!-- Hero Section -->
-<section class="hero-section h-screen flex items-center justify-center text-white relative pt-16 overflow-hidden bg-gradient-to-br from-pink-600 via-pink-600 to-pink-600">
-    <div class="absolute inset-0 overflow-hidden">
-        <div class="clock-hand absolute top-1/4 left-1/4 w-1 h-20 bg-white opacity-20 origin-bottom transform -rotate-45"></div>
-        <div class="clock-circle absolute top-1/3 right-1/4 w-32 h-32 border-4 border-white rounded-full opacity-10"></div>
-        <div class="clock-dot absolute bottom-1/3 left-1/3 w-4 h-4 bg-white rounded-full opacity-30"></div>
-        <div class="gear absolute top-1/2 right-1/3 w-16 h-16 border-2 border-white rounded-full opacity-15">
-            <div class="absolute inset-0 border-2 border-white rounded-full transform rotate-45"></div>
+{% if messages %}
+  
+  <div id="messageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+      <h2 class="text-xl font-semibold text-danger mb-4">Hurray !! </h2>
+      
+      {% for message in messages %}
+        <div class="mb-2 p-4 rounded 
+          {% if message.tags == 'error' or message.tags == 'danger' %}
+            bg-red-100 text-red-800
+          {% elif message.tags == 'success' %}
+            bg-green-100 text-green-800
+          {% elif message.tags == 'warning' %}
+            bg-yellow-100 text-yellow-800
+          {% else %}
+            bg-blue-100 text-blue-800
+          {% endif %}
+        ">
+          {{ message }}
         </div>
+      {% endfor %}
+
+      <button id="closeModal" class="mt-4 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">Close</button>
     </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('messageModal');
+    const closeBtn = document.getElementById('closeModal');
+
+    modal.style.display = 'flex'; 
+
     
-    <div class="container mx-auto px-6 text-center relative z-10">
-    <div class="watch-icon mb-6 opacity-90">
-        <i data-aos="zoom-in" data-aos-duration="1200" class="fas fa-dog text-5xl text-orange-400"></i>
-    </div>
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
 
-    <h1 data-aos="fade-up" data-aos-duration="1000" class="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-        Nourish with <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-red-400 font-extrabold">Taste for Tails</span>
-    </h1>
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
 
-    <p data-aos="fade-up" data-aos-delay="200" data-aos-duration="1000" class="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed font-light text-gray-200">
-        Wholesome, nutritious, and tail-waggingly good — premium dog food made with real ingredients and unconditional love.
-    </p>
 
-    <div data-aos="fade-up" data-aos-delay="400" data-aos-duration="1000" class="flex flex-col sm:flex-row justify-center gap-6">
-        <a href="{% url 'products:list' %}" class="group bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-10 rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
-            <span class="flex items-center justify-center">
-                <i class="fas fa-bone mr-2 group-hover:rotate-12 transition-transform duration-300"></i>
-                Shop Dog Food
-            </span>
-        </a>
-    </div>
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 5000);
+  });
+</script>
 
-    <div data-aos="fade-up" data-aos-delay="600" class="mt-16 inline-block">
-        <div class="text-xs uppercase tracking-widest text-orange-400 mb-2 animate-pulse">Customer Favorite</div>
-        <div class="flex items-center justify-center gap-2">
-            <div class="h-px w-12 bg-white/30"></div>
-            <span class="text-lg text-white/90 font-medium">Pedigree Adult Chicken & Rice</span>
-            <div class="h-px w-12 bg-white/30"></div>
+{% endif %}
+
+
+
+<div class="swiper hero-swiper h-[600px] pt-0.5">
+    <div class="swiper-wrapper">
+
+        {% for banner in banners %}
+        <div class="swiper-slide relative h-screen flex items-center justify-center text-white">
+            
+            <img src="{{ banner.image.url }}" alt="{{ banner.name }}"
+                 class="absolute inset-0 w-full h-full object-cover object-center z-0" />   
         </div>
+        {% endfor %}
+
     </div>
+
+    <!-- Navigation & Pagination -->
+    <div class="swiper-pagination"></div>
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
 </div>
 
-    <div class="scroll-indicator absolute bottom-16 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
-        <i class="fas fa-chevron-down text-2xl"></i>
-    </div>
-    
-    <div class="custom-shape-divider">
-        <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill" fill="rgba(255,255,255,0.1)"></path>
-        </svg>
-    </div>
-    
-    <style>
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .product-card {
-            animation: fadeIn 0.5s ease-out forwards;
-            animation-delay: calc(var(--animation-order, 0) * 0.1s);
-        }
-        
-        .line-clamp-1 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 1;
-        }
-        .hero-section .clock-hand {
-            animation: rotate 20s linear infinite;
-        }
-        
-        .hero-section .gear {
-            animation: rotate 30s linear infinite;
-        }
-        
-        .hero-section .clock-circle {
-            animation: pulse 5s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.1; }
-            50% { transform: scale(1.1); opacity: 0.2; }
-        }
-        
-        .text-gradient {
-            background: linear-gradient(to right, #818cf8, #a78bfa, #f472b6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-    </style>
-</section>
 
-    <!-- Category Features Section  Section -->
+
+
+
     <section class="py-16 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">
@@ -322,7 +301,6 @@
                     {% endwith %}
                 </div>
 
-                <!-- Wishlist Button (outside card for absolute positioning) -->
                 <div class="absolute top-3 right-3 z-10">
                     <button 
                         class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
@@ -339,6 +317,8 @@
         </div>
     </div>
 </section>
+
+
 
 <!-- Coupons Section -->
 <section class="py-16 bg-white">
@@ -477,7 +457,6 @@
                             <span class="text-gray-500 ml-1">({{ product.reviews.count }})</span>
                         </div>
 
-                        <!-- Price & Discount -->
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <span class="text-2xl font-bold text-gray-900">₹{{ first_variant.variant_price }}</span>
@@ -510,7 +489,6 @@
                     {% endwith %}
                 </div>
 
-                <!-- Wishlist Button (outside card for absolute positioning) -->
                 <div class="absolute top-3 right-3 z-10">
                     <button 
                         class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
@@ -536,6 +514,55 @@
     <div class="p-4"></div>
 </section>
 
+
+<section>
+  <div class="w-full min-h-screen bg-pink-900 flex flex-col md:flex-row items-center justify-between relative z-10 text-left">
+
+
+    <div class="md:w-1/2 w-full h-screen relative overflow-hidden">
+      <video autoplay muted loop playsinline class="absolute top-0 left-0 w-full h-full object-cover " style="transform: scaleX(-1);"
+>
+        <source src="https://res.cloudinary.com/dig0n3abt/video/upload/v1700000000/7683653-uhd_3840_2160_25fps_jitaqd.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    
+    <div class="md:w-1/2 w-full text-center md:text-left py-12 relative z-10">
+      <div class="watch-icon mb-6 opacity-90">
+        <i data-aos="zoom-in" data-aos-duration="1200" class="fas fa-dog text-5xl text-orange-400"></i>
+      </div>
+
+      <h1 data-aos="fade-up" data-aos-duration="1000" class="text-5xl md:text-6xl font-bold mb-6 tracking-tight leading-tight text-white">
+        Nourish with <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-red-400 font-extrabold">Taste for Tails</span>
+      </h1>
+
+      <p data-aos="fade-up" data-aos-delay="200" data-aos-duration="1000" class="text-xl md:text-2xl mb-10 leading-relaxed font-light text-gray-200">
+        Wholesome, nutritious, and tail-waggingly good — premium dog food made with real ingredients and unconditional love.
+      </p>
+
+      <div data-aos="fade-up" data-aos-delay="400" data-aos-duration="1000" class="flex flex-col sm:flex-row justify-center md:justify-center gap-6">
+        <a href="{% url 'products:list' %}" class="group bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-10 rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-lg">
+          <span class="flex items-center justify-center">
+            <i class="fas fa-bone mr-2 group-hover:rotate-12 transition-transform duration-300"></i>
+            Shop Dog Food
+          </span>
+        </a>
+      </div>
+
+      <div data-aos="fade-up" data-aos-delay="600" class="mt-12 inline-block">
+        <div class="text-xs uppercase tracking-widest text-orange-400 mb-2 animate-pulse">The BEST FOR YOUR BEST FRIEND</div>
+        <div class="flex items-center justify-center md:justify-start gap-2">
+          <div class="h-px w-12 bg-white/30"></div>
+          <span class="text-lg text-white/90 font-medium">Explore & Explode </span>
+          <div class="h-px w-12 bg-white/30"></div>
+        </div>
+      </div>
+    </div>
+
+   
+
+  </div>
+</section>
 
 
 
@@ -997,6 +1024,32 @@ function toggleWishlist(variantId) {
 }
 
     </script>
+
+    <!-- Swiper JS -->
+<script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+
+<!-- Initialize Swiper -->
+<script>
+    new Swiper('.hero-swiper', {
+        loop: true,
+        autoplay: {
+            delay: 5000,
+            disableOnInteraction: false,
+        },
+        effect: 'fade',
+        speed: 800,
+        pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+        },
+        navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+        },
+    });
+</script>
+
+
 </body>
 </html>
 

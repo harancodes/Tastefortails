@@ -4,7 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 def send_otp(email):
-    otp = ''.join(random.choices(string.digits, k=6))  # Generate a 6-digit OTP
+    otp = ''.join(random.choices(string.digits, k=6))  
 
     # Email content
     subject = 'Taste for Tails- Your OTP Code'
@@ -12,8 +12,8 @@ def send_otp(email):
     from_email = settings.EMAIL_HOST_USER
     recipient_list = [email]
 
-    # Send email
+    
     send_mail(subject, message, from_email, recipient_list)
 
-    # Return the OTP for session storage
+    
     return otp

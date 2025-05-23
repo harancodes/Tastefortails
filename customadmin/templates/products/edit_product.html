@@ -1,11 +1,22 @@
 {% extends 'admin_base.html' %}
 {% block content %}
 <div class="container mt-5">
+
+
+ <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li>
+      <li class="breadcrumb-item active "  aria-current="page"><a href="{% url 'customadmin:product_list' %}" >Product List</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Edit Product </li>
+    </ol>
+  </nav>
   <h2>Edit Product</h2>
+
+  
   
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      <div class="text-danger alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   {% endif %}
   
@@ -47,12 +58,16 @@
       </select>
     </div>
 
-    <div class="mb-3">
-      <label for="product_type" class="form-label">Product Type *</label>
-      <input type="text" class="form-control" id="product_type" name="product_type" value="{{ product.product_type }}" 
-             required minlength="2" maxlength="50">
-      <div class="invalid-feedback">Product type is required (2-50 characters).</div>
-    </div>
+  <div class="mb-3">
+  <label for="product_type" class="form-label">Product Type </label>
+  <select class="form-select" id="product_type" name="product_type" >
+    <option value="" selected disabled>Select a type</option>
+    <option value="Dry">Dry</option>
+    <option value="Wet">Wet</option>
+    <option value="Gravy">Gravy</option>
+  </select>
+  <div class="invalid-feedback">Please select a valid product type.</div>
+</div> 
 
     <div class="mb-3">
       <label for="stock" class="form-label">Total Stock *</label>

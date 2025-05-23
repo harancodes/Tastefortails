@@ -2,13 +2,45 @@
 {% load static %}
 
 {% block content %}
+
 <div class="container-fluid mt-4">
-  <!-- Debug Section (Remove later) -->
   <div class="alert alert-info">
     Showing {{ products|length }} of {{ products.paginator.count }} products
   </div>
 
-  <!-- Header -->
+<style>
+  .fade-out {
+    animation: fadeOut 1s ease-in-out forwards;
+    animation-delay: 1s;
+  }
+
+  @keyframes fadeOut {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+</style>
+
+{% if messages %}
+  <div id="messages-container">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade-out" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+ <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Dashboard</li>
+      <li class="breadcrumb-item active" aria-current="page">Product List</li>
+    </ol>
+  </nav>
+
+  
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Product Management</h2> 
     <a href="{% url 'customadmin:add_product' %}" class="btn btn-success">
@@ -23,7 +55,7 @@
         <input type="text" name="search" class="form-control me-2" 
                placeholder="Search products..." value="{{ request.GET.search }}">
         <button type="submit" class="btn btn-outline-primary me-2">Search</button>
-        <a href="{% url 'customadmin:category_list' %}" class="btn btn-outline-secondary">Reset</a>
+        <a href="{% url 'customadmin:product_list' %}" class="btn btn-outline-secondary">Reset</a>
       </form>
     </div>
     <div class="col-md-6 text-end">
@@ -254,6 +286,19 @@ document.addEventListener('DOMContentLoaded', function () {
     actionSpan.textContent = action;
   });
 });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const alertList = document.querySelectorAll('.alert-dismissible');
+    alertList.forEach(alert => {
+      // Auto close after 3 seconds
+      setTimeout(() => {
+
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+      }, 1000); 
+    });
+  });
+
 </script>
 
 

@@ -1,11 +1,24 @@
 {% extends 'admin_base.html' %}
 
 {% block content %}
+
+
 <div class="container-fluid px-4 mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="fw-bold">CATEGORY</h2>
     <a href="{% url 'customadmin:add_category' %}" class="btn btn-primary">Add Category</a>
   </div>
+{% if messages %}
+  <div id="messages-container">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -170,6 +183,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+      window.addEventListener('DOMContentLoaded', () => {
+    const alertList = document.querySelectorAll('.alert-dismissible');
+    alertList.forEach(alert => {
+      // Auto close after 3 seconds
+      setTimeout(() => {
+        // Bootstrap 5's alert instance to close alert
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+      }, 3000); // 3000ms = 3 seconds
+    });
+  });
+
 </script>
 
 {% endblock %}

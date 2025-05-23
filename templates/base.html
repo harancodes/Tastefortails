@@ -5,21 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Taste for Tails{% endblock %}</title>
 
-    <!-- Font Awesome -->
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Tailwind CSS -->
+    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
-    <!-- Bootstrap 5 CSS -->
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+   <link rel="icon" type="image/gif" href="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMXpjZ3RsN2lyd3FjaDI0Y2lsemQyZmFudWc4cTRhMjJiamhpd2YxaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/BV8qOukevm7bCTz6vW/giphy.gif">
 
     <style>
         :root {
-            --primary-blue: #0047ba;
+            --primary-blue: blue;
             --secondary-blue: #003399;
             --accent-orange: #ff7f27;
+           
+     
+
         }
+
+        body {
+  font-family: 'Poppins', sans-serif;
+  scroll-behavior: smooth;
+  font-weight: bolder;
+}
+        a {
+    text-decoration: none !important;
+}
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -33,6 +48,7 @@
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 1;
         }
+      
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -40,7 +56,7 @@
 
     <!-- Top Banner -->
     <div class="bg-white text-center py-2 text-sm border-b border-gray-200">
-        Get 10% off for your first purchase use TRT1
+        Get 10% off for your first purchase use T0T1
     </div>
 
     <!-- Header -->
@@ -87,7 +103,6 @@
                     </a>
 
                     {% if user.is_authenticated %}
-                    <!-- Dropdown Menu -->
                     <div class="dropdown">
                         <a class="dropdown-toggle d-flex align-items-center text-white hover:text-yellow-200 transition" href="#" role="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="far fa-user text-xl"></i>
@@ -97,7 +112,7 @@
     {% elif request.user.first_name %}
         {{ request.user.first_name }}
     {% else %}
-        {{ request.user.email }}
+        {{ request.user.full_name }}
     {% endif %}
 </span>
 
@@ -105,12 +120,12 @@
 
                         <ul class="dropdown-menu dropdown-menu-end mt-2 rounded-md shadow-md animate-fadeIn" aria-labelledby="userDropdown">
                             <li>
-                                <a class="dropdown-item d-flex align-items-center" href="#">
+                                <a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:account_overview' %}">
                                     <i class="fas fa-user-circle me-2 text-primary"></i> Account
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center" href="#">
+                                <a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:order_list' %}">
                                     <i class="fas fa-box me-2 text-success"></i> My Orders
                                 </a>
                             </li>
@@ -126,19 +141,22 @@
                         </ul>
                     </div>
                     {% else %}
-                    <a href="{% url 'user_login' %}" class="text-white hover:text-yellow-200 transition mr-2">
-                        <i class="far fa-user text-xl"></i>
-                    </a>
+                 <a href="{% url 'user_login' %}" 
+   class="bg-red-500 hover:bg-red-600 text-white font-lighter py-2 px-4 rounded-md transition duration-200 flex items-center gap-2">
+    <i class="fas fa-user-circle text-white text-lg"></i>
+    LOGIN / SIGNUP
+</a>
+
                     {% endif %}
 
-                    <!-- Mobile Menu Button -->
+                    
                     <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
                         <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Mobile Navigation -->
+            
             <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2">
                 <a href="{% url 'home' %}" class="block py-2 text-white font-medium">Home</a>
                 <a href="#" class="block py-2 text-gray-200">Brands</a>
@@ -156,7 +174,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-blue-800 text-white py-12">
+    <footer class="bg-blue-700 text-white py-12">
         <div class="container mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
@@ -221,7 +239,7 @@
         });
     </script>
 
-    <!-- Bootstrap Bundle JS (with Popper.js) -->
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     {% block extra_js %}{% endblock %}

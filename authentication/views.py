@@ -17,7 +17,6 @@ from datetime import timedelta
 from django.db import transaction
 from django.urls import reverse
 from decimal import Decimal
-from django.http import HttpResponse
 from django.views import View
 from django.db.models import Q
 from django.contrib.auth.decorators import user_passes_test
@@ -29,6 +28,7 @@ from django.contrib.auth import login
 from authentication.models import CustomUser  
 from product.models import Brand, ProductImage,Products,Category
 from django.db.models import Min
+from customadmin.models import Banner
 
 
 
@@ -48,9 +48,6 @@ def admin_required(view_func):
 
 
 
-from django.contrib.auth import authenticate, login, get_user_model
-from django.shortcuts import render, redirect
-from django.views.decorators.cache import never_cache
 
 User = get_user_model()
 
@@ -123,15 +120,16 @@ def user_signup(request):
             messages.error(request, "Passwords do not match.")
             return redirect('user_signup')
 
-        if CustomUser .objects.filter(email=email).exists():
+        if CustomUser.objects.filter(email=email).exists():
             messages.error(request, "An account with this email already exists.")
             return redirect('user_signup')
 
-        if CustomUser .objects.filter(phone_number=phone_number).exists():
+        if CustomUser.objects.filter(phone_number=phone_number).exists():
             messages.error(request, "An account with this phone number already exists.")
             return redirect('user_signup')
 
         request.session.flush()
+
 
         otp = send_otp(email)
 
@@ -343,7 +341,6 @@ def admin_login(request):
 
 
 @block_superuser_navigation
-
 def home(request):
     
     # if not request.user.is_authenticated:
@@ -355,11 +352,21 @@ def home(request):
     print("User is authenticated, rendering home.")
     
 
-    new_products = Products.objects.filter(is_active=True)[:8]  
-    lowest_price_products = Products.objects.filter(is_active=True) \
+    new_products = Products.objects.filter(is_active=True,
+        brand__is_active=True,
+        brand__is_listed=True,
+        category__is_active=True,
+        category__is_listed=True,
+                                           )[:8]  
+    lowest_price_products = Products.objects.filter(is_active=True , 
+        brand__is_active=True,
+        brand__is_listed=True,
+        category__is_active=True,
+        category__is_listed=True,) \
         .annotate(min_price=Min('variants__variant_price')) \
         .order_by('min_price') 
     categories = Category.objects.filter(is_active=True)  
+    banners = Banner.objects.filter(is_active=True, is_listed=True).order_by('-created_at')
     
 
     context = {
@@ -367,6 +374,7 @@ def home(request):
         'new_products': new_products [:4],
         'categories': categories,
         'lowest_price_products' : lowest_price_products[:5],
+        'banners': banners
     }
 
     return render(request, 'user_auth/home.html', context)

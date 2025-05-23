@@ -1,4 +1,4 @@
-{% extends "user_profile/account_overview.html" %}
+{% extends "account_overview.html" %}
 {% block user %}
 <!-- Load Razorpay script -->
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -6,7 +6,7 @@
 <div class="animate-fade-in">
     <!-- Breadcrumbs -->
     <div class="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-        <a href="{% url 'order_list' %}" class="hover:text-blue-600 transition-colors">My Orders</a>
+        <a href="{% url 'user_profile:order_list' %}" class="hover:text-blue-600 transition-colors">My Orders</a>
         <span>/</span>
         <span>Order #{{ order_item.order.id }}</span>
         <span>/</span>
@@ -94,7 +94,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Price</p>
-                            <p class="font-bold text-blue-600">${{ order_item.total_price }}</p>
+                            <p class="font-bold text-blue-600">#</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Date Ordered</p>
@@ -227,7 +227,7 @@
                         {% endif %}
                         
                         {% if order_item.can_be_cancelled %}
-                            <form method="post" action="{% url 'cancel_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to cancel this item?');">
+                            <form method="post" action="{% url 'user_profile:cancel_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to cancel this item?');">
                                 {% csrf_token %}
                                 <button type="submit" class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm">
                                     Cancel Item
@@ -375,7 +375,7 @@
                                 }).showToast();
                                 // Redirect to the same order item detail page after a short delay
                                 setTimeout(() => {
-                                    window.location.href = "{% url 'order_item_detail' order_item.id %}";
+                                    window.location.href = "{% url 'user_profile:order_item_detail' order_item.id %}";
                                 }, 3000);
                             } else {
                                 Toastify({

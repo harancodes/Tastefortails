@@ -1,6 +1,13 @@
 {% extends 'admin_base.html' %}
 
 {% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">Dashboard</li>
+      <li class="breadcrumb-item active" aria-current="page">Category List</li>
+      <li class="breadcrumb-item active" aria-current="page">Add Category </li>
+    </ol>
+  </nav>
 <div class="container mt-4">
     <div class="card shadow rounded-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -11,14 +18,12 @@
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 
-                <!-- Category Name Field -->
                 <div class="mb-3">
                     <label for="name" class="form-label">Category Name</label>
-                    <input type="text" name="name" class="form-control" id="name" required placeholder="Enter category name">
+                    <input type="text" name="name" class="form-control" id="name"  placeholder="Enter category name">
                     <div class="text-danger small mt-1" id="nameError"></div>
                 </div>
 
-                <!-- Category Image Field -->
                 <div class="mb-3">
                     <label for="image" class="form-label">Category Image</label>
                     <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
@@ -28,13 +33,11 @@
                     </div>
                 </div>
 
-                <!-- Submit Buttons -->
                 <div class="d-flex justify-content-between">
                     <button type="submit" class="btn btn-success">Create Category</button>
                     <a href="{% url 'customadmin:category_list' %}" class="btn btn-secondary">Cancel</a>
                 </div>
 
-                <!-- Django Messages -->
                 {% if messages %}
                 <div class="mt-3">
                     {% for message in messages %}
@@ -61,14 +64,12 @@
     document.querySelector('form').addEventListener('submit', function (event) {
         let isValid = true;
 
-        // Clear previous errors
         document.getElementById('nameError').textContent = '';
         document.getElementById('imageError').textContent = '';
 
         const nameInput = document.getElementById('name');
         const imageInput = document.getElementById('imageInput');
 
-        // Validate Category Name
         const name = nameInput.value.trim();
         if (!name) {
             document.getElementById('nameError').textContent = 'Category name is required.';
@@ -78,7 +79,6 @@
             isValid = false;
         }
 
-        // Validate Image (type + size)
         if (imageInput.files.length > 0) {
             const file = imageInput.files[0];
             const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

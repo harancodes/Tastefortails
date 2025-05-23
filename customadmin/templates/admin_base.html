@@ -125,7 +125,7 @@
                 <i class="bi bi-box-seam"></i> Products
             </a>
             
-            <a href="#" class="nav-link {% if active_tab == 'order_list' %}active{% endif %}">
+            <a href="{% url 'customadmin:admin_order_list_view' %}" class="nav-link {% if active_tab == 'order_list' %}active{% endif %}">
                 <i class="bi bi-list-check"></i> Order List
             </a>
             
@@ -163,10 +163,12 @@
     </div>
 
     <div class="content-area">
-        <!-- Breadcrumb -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li>
+                <!-- <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li> -->
+
+      
+   
                 {% block breadcrumb %}{% endblock %}
             </ol>
         </nav>

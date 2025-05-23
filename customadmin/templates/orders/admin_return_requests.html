@@ -1,0 +1,62 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block admin_side %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Return Requests</h1>
+
+    {% if return_requests %}
+        <div class="space-y-4">
+            {% for item in return_requests %}
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 ease-in-out">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <div>
+                            <span class="text-sm text-gray-500">Order ID:</span>
+                            <span class="font-medium text-gray-800 ml-2">{{ item.order.id }}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            {{ item.order.created_at|date:"F d, Y" }}
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Customer Details</h2>
+                            <p class="text-sm text-gray-600"><strong>Name:</strong> {{ item.order.user.full_name }}</p>
+                            <p class="text-sm text-gray-600"><strong>Email:</strong> {{ item.order.user.email }}</p>
+                        </div>
+
+                        <h2 class="text-lg font-semibold text-gray-800">Return Request Details</h2>
+                        <ul class="mt-2 space-y-2">
+                            <li class="flex justify-between items-center border-b border-gray-200 pb-2">
+                                <div>
+                                    <span class="text-sm text-gray-600">{{ item.product_variant.product.name }} ({{ item.product_variant.color }})</span>
+                                    <span class="block text-xs text-gray-500">Quantity: {{ item.quantity }}</span>
+                                    <span class="block text-xs text-gray-500">Price: ₹{{ item.total_price }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs text-gray-500">Reason</span>
+                                    <span class="text-sm text-gray-600">{{ item.return_reason }}</span>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <div class="mt-4">
+                            <form action="{% url 'admin_handle_return_request' item.id %}" method="POST" class="inline-flex">
+                                {% csrf_token %}
+                                <button type="submit" name="action" value="approve" class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                                    Approve
+                                </button>
+                                <button type="submit" name="action" value="reject" class="ml-2 px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                                    Reject
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-500">No return requests found.</p>
+    {% endif %}
+</div>
+{% endblock %}

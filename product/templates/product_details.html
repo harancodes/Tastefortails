@@ -87,11 +87,7 @@
 
 
 
-
 <div class="container mx-auto px-4 py-8">
-
-    
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
         <div class="flex flex-col items-center space-y-6 relative">
             <div id="gallery-main" class="relative w-full max-w-[500px] h-[500px] overflow-hidden rounded-xl shadow-lg">
@@ -247,20 +243,95 @@
                     class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex-grow flex items-center justify-center gap-2">
                     <i class="fas fa-shopping-cart"></i> Add to Cart
                 </button>
-                <button id="buyNowBtn" 
+             <button id="addToCartBtn"
+                    onclick="event.preventDefault(); buyNowBtn({{ variants.0.id }}, document.getElementById('quantity').value)"
+                    class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex-grow flex items-center justify-center gap-2">
+                    <i class="fas fa-shopping-bag"></i> Buy Now
+                </button>
+            
+
+                <!-- <button id="buyNowBtn" 
                     onclick="window.location.href = `/checkout/?variant=${document.querySelector('.variant-option.active').dataset.variantId}&qty=${document.getElementById('quantity').value}`"
                     class="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors flex-grow flex items-center justify-center gap-2">
                     <i class="fas fa-bolt"></i> Buy Now
-                </button>
+                </button> -->
             </div>
         </div>
     </div>
 </div>
 
- 
+<section class="mb-16">
+  <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-3xl font-semibold text-gray-800">Similar Products</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for product in similar_products %}
+      {% if product.is_active and product.is_listed %}
+      <a href="{% url 'product:detail' product.slug %}" class="group block">
+        <div class="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-[1.02]">
+          <div class="relative">
+            {% if product.thumbnail %}
+            <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-60 object-cover">
+            {% else %}
+            <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-60 object-cover">
+            {% endif %}
+
+            {% if product.offer_percentage > 0 %}
+            <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+              <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
+            </div>
+            {% endif %}
+
+            
+            <div class="absolute top-3 right-3">
+              <button type="button" onclick="event.preventDefault(); toggleWishlist({{ product.variants.first.id }});" class="bg-white p-2 rounded-full shadow-md hover:shadow-lg transition">
+                <i class="far fa-heart text-red-500"></i>
+              </button>
+            </div>
+
+            
+            <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+              <div class="bg-white bg-opacity-90 px-4 py-2 rounded-md text-sm text-gray-800 font-medium">
+                View Details
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 space-y-2">
+            {% if product.brand %}
+            <p class="text-blue-600 text-xs uppercase font-semibold">{{ product.brand.name }}</p>
+            {% endif %}
+            <h3 class="text-base font-semibold text-gray-800 group-hover:text-blue-700 truncate">{{ product.name }}</h3>
+
+            <!-- Ratings -->
+            <div class="flex items-center text-yellow-400 text-sm">
+              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+              <span class="ml-2 text-gray-500 text-xs">(24)</span>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+              <p class="text-lg font-bold text-gray-900">₹{{ min_price }}</p>
+              {% if product.variants.all %}
+              <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})"
+                class="flex items-center gap-2 bg-blue-700 text-white px-3 py-1.5 rounded-full text-sm hover:bg-blue-800 transition">
+                <i class="fas fa-shopping-cart"></i> Add
+              </button>
+              {% else %}
+              <span class="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full">Out of Stock</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
       
-
-
 
 <style>
     @keyframes fadeIn {
@@ -749,41 +820,41 @@
         }
     });
 
-    function addCartItem(variantId, quantity) {
-        if (!variantId) return;
+  function addCartItem(variantId, quantity) {
+    if (!variantId) return;
 
-        fetch('/cart/add/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                variant_id: variantId,
-                quantity: quantity || 1
-            })
+    fetch(`/cart/add_to_cart/${variantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            quantity: quantity || 1
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast("Added to Cart!", "success");
-                if (data.cart_count !== undefined) {
-                    const cartCountElement = document.getElementById("cartCount");
-                    if (cartCountElement) {
-                        cartCountElement.textContent = data.cart_count;
-                        cartCountElement.classList.add("animate-bounce");
-                        setTimeout(() => cartCountElement.classList.remove("animate-bounce"), 1000);
-                    }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast("Added to Cart!", "success");
+            if (data.cart_count !== undefined) {
+                const cartCountElement = document.getElementById("cartCount");
+                if (cartCountElement) {
+                    cartCountElement.textContent = data.cart_count;
+                    cartCountElement.classList.add("animate-bounce");
+                    setTimeout(() => cartCountElement.classList.remove("animate-bounce"), 1000);
                 }
-            } else {
-                showToast(data.message || "Failed to add to cart", "error");
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast("An error occurred. Please try again.", "error");
-        });
-    }
+        } else {
+            showToast(data.error || "Failed to add to cart", "error");  // Updated to show `error`
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast("An error occurred. Please try again.", "error");
+    });
+}
+
 
     function showToast(message, type) {
         const toast = document.createElement("div");
@@ -808,6 +879,23 @@
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
+    document.addEventListener("DOMContentLoaded", function () {
+    const addToCartBtn = document.getElementById("addToCartBtn");
+    addToCartBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+
+        const variantId = this.getAttribute("data-variant-id");
+        const quantity = document.getElementById("quantity").value;
+
+        if (!variantId || !quantity) {
+            showToast("Missing variant or quantity", "error");
+            return;
+        }
+
+        addCartItem(parseInt(variantId), parseInt(quantity));
+    });
+});
+
 </script>
 
 {% endblock %}

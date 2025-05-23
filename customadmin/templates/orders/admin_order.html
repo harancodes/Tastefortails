@@ -1,0 +1,129 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block admin_side %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">All Orders</h1>
+    <a href="{% url 'customadmin:admin_return_requests' %}" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+        View Return Requests
+    </a>
+
+    {% if orders %}
+        <div class="space-y-4">
+            {% for order in orders %}
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 ease-in-out {% if order.status == 'cancelled' %}bg-red-50 border-red-200{% endif %}">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <div>
+                            <span class="text-sm text-gray-500">Order ID:</span>
+                            <span class="font-medium text-gray-800 ml-2">{{ order.id }}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            {{ order.created_at|date:"F d, Y" }}
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Customer Details</h2>
+                            <p class="text-sm text-gray-600"><strong>Name:</strong> {{ order.user.full_name }}</p>
+                            <p class="text-sm text-gray-600"><strong>Email:</strong> {{ order.user.email }}</p>
+                        </div>
+
+                        <h2 class="text-lg font-semibold text-gray-800">Ordered Items</h2>
+                        <ul class="mt-2 space-y-2">
+                            {% for item in order.items.all %}
+                            <li class="flex justify-between items-center border-b border-gray-200 pb-2">
+                                <div>
+                                    <span class="text-sm text-gray-600">{{ item.product_variant.product.name }} ({{ item.product_variant.color }})</span>
+                                    <span class="block text-xs text-gray-500">Quantity: {{ item.quantity }}</span>
+                                    <span class="block text-xs text-gray-500">Price: ₹</span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs text-gray-500">Status</span>
+                                    {% if item.status == 'cancelled' %}
+                                        <span class="text-sm text-red-600">Cancelled</span>
+                                    {% elif item.status == 'returned' %}
+                                        <span class="text-sm text-green-600">Returned</span>
+                                    {% else %}
+                                        <form action="{% url 'customadmin:admin_change_orderitem_status' item.id %}" method="POST" class="inline-flex">
+                                            {% csrf_token %}
+                                            <select name="status" class="border border-gray-300 rounded-md text-sm">
+                                                <option value="pending" {% if item.status == 'pending' %}selected{% endif %}>Pending</option>
+                                                <option value="processing" {% if item.status == 'processing' %}selected{% endif %}>Processing</option>
+                                                <option value="shipped" {% if item.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                                <option value="delivered" {% if item.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                                <option value="cancelled" {% if item.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                                <option value="returned" {% if item.status == 'returned' %}selected{% endif %}>Returned</option>
+                                            </select>
+                                            <button type="submit" class="ml-2 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                Update
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+
+                        <div class="mt-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Order Summary</h2>
+                            <p class="text-sm text-gray-600"><strong>Total Amount:</strong> ₹{{ order.total_amount }}</p>
+                            <p class="text-sm text-gray-600"><strong>Discount:</strong> ₹{{ order.discount }}</p>
+                            <p class="text-sm text-gray-600"><strong>Shipping Charge:</strong> ₹{{ order.shipping_charge }}</p>
+                            <p class="text-sm text-gray-600"><strong>Final Amount:</strong> ₹{{ order.total_amount|floatformat:2 }}</p>
+                        </div>
+
+                        <div class="mt-4">
+                            <h2 class="text-lg font-semibold text-gray-800">Payment Status</h2>
+                            <p class="text-sm text-gray-600"><strong>Status:</strong> {{ order.payment.status }}</p>
+                            {% if order.payment.status == 'refund_completed' %}
+                                <p class="text-sm text-green-600">Refund Completed</p>
+                            {% elif order.payment.status == 'refund_pending' %}
+                                <p class="text-sm text-yellow-600">Refund Pending</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-500">No orders found.</p>
+    {% endif %}
+
+    <!-- Pagination -->
+<div class="mt-6 flex justify-center">
+    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        {% if orders.has_previous %}
+            <a href="?page={{ orders.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <span class="sr-only">Previous</span>
+                <!-- Heroicon name: solid/chevron-left -->
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+            </a>
+        {% endif %}
+
+        {% for num in orders.paginator.page_range %}
+            {% if orders.number == num %}
+                <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-500 text-white text-sm font-medium">
+                    {{ num }}
+                </a>
+            {% else %}
+                <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{ num }}
+                </a>
+            {% endif %}
+        {% endfor %}
+
+        {% if orders.has_next %}
+            <a href="?page={{ orders.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <span class="sr-only">Next</span>
+                <!-- Heroicon name: solid/chevron-right -->
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+            </a>
+        {% endif %}
+    </nav>
+</div>
+</div>
+{% endblock %}
