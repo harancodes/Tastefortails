@@ -217,7 +217,7 @@
                         {% if order_item.status == 'delivered' %}
                             
                             {% if order_item.can_be_returned %}
-                                <form method="post" action="{% url 'return_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to return this item?');">
+                                <form method="post" action="{% url 'user_profile:return_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to return this item?');">
                                     {% csrf_token %}
                                     <button type="submit" class="px-4 py-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors text-sm">
                                         Return Item
@@ -251,7 +251,7 @@
     <div class="mt-8 bg-gray-50 p-6 rounded-xl shadow-md">
         <h4 class="text-lg font-semibold mb-4">Rate & Review This Product</h4>
         
-        <form method="post" action="{% url 'submit_review' order_item.id %}">
+        <form method="post" action="{% url 'user_profile:submit_review' order_item.id %}">
             {% csrf_token %}
             
             <!-- Star Rating -->

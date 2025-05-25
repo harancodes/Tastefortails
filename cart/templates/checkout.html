@@ -123,374 +123,336 @@
   {% for message in messages %}
     <div class="text-danger alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
-{% endif %}
+  {% endif %}
 
+  <form id="checkoutForm" method="POST" action="{% url 'cart:checkout' %}{% if buy_now_item %}?variant_id={{ buy_now_item.id }}{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="original_total_price" id="original_total_price" value="{{ cart_total }}">
+    <input type="hidden" name="discounted_total_price" id="discounted_total_price" value="{{ cart_total }}">
+    <div class="container mx-auto p-4">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-6">
 
-  
-<form id="checkoutForm" method="POST" action="{% url 'cart:checkout' %}{% if buy_now_item %}?variant_id={{ buy_now_item.id }}{% endif %}">
-  {% csrf_token %}
-  <div class="container mx-auto p-4">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <!-- Left Column -->
-      <div class="lg:col-span-2 space-y-6">
+          <!-- Shipping Information -->
+          <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
+            <h2 class="text-xl font-bold mb-4 gradient-text">Shipping Information</h2>
 
-        <!-- Shipping Information -->
-        <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
-          <h2 class="text-xl font-bold mb-4 gradient-text">Shipping Information</h2>
-
-          <div id="addressList" class="space-y-4">
-            {% for address in addresses %}
-            <div class="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50">
-              
-              <!-- Left: Radio + Address Info -->
-              <div class="flex items-start">
-                <input 
-                  type="radio" 
-                  id="address-{{ address.id }}" 
-                  name="address" 
-                  value="{{ address.id }}" 
-                  class="mr-4 mt-1 address-radio" 
-                  required>
-                <label for="address-{{ address.id }}" class="text-md text-gray-700 cursor-pointer">
-                  <p class="font-semibold text-gray-800">{{ address.name }}</p>
-                  <p class="text-gray-600">{{ address.address_line }}</p>
-                  <p class="text-gray-600">{{ address.city }}, {{ address.state }}</p>
-                  <p class="text-gray-600">{{ address.country }} - {{ address.postal_code }}</p>
-                  {% if address.phone %}
-                    <p class="text-gray-600">Phone: {{ address.phone }}</p>
-                  {% endif %}
-                  {% if address.email %}
-                    <p class="text-gray-600">Email: {{ address.email }}</p>
-                  {% endif %}
-                </label>
+            <div id="addressList" class="space-y-4">
+              {% for address in addresses %}
+              <div class="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50">
+                <div class="flex items-start">
+                  <input 
+                    type="radio" 
+                    id="address-{{ address.id }}" 
+                    name="address" 
+                    value="{{ address.id }}" 
+                    class="mr-4 mt-1 address-radio" 
+                    {% if address.is_default %}checked{% endif %}
+                    required>
+                  <label for="address-{{ address.id }}" class="text-md text-gray-700 cursor-pointer">
+                    <p class="font-semibold text-gray-800">{{ address.name|default:"Address" }} {% if address.is_default %}<span class="text-green-600 text-sm">(Default)</span>{% endif %}</p>
+                    <p class="text-gray-600">{{ address.get_address_type_display }}</p>
+                    <p class="text-gray-600">{{ address.address_line }}</p>
+                    <p class="text-gray-600">{{ address.city}}, {{ address.state }}</p>
+                    <p class="text-gray-600">{{ address.country }} - {{ address.postal_code }}</p>
+                    {% if address.phone %}
+                      <p class="text-gray-600">Phone: {{ address.phone }}</p>
+                    {% endif %}
+                  </label>
+                </div>
+                <div class="ml-4 mt-1">
+                  <button 
+                    type="button" 
+                    onclick="openEditModal({{ address.id }}, '{{ address.name|default:'' }}', '{{ address.phone|default:'' }}', '{{ address.address_line }}', '{{ address.address_type }}', '{{ address.city }}', '{{ address.state }}', '{{ address.postal_code }}', '{{ address.country }}', {{ address.is_default|yesno:'true,false' }})" 
+                    class="text-sm text-blue-500 hover:underline">
+                    ✏️ Edit
+                  </button>
+                </div>
               </div>
-
-              <!-- Right: Edit Button -->
-              <div class="ml-4 mt-1">
-                <button 
-                  type="button" 
-                  onclick="openEditModal({{ address.id }}, '{{ address.name }}', '{{ address.address_line }}', '{{ address.city }}', '{{ address.state }}', '{{ address.country }}', '{{ address.postal_code }}', '{{ address.phone|default:'' }}', '{{ address.email|default:'' }}')" 
-                  class="text-sm text-blue-500 hover:underline">
-                  ✏️ Edit
-                </button>
-              </div>
+              {% empty %}
+                <p class="text-red-500 text-sm">No addresses found. Please add an address to proceed.</p>
+              {% endfor %}
             </div>
-            {% empty %}
-              <p class="text-red-500 text-sm">No addresses found. Please add an address to proceed.</p>
-            {% endfor %}
+
+            <!-- Add New Address Button -->
+            <button id="addAddressBtn" type="button" onclick="openModal()" class="mt-4 w-full py-3 text-accent border border-accent rounded-lg hover:bg-blue-50 transition-all">
+              + Add Shipping Destination
+            </button>
           </div>
 
-          <!-- Add New Address Button -->
-          <button id="addAddressBtn" type="button" onclick="openModal()" class="mt-4 w-full py-3 text-accent border border-accent rounded-lg hover:bg-blue-50 transition-all">
-            + Add Shipping Destination
-          </button>
-        </div>
-
-        <!-- Edit Address Modal -->
-        <div id="editAddressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center">
-          <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
-            <h2 class="text-xl font-semibold mb-4">Edit Address</h2>
-            <form id="editAddressForm">
-              {% csrf_token %}
-              <input type="hidden" name="address_id" id="editAddressId">
-
-              <div class="space-y-3">
-                <input type="text" name="name" id="editName" placeholder="Name" class="w-full border p-2 rounded" required>
-                <input type="text" name="address_line" id="editAddressLine" placeholder="Address Line" class="w-full border p-2 rounded" required>
-                <input type="text" name="city" id="editCity" placeholder="City" class="w-full border p-2 rounded" required>
-                <input type="text" name="state" id="editState" placeholder="State" class="w-full border p-2 rounded" required>
-                <input type="text" name="country" id="editCountry" placeholder="Country" class="w-full border p-2 rounded" required>
-                <input type="text" name="postal_code" id="editPostalCode" placeholder="Postal Code" class="w-full border p-2 rounded" required>
-                <input type="text" name="phone" id="editPhone" placeholder="Phone (optional)" class="w-full border p-2 rounded">
-                <input type="email" name="email" id="editEmail" placeholder="Email (optional)" class="w-full border p-2 rounded">
-              </div>
-
-              <div class="flex justify-end mt-4 space-x-2">
-                <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
-              </div>
-            </form>
+          <!-- Order Notes -->
+          <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
+            <h2 class="text-xl font-bold mb-4 gradient-text">Order Notes</h2>
+            <textarea name="order_notes" placeholder="Add special instructions for delivery..." class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-accent"></textarea>
           </div>
         </div>
 
-        <!-- Order Notes -->
-        <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
-          <h2 class="text-xl font-bold mb-4 gradient-text">Order Notes</h2>
-          <textarea name="order_notes" placeholder="Add special instructions for delivery..." class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-accent"></textarea>
-        </div>
-      </div>
+        <div class="lg:col-span-1">
+          <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
+            <h2 class="text-xl font-bold mb-4 gradient-text">Order Summary</h2>
 
-      <!-- Right Column (Order Summary) -->
-      <div class="lg:col-span-1">
-        <div class="bg-white p-6 rounded-xl shadow-sm hover-effect">
-          <h2 class="text-xl font-bold mb-4 gradient-text">Order Summary</h2>
-
-          <!-- Order Items Table -->
-          <div class="mb-6">
-            <table class="w-full border-collapse bg-white shadow-sm rounded-md overflow-hidden">
-              <thead class="bg-gray-100">
-                <tr>
-                  <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Product</th>
-                  <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Price</th>
-                  <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Quantity</th>
-                  <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% if buy_now_item %}
-                <tr class="border-b hover:bg-gray-50 transition-colors">
-                  <td class="py-3 text-gray-700 text-sm px-4">{{ buy_now_item.product.name }}</td>
-                  <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
-                  <td class="py-3 text-gray-700 text-sm px-4">1</td>
-                  <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
-                </tr>
-                {% else %}
-                  {% for item in cart_items %}
-                  <tr class="border-b hover:bg-gray-50 transition-colors">
-                    <td class="py-3 text-gray-700 text-sm px-4">{{ item.product_variant.product.name }}</td>
-                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.product_variant.product.sales_price }}</td>
-                    <td class="py-3 text-gray-700 text-sm px-4">{{ item.quantity }}</td>
-                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.total_price }}</td>
+            <div class="mb-6">
+              <table class="w-full border-collapse bg-white shadow-sm rounded-md overflow-hidden">
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Product</th>
+                    <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Price</th>
+                    <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Quantity</th>
+                    <th class="py-3 text-left text-gray-600 text-sm font-medium px-4">Total</th>
                   </tr>
-                  {% endfor %}
-                {% endif %}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {% if buy_now_item %}
+                  <tr class="border-b hover:bg-gray-50 transition-colors">
+                    <td class="py-3 text-gray-700 text-sm px-4">{{ buy_now_item.product.name }}</td>
+                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
+                    <td class="py-3 text-gray-700 text-sm px-4">1</td>
+                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
+                  </tr>
+                  {% else %}
+                    {% for item in cart_items %}
+                    <tr class="border-b hover:bg-gray-50 transition-colors">
+                   <td><img src="{{ item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg" /></td>
 
-          <!-- Pricing Breakdown -->
-          <div class="mt-6 pt-4 border-t">
-            <div class="flex justify-between mb-2">
-              <span>Original Total</span>
-              <span class="font-semibold" id="original-total">₹{{ cart_total|default:0 }}</span>
+                      <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.product_variant.product.cart_total }}</td>
+                      <td class="py-3 text-gray-700 text-sm px-4">{{ item.quantity }}</td>
+                      <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.total_price }}</td>
+                    </tr>
+                    {% endfor %}
+                  {% endif %}
+                </tbody>
+              </table>
             </div>
 
-            <!-- Shipping Charges -->
-            <div class="flex justify-between mb-2">
-              <span>Shipping Charges</span>
-              <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|default:0 }}</span>
+            <!-- Pricing Breakdown -->
+            <div class="mt-6 pt-4 border-t">
+              <div class="flex justify-between mb-2">
+                <span>Original Total</span>
+                <span class="font-semibold" id="original-total">₹{{ variant_price|default:0 }}</span>
+              </div>
+
+              <!-- Shipping Charges -->
+              <div class="flex justify-between mb-2">
+                <span>Shipping Charges</span>
+                <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|default:0 }}</span>
+              </div>
+
+              <!-- Total Due -->
+              <div class="flex justify-between border-t pt-4">
+                <span class="font-bold">Total Due</span>
+                <span class="font-bold text-lg" id="totalDue">₹{{ total_price_with_shipping|default:0 }}</span>
+              </div>
             </div>
 
-            <!-- Discount Display -->
-            {% if discount > 0 %}
-            <div class="flex justify-between mb-2">
-              <span>Discount Applied</span>
-              <span class="font-semibold text-green-600" id="discount-amount">- ₹{{ discount }}</span>
+            <!-- Hidden Fields -->
+            <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
+            <input type="hidden" id="user_email" value="{{ user.email }}">
+            <input type="hidden" id="user_phone" value="{{ user.phone_number }}">
+
+            <!-- Error display if there is one -->
+            {% if error %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
+              <strong class="font-bold">Error:</strong>
+              <span class="block sm:inline">{{ error }}</span>
             </div>
             {% endif %}
+          </div>
 
-            <!-- Coupon Section -->
-            <div class="mt-4">
-              <label for="coupon" class="block text-sm font-medium text-gray-700 mb-1">Apply Coupon</label>
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="couponCode"
-                  placeholder="Enter coupon code"
-                  class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-accent"
-                />
-                <button
-                  type="button"
-                  id="applyCouponBtn"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition-all"
-                >
-                  Apply
-                </button>
-                <button
-                  type="button"
-                  id="cancelCouponBtn"
-                  class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-800 transition-all {% if not applied_coupon %}hidden{% endif %}"
-                >
-                  Remove
-                </button>
+          <!-- Payment Methods -->
+          <div class="mt-6">
+            <h2 class="text-xl font-bold mb-4 gradient-text">Payment Method</h2>
+            <div class="space-y-3">
+
+              <!-- Pay with Wallet -->
+              <div class="payment-method" onclick="selectPaymentMethod('wallet')">
+                {% if wallet %}
+                  <input 
+                    type="radio" 
+                    id="paymentWallet" 
+                    name="payment_method" 
+                    value="wallet" 
+                    {% if selected_payment == 'wallet' %}checked{% endif %}
+                    required
+                  >
+                  <label for="paymentWallet" class="cursor-pointer flex items-center">
+                    <span class="ml-2">Wallet Balance (₹{{ wallet.balance }})</span>
+                  </label>
+                {% else %}
+                  <p class="text-sm text-gray-500">Wallet not available.</p>
+                {% endif %}
               </div>
-              <p id="couponMessage" class="text-sm mt-2 text-green-600 hidden">Coupon applied successfully!</p>
-              <p id="couponError" class="text-sm mt-2 text-red-600 hidden">Invalid coupon code.</p>
-              <p id="finalTotalPrice" class="mt-2 text-lg font-semibold text-gray-800">Final Total: <span id="finalTotalPriceAmount">₹{{ total_price }}</span></p>
-            </div>
 
-            <!-- Total Due -->
-            <div class="flex justify-between border-t pt-4">
-              <span class="font-bold">Total Due</span>
-              <span class="font-bold text-lg" id="totalDue">₹{{ total_price|default:0 }}</span>
-            </div>
-          </div>
-
-          <!-- Hidden Fields -->
-          <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
-          <input type="hidden" id="user_email" value="{{ user.email }}">
-          <input type="hidden" id="user_phone" value="{{ user.phone_number }}">
-
-          <!-- Error display if there is one -->
-          {% if error %}
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
-            <strong class="font-bold">Error:</strong>
-            <span class="block sm:inline">{{ error }}</span>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- Payment Methods -->
-        <div class="mt-6">
-          <h2 class="text-xl font-bold mb-4 gradient-text">Payment Method</h2>
-          <div class="space-y-3">
-
-            <!-- Pay with Wallet -->
-            <div class="payment-method" onclick="selectPaymentMethod('wallet')">
-              {% if wallet %}
+              <!-- Pay on Delivery -->
+              <div class="payment-method" onclick="selectPaymentMethod('cod')">
                 <input 
                   type="radio" 
-                  id="paymentWallet" 
+                  id="paymentCOD" 
                   name="payment_method" 
-                  value="wallet" 
-                  {% if selected_payment == 'wallet' %}checked{% endif %}
+                  value="cod" 
+                  {% if selected_payment == 'cod' %}checked{% endif %}
                   required
                 >
-                <label for="paymentWallet" class="cursor-pointer flex items-center">
-                  <span class="ml-2">Wallet Balance (₹{{ wallet.balance }})</span>
-                </label>
-              {% else %}
-                <p class="text-sm text-gray-500">Wallet not available.</p>
-              {% endif %}
-            </div>
+                <label for="paymentCOD" class="cursor-pointer ml-2">Cash on Delivery</label>
+              </div>
 
-            <!-- Pay on Delivery -->
-            <div class="payment-method" onclick="selectPaymentMethod('cod')">
-              <input 
-                type="radio" 
-                id="paymentCOD" 
-                name="payment_method" 
-                value="cod" 
-                {% if selected_payment == 'cod' %}checked{% endif %}
-                required
-              >
-              <label for="paymentCOD" class="cursor-pointer ml-2">Cash on Delivery</label>
-            </div>
-
-            <!-- Online Payment -->
-            <div class="payment-method" onclick="selectPaymentMethod('online')">
-              <input 
-                type="radio" 
-                id="paymentOnline" 
-                name="payment_method" 
-                value="online" 
-                {% if selected_payment == 'online' %}checked{% endif %}
-                required
-              >
-              <label for="paymentOnline" class="cursor-pointer ml-2">Online Payment</label>
+              <!-- Online Payment -->
+              <div class="payment-method" onclick="selectPaymentMethod('online')">
+                <input 
+                  type="radio" 
+                  id="paymentOnline" 
+                  name="payment_method" 
+                  value="online" 
+                  {% if selected_payment == 'online' %}checked{% endif %}
+                  required
+                >
+                <label for="paymentOnline" class="cursor-pointer ml-2">Online Payment</label>
+              </div>
             </div>
           </div>
+
+          <!-- Place Order Button -->
+          <button 
+            id="placeOrderBtn" 
+            type="submit" 
+            class="mt-6 w-full py-3 bg-blue-900 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition-all"
+          >
+            Confirm & Place Order
+          </button>
         </div>
-
-        <!-- Place Order Button -->
-        <button 
-          id="placeOrderBtn" 
-          type="submit" 
-          class="mt-6 w-full py-3 bg-blue-900 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition-all"
-        >
-          Confirm & Place Order
-        </button>
-
       </div>
     </div>
+  </form>
+
+  <!-- Add Address Modal -->
+  <div id="addressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
+      <h2 class="text-xl font-semibold mb-4">Add New Address</h2>
+      <form id="addAddressForm" method="POST" action="{% url 'user_profile:add_address' %}">
+        {% csrf_token %}
+        <div class="space-y-3">
+          <input type="text" name="name" placeholder="Name (optional)" class="modal-input">
+          <input type="text" name="phone" placeholder="Phone (e.g., +919876543210)" class="modal-input">
+          <input type="text" name="address_line" placeholder="Address Line" class="modal-input" required>
+          <select name="address_type" class="modal-select" required>
+            <option value="home">Home</option>
+            <option value="work">Work</option>
+          </select>
+          <input type="text" name="city" placeholder="City" class="modal-input" required>
+          <input type="text" name="state" placeholder="State" class="modal-input" required>
+          <input type="text" name="postal_code" placeholder="Postal Code" class="modal-input" required>
+          <input type="text" name="country" placeholder="Country" class="modal-input" required>
+          <label class="flex items-center">
+            <input type="checkbox" name="is_default" class="mr-2">
+            <span>Set as default address</span>
+          </label>
+        </div>
+        <div class="flex justify-end mt-4 space-x-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Add Address</button>
+        </div>
+      </form>
+    </div>
   </div>
-</form>
 
-<!-- Add Address Modal -->
-<div id="addressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center">
-  <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
-    <h2 class="text-xl font-semibold mb-4">Add New Address</h2>
-    <form id="addAddressForm" method="POST" action="{% url 'user_profile:add_address' %}">
-      {% csrf_token %}
-      <div class="space-y-3">
-        <input type="text" name="name" placeholder="Name" class="w-full border p-2 rounded" required>
-        <input type="text" name="address_line" placeholder="Address Line" class="w-full border p-2 rounded" required>
-        <input type="text" name="city" placeholder="City" class="w-full border p-2 rounded" required>
-        <input type="text" name="state" placeholder="State" class="w-full border p-2 rounded" required>
-        <input type="text" name="country" placeholder="Country" class="w-full border p-2 rounded" required>
-        <input type="text" name="postal_code" placeholder="Postal Code" class="w-full border p-2 rounded" required>
-        <input type="text" name="phone" placeholder="Phone (optional)" class="w-full border p-2 rounded">
-        <input type="email" name="email" placeholder="Email (optional)" class="w-full border p-2 rounded">
-      </div>
-      <div class="flex justify-end mt-4 space-x-2">
-        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Add Address</button>
-      </div>
-    </form>
+  <!-- Edit Address Modal -->
+  <div id="editAddressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
+      <h2 class="text-xl font-semibold mb-4">Edit Address</h2>
+      <form id="editAddressForm" method="POST" action="{% url 'user_profile:edit_address' 1 %}">
+        {% csrf_token %}
+        <input type="hidden" name="address_id" id="editAddressId">
+        <div class="space-y-3">
+          <input type="text" name="name" id="editName" placeholder="Name (optional)" class="modal-input">
+          <input type="text" name="phone" id="editPhone" placeholder="Phone (e.g., +919876543210)" class="modal-input">
+          <input type="text" name="address_line" id="editAddressLine" placeholder="Address Line" class="modal-input" required>
+          <select name="address_type" id="editAddressType" class="modal-select" required>
+            <option value="home">Home</option>
+            <option value="work">Work</option>
+          </select>
+          <input type="text" name="city" id="editCity" placeholder="City" class="modal-input" required>
+          <input type="text" name="state" id="editState" placeholder="State" class="modal-input" required>
+          <input type="text" name="postal_code" id="editPostalCode" placeholder="Postal Code" class="modal-input" required>
+          <input type="text" name="country" id="editCountry" placeholder="Country" class="modal-input" required>
+          <label class="flex items-center">
+            <input type="checkbox" name="is_default" id="editIsDefault" class="mr-2">
+            <span>Set as default address</span>
+          </label>
+        </div>
+        <div class="flex justify-end mt-4 space-x-2">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
-
-<script>
-  // Functions to open/close modals for address add/edit
-  function openModal() {
-    document.getElementById('addressModal').classList.remove('hidden');
-  }
-  function closeModal() {
-    document.getElementById('addressModal').classList.add('hidden');
-  }
-
-  function openEditModal(id, name, address_line, city, state, country, postal_code, phone, email) {
-    document.getElementById('editAddressId').value = id;
-    document.getElementById('editName').value = name;
-    document.getElementById('editAddressLine').value = address_line;
-    document.getElementById('editCity').value = city;
-    document.getElementById('editState').value = state;
-    document.getElementById('editCountry').value = country;
-    document.getElementById('editPostalCode').value = postal_code;
-    document.getElementById('editPhone').value = phone;
-    document.getElementById('editEmail').value = email;
-    document.getElementById('editAddressModal').classList.remove('hidden');
-  }
-  function closeEditModal() {
-    document.getElementById('editAddressModal').classList.add('hidden');
-  }
-
-  // Optional: Add form submission for edit address using AJAX or normal POST here
-  document.getElementById('editAddressForm').addEventListener('submit', function(e){
-    // Prevent default if you want to do AJAX here, otherwise remove this line
-    // e.preventDefault();
-    // Submit normally or use fetch to update address
-  });
-</script>
 
   <script>
-    // Function to open the modal
+    // Modal functions for Add Address
     function openModal() {
       document.getElementById('addressModal').classList.remove('hidden');
     }
 
-    // Function to close the modal
     function closeModal() {
       document.getElementById('addressModal').classList.add('hidden');
     }
 
-    // Handle form submission
-    document.getElementById('addAddressForm').addEventListener('submit', function (event) {
+    // Modal functions for Edit Address
+    function openEditModal(id, name, phone, address_line, address_type, city, state, postal_code, country, is_default) {
+      document.getElementById('editAddressId').value = id;
+      document.getElementById('editName').value = name || '';
+      document.getElementById('editPhone').value = phone || '';
+      document.getElementById('editAddressLine').value = address_line;
+      document.getElementById('editAddressType').value = address_type || 'home';
+      document.getElementById('editCity').value = city;
+      document.getElementById('editState').value = state;
+      document.getElementById('editPostalCode').value = postal_code;
+      document.getElementById('editCountry').value = country;
+      document.getElementById('editIsDefault').checked = is_default === true || is_default === 'true';
+      document.getElementById('editAddressModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editAddressModal').classList.add('hidden');
+    }
+
+    // Add Address form submission
+    document.getElementById('addAddressForm').addEventListener('submit', function(event) {
       event.preventDefault();
       const formData = new FormData(this);
 
-      fetch("{% url 'user_profile:add_address' %}", {
-        method: "POST",
+      fetch(this.action, {
+        method: 'POST',
         body: formData,
         headers: {
-          "X-CSRFToken": "{{ csrf_token }}"
+          'X-CSRFToken': '{{ csrf_token }}'
         }
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
-          // Add the new address to the address list
           const addressList = document.getElementById('addressList');
           const newAddress = document.createElement('div');
-          newAddress.classList.add('flex', 'items-center', 'p-4', 'border', 'rounded-lg', 'hover:border-accent', 'transition-all', 'cursor-pointer', 'bg-gray-50');
+          newAddress.className = 'flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50';
           newAddress.innerHTML = `
-            <input type="radio" id="address-${data.address.id}" name="address" value="${data.address.id}" class="mr-4 address-radio" required checked>
-            <label for="address-${data.address.id}" class="text-md text-gray-700">
-              <p class="font-semibold text-gray-800">${data.address.name}</p>
-              <p class="text-gray-600">${data.address.address_line}, ${data.address.city}, ${data.address.state}</p>
-              <p class="text-gray-600">${data.address.country} - ${data.address.postal_code}</p>
-            </label>
+            <div class="flex items-start">
+              <input type="radio" id="address-${data.address.id}" name="address" value="${data.address.id}" class="mr-4 mt-1 address-radio" required ${data.address.is_default ? 'checked' : ''}>
+              <label for="address-${data.address.id}" class="text-md text-gray-700 cursor-pointer">
+                <p class="font-semibold text-gray-800">${data.address.name || 'Address'} ${data.address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
+                <p class="text-gray-600">${data.address.address_type.charAt(0).toUpperCase() + data.address.address_type.slice(1)}</p>
+                <p class="text-gray-600">${data.address.address_line}</p>
+                <p class="text-gray-600">${data.address.city}, ${data.address.state}</p>
+                <p class="text-gray-600">${data.address.country} - ${data.address.postal_code}</p>
+                ${data.address.phone ? `<p class="text-gray-600">Phone: ${data.address.phone}</p>` : ''}
+              </label>
+            </div>
+            <div class="ml-4 mt-1">
+              <button type="button" onclick="openEditModal(${data.address.id}, '${data.address.name || ''}', '${data.address.phone || ''}', '${data.address.address_line}', '${data.address.address_type}', '${data.address.city}', '${data.address.state}', '${data.address.postal_code}', '${data.address.country}', ${data.address.is_default})" class="text-sm text-blue-500 hover:underline">✏️ Edit</button>
+            </div>
           `;
           addressList.appendChild(newAddress);
           closeModal();
@@ -505,116 +467,73 @@
       });
     });
 
-    // Function to display notifications (success/error messages)
+    // Edit Address form submission
+    document.getElementById('editAddressForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const formData = new FormData(this);
+
+      fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}'
+        }
+      })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          const addressList = document.getElementById('addressList');
+          const addressDiv = addressList.querySelector(`input[value="${data.address.id}"]`).parentElement.parentElement;
+          addressDiv.innerHTML = `
+            <div class="flex items-start">
+              <input type="radio" id="address-${data.address.id}" name="address" value="${data.address.id}" class="mr-4 mt-1 address-radio" required ${data.address.is_default ? 'checked' : ''}>
+              <label for="address-${data.address.id}" class="text-md text-gray-700 cursor-pointer">
+                <p class="font-semibold text-gray-800">${data.address.name || 'Address'} ${data.address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
+                <p class="text-gray-600">${data.address.address_type.charAt(0).toUpperCase() + data.address.address_type.slice(1)}</p>
+                <p class="text-gray-600">${data.address.address_line}</p>
+                <p class="text-gray-600">${data.address.city}, ${data.address.state}</p>
+                <p class="text-gray-600">${data.address.country} - ${data.address.postal_code}</p>
+                ${data.address.phone ? `<p class="text-gray-600">Phone: ${data.address.phone}</p>` : ''}
+              </label>
+            </div>
+            <div class="ml-4 mt-1">
+              <button type="button" onclick="openEditModal(${data.address.id}, '${data.address.name || ''}', '${data.address.phone || ''}', '${data.address.address_line}', '${data.address.address_type}', '${data.address.city}', '${data.address.state}', '${data.address.postal_code}', '${data.address.country}', ${data.address.is_default})" class="text-sm text-blue-500 hover:underline">✏️ Edit</button>
+            </div>
+          `;
+          closeEditModal();
+          displayNotification('Address updated successfully', 'success');
+        } else {
+          displayNotification('Failed to update address: ' + data.error, 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        displayNotification('Something went wrong. Please try again.', 'error');
+      });
+    });
+
+    // Notification function
     function displayNotification(message, type) {
       const notification = document.createElement('div');
       notification.classList.add('fixed', 'bottom-5', 'right-5', 'p-3', 'rounded-lg', 'shadow-lg', 'text-white');
-      
-      if (type === 'success') {
-        notification.classList.add('bg-green-600');
-      } else {
-        notification.classList.add('bg-red-600');
-      }
-
+      notification.classList.add(type === 'success' ? 'bg-green-600' : 'bg-red-600');
       notification.innerText = message;
       document.body.appendChild(notification);
-
-      // Remove notification after 3 seconds
-      setTimeout(() => {
-        notification.remove();
-      }, 3000);
+      setTimeout(() => notification.remove(), 3000);
     }
 
-    document.getElementById("applyCouponBtn").addEventListener("click", function (event) {
-      event.preventDefault();
-      
-      const couponCode = document.getElementById("couponCode").value.trim();
-      const originalTotal = parseFloat(document.getElementById("original_total_price").value);
-  
-      fetch("#", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": "{{ csrf_token }}"
-          },
-          body: JSON.stringify({ 
-              "coupon_code": couponCode, 
-              "cart_total": originalTotal 
-          })
-      })
-      .then(response => response.json())
-      .then(data => {
-          if (data.valid) {
-              const discountedTotal = originalTotal - data.discount_amount;
-              
-              // Update displayed prices
-              document.getElementById("finalTotalPriceAmount").textContent = `₹${discountedTotal.toFixed(2)}`;
-              document.getElementById("totalDue").textContent = `₹${discountedTotal.toFixed(2)}`;
-              
-              // Update hidden fields
-              document.getElementById("discounted_total_price").value = discountedTotal.toFixed(2);
-              
-              // Toggle buttons
-              document.getElementById("applyCouponBtn").disabled = true;
-              document.getElementById("cancelCouponBtn").classList.remove("hidden");
-              
-              showMessage("Coupon applied successfully!", false);
-          } else {
-              showMessage(data.message || "Invalid coupon code.", true);
-          }
-      })
-      .catch(error => {
-          console.error("Error:", error);
-          showMessage("Something went wrong. Please try again.", true);
-      });
-    });
-  
-    document.getElementById("cancelCouponBtn").addEventListener("click", function (event) {
-      event.preventDefault();
-      
-      const originalTotal = parseFloat(document.getElementById("original_total_price").value);
-      
-      // Reset prices
-      document.getElementById("finalTotalPriceAmount").textContent = `₹${originalTotal.toFixed(2)}`;
-      document.getElementById("totalDue").textContent = `₹${originalTotal.toFixed(2)}`;
-      document.getElementById("discounted_total_price").value = originalTotal.toFixed(2);
-      
-      // Toggle buttons
-      document.getElementById("applyCouponBtn").disabled = false;
-      document.getElementById("cancelCouponBtn").classList.add("hidden");
-      
-      // Clear coupon code
-      document.getElementById("couponCode").value = "";
-      
-      // Remove coupon from session
-      fetch("#", {
-          method: "POST",
-          headers: {
-              "X-CSRFToken": "{{ csrf_token }}"
-          }
-      });
-    });
-  
-    function showMessage(message, isError) {
-      const messageElement = isError ? document.getElementById("couponError") : document.getElementById("couponMessage");
-      messageElement.innerText = message;
-      messageElement.classList.remove("hidden");
-  
-      // Hide message after a few seconds
-      setTimeout(() => {
-          messageElement.classList.add("hidden");
-      }, 3000);
-    }
-
+    // Payment method selection
     function selectPaymentMethod(method) {
       const paymentMethods = document.querySelectorAll('.payment-method');
       paymentMethods.forEach(pm => pm.classList.remove('selected'));
-
       const selectedMethod = document.querySelector(`.payment-method input[value="${method}"]`).parentElement;
       selectedMethod.classList.add('selected');
     }
 
-    // Form submission handling
+    // Checkout form validation
     document.getElementById("checkoutForm").addEventListener("submit", function(event) {
       const selectedAddress = document.querySelector('input[name="address"]:checked');
       const selectedPayment = document.querySelector('input[name="payment_method"]:checked');
@@ -631,37 +550,13 @@
         return false;
       }
 
-      // For Razorpay, currently disabled
-      if (selectedPayment.value === "razorpay") {
+      if (selectedPayment.value === "online") {
         event.preventDefault();
-        alert('Razorpay is currently unavailable. Please select another payment method.');
+        alert('Online payment is currently unavailable. Please select another payment method.');
         return false;
       }
 
       return true;
     });
   </script>
-
-
-
-<script>
-  function openEditModal(id, name, address_line, city, state, country, postal_code, phone, email) {
-    document.getElementById('editAddressId').value = id;
-    document.getElementById('editName').value = name;
-    document.getElementById('editAddressLine').value = address_line;
-    document.getElementById('editCity').value = city;
-    document.getElementById('editState').value = state;
-    document.getElementById('editCountry').value = country;
-    document.getElementById('editPostalCode').value = postal_code;
-    document.getElementById('editPhone').value = phone || '';
-    document.getElementById('editEmail').value = email || '';
-
-    document.getElementById('editAddressModal').classList.remove('hidden');
-  }
-
-  function closeEditModal() {
-    document.getElementById('editAddressModal').classList.add('hidden');
-  }
-</script>
-
-{% endblock  %}
+{% endblock %}

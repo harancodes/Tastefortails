@@ -22,6 +22,8 @@ from cart.models import Wallet
 from decimal import Decimal
 import re
 import datetime
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 
@@ -162,10 +164,8 @@ def edit_address(request, address_id):
 @never_cache
 def delete_address(request, address_id):
     if request.method == "DELETE":
-        # Use get_object_or_404 to handle the case where the address does not exist
         address = get_object_or_404(Address, id=address_id, user=request.user)
         
-        # Check if the address is used in any orders
         if address.orders.exists():
             return JsonResponse({
                 "error": "This address cannot be deleted as it is associated with one or more orders. Please add a new address instead.",
@@ -187,24 +187,22 @@ def delete_address(request, address_id):
 
 ##### order starts ####
 
-
 @block_superuser_navigation
 @never_cache
 @login_required
 def order_list_view(request):
     orders_list = Order.objects.filter(user=request.user).order_by('-created_at')
     
-    # Filter by status
     status = request.GET.get('status')
     if status:
-        orders_list = orders_list.filter(status__status=status)
+        orders_list = orders_list.filter(items__status=status).distinct()
 
-    # Pagination
-    paginator = Paginator(orders_list.order_by('id'), 5)  # Show 10 orders per page
+    paginator = Paginator(orders_list.order_by('id'), 5)  
     page_number = request.GET.get('page')
     orders = paginator.get_page(page_number)
     
     return render(request, 'order_list.html', {'orders': orders})
+
 
 @block_superuser_navigation
 @never_cache
@@ -240,16 +238,16 @@ def generate_invoice(request, item_id):
     
     normal_style = styles['BodyText']
     
-    # Create the content
+    
     content = []
     
-    # Add title
+
     content.append(Paragraph("Invoice", title_style))
     content.append(Spacer(1, 12))
     
-    # Add store information (dynamic)
-    store_name = "EvoTime"  # Replace with dynamic data (e.g., from a Store model)
-    store_address = "Ivrine Stafford Texas North America"  # Replace with dynamic data
+    
+    store_name = "Taste for Tails"  
+    store_address = "Kochi"  
     content.append(Paragraph(store_name, header_style))
     content.append(Paragraph(store_address, normal_style))
     content.append(Spacer(1, 12))
@@ -270,7 +268,8 @@ def generate_invoice(request, item_id):
         ["Order ID", item.order.id],
         ["Product", Paragraph(item.product_variant.product.name, normal_style)],  # Wrap product name
         ["Quantity", item.quantity],
-        ["Price per unit", f"${item.product_variant.product.variant_price}"],
+        ["Price per unit", f"${item.product_variant.variant_price}"],
+
         ["Total Price", f"${item.total_price}"]
     ]
     
@@ -341,7 +340,7 @@ def cancel_order_item(request, item_id):
     try:
         if not order_item.can_be_cancelled:
             messages.error(request, "This item can no longer be cancelled.")
-            return redirect('order_item_detail', item_id=item_id)
+            return redirect('user:profile:order_item_detail', item_id=item_id)
 
         with transaction.atomic():
             reason = request.POST.get('reason', '')
@@ -387,18 +386,18 @@ def cancel_order_item(request, item_id):
 def return_order_item(request, item_id):
     if request.method != 'POST':
         messages.error(request, "Invalid request method.")
-        return redirect('order_list')
+        return redirect('user_profile:order_list')
 
     order_item = get_object_or_404(OrderItem, id=item_id)
 
     if order_item.order.user != request.user:
         messages.error(request, "You don't have permission to return this order item.")
-        return redirect('order_list')
+        return redirect('user_profile:order_list')
 
     try:
         if not order_item.can_be_returned:
             messages.error(request, "This item is not eligible for return.")
-            return redirect('order_item_detail', item_id=item_id)
+            return redirect('user_profile:order_item_detail', item_id=item_id)
 
         reason = request.POST.get('reason', '')
         order_item.return_status = "requested"
@@ -411,7 +410,7 @@ def return_order_item(request, item_id):
         print(f"Exception: {e}")  # Debugging
         messages.error(request, "An error occurred while processing your return request.")
 
-    return redirect('order_item_detail', item_id=item_id)
+    return redirect('user_profile:order_item_detail', item_id=item_id)
 
 #### order ends ####
 
@@ -452,10 +451,18 @@ def wallet_view(request):
 def search_products(request):
     query = request.GET.get('q', '')
     if query:
-        products = Products.objects.filter(name__icontains=query)[:5]  # Limit results
-        results = [{'id': p.id, 'name': p.name} for p in products]
+        orders = Order.objects.filter(
+            Q(id__icontains=query) |
+            Q(user__email__icontains=query) |
+            Q(items__product_variant__product__name__icontains=query)
+        ).distinct()[:5]
+
+        results = [{'id': o.id, 'label': f"Order {o.id} - {o.user.email}"} for o in orders]
         return JsonResponse({'results': results})
     return JsonResponse({'results': []})
+
+
+
 
 def order_detail(request, order_id):
     order = get_object_or_404(Order, id=order_id)
@@ -500,34 +507,67 @@ def custom_page_not_found_view(request, exception):
 
 ##### profile starts ####
 
+
+
+import datetime
+import re
+import random
+import string
+
+
 @login_required
 def update_profile_image(request):
     if request.method == "POST" and request.FILES.get("profile_image"):
         user = request.user
+        if user.profile_image:
+            try:
+                user.profile_image.delete()
+            except Exception as e:
+                print(f"Error deleting existing profile image: {e}")
         user.profile_image = request.FILES["profile_image"]
+        if not user.profile_image.content_type.startswith("image"):
+            return JsonResponse({"success": False, "error": "Invalid file type! Please upload an image."}, status=400)
+        if user.profile_image.size > 5 * 1024 * 1024:  # 5MB limit
+            return JsonResponse({"success": False, "error": "Image size should not exceed 5MB."}, status=400)
         user.save()
         return JsonResponse({"success": True})
-    return JsonResponse({"success": False}, status=400)
-
-
+    return JsonResponse({"success": False, "error": "No image provided."}, status=400)
 
 @block_superuser_navigation
 @never_cache
 @login_required
 def account_overview(request):
-    user = request.user  # Get the logged-in user
+    user = request.user
 
     if request.method == "POST":
-        # Retrieve form data
         dob = request.POST.get("dob")
+        phone_number = request.POST.get("phone_number", "").strip()
         alternate_phone_number = request.POST.get("alternate_phone_number", "").strip()
         profile_image = request.FILES.get("profile_image")
-        # email = request.POST.get('email')
-        # full_name = request.POST.get('full_name')
-        
+        username = request.POST.get("username")
+        full_name = request.POST.get("full_name")
+        current_password = request.POST.get("current_password")
+        new_password = request.POST.get("new_password")
+        confirm_password = request.POST.get("confirm_password")
 
-        errors = False 
+        errors = False
 
+        # Validate Username
+        if username and username != user.username:
+            if not re.match(r'^[a-zA-Z0-9_]{3,200}$', username):
+                messages.error(request, "Username must be 3-200 characters and contain only letters, numbers, or underscores.")
+                errors = True
+            elif request.user.__class__.objects.filter(username=username).exclude(id=user.id).exists():
+                messages.error(request, "This username is already in use.")
+                errors = True
+            else:
+                user.username = username
+
+        # Validate Full Name
+        if full_name:
+            user.full_name = full_name
+
+        # Validate Date of Birth
         if dob:
             try:
                 dob_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
@@ -540,85 +580,125 @@ def account_overview(request):
                 messages.error(request, "Invalid date format! Use YYYY-MM-DD.")
                 errors = True
 
-        # Validate Alternate Phone Number
-        if alternate_phone_number:
-
-            cleaned_phone = re.sub(r'\D', '', alternate_phone_number)
-            
-            if not re.match(r'^\d{10,15}$', cleaned_phone):
-                messages.error(request, "Alternate phone number must be 10-15 digits long.")
+        # Validate Phone Number
+        if phone_number:
+            cleaned_phone = re.sub(r'\D', '', phone_number)
+            if not re.match(r'^\d{9,15}$', cleaned_phone):
+                messages.error(request, "Phone number must be 9-15 digits.")
                 errors = True
             else:
-                user.alternate_phone_number = cleaned_phone
+                user.phone_number = cleaned_phone
         else:
-            # If no phone number is provided, set to None or empty string
+            user.phone_number = None
+
+        # Validate Alternate Phone Number
+        if alternate_phone_number:
+            cleaned_alt_phone = re.sub(r'\D', '', alternate_phone_number)
+            if not re.match(r'^\d{9,15}$', cleaned_alt_phone):
+                messages.error(request, "Alternate phone number must be 9-15 digits.")
+                errors = True
+            else:
+                user.alternate_phone_number = cleaned_alt_phone
+        else:
             user.alternate_phone_number = None
 
         # Validate Profile Image
         if profile_image:
-            try:
-
-                if not profile_image.content_type.startswith("image"):
-                    messages.error(request, "Invalid file type! Please upload an image.")
-                    errors = True
-                else:
-
-                    if profile_image.size > 5 * 1024 * 1024:  # 5MB limit
-                        messages.error(request, "Image size should not exceed 5MB.")
-                        errors = True
-                    else:
-                        # Delete existing profile image if it exists
-                        if user.profile_image:
-                            try:
-                                user.profile_image.delete()
-                            except Exception as e:
-                                print(f"Error deleting existing profile image: {e}")
-                        
-                        # Save new profile image
-                        user.profile_image = profile_image
-
-            except Exception as e:
-                messages.error(request, f"Error uploading image: {str(e)}")
+            if not profile_image.content_type.startswith("image"):
+                messages.error(request, "Invalid file type! Please upload an image.")
                 errors = True
+            elif profile_image.size > 5 * 1024 * 1024:  # 5MB limit
+                messages.error(request, "Image size should not exceed 5MB.")
+                errors = True
+            else:
+                if user.profile_image:
+                    try:
+                        user.profile_image.delete()
+                    except Exception as e:
+                        print(f"Error deleting existing profile image: {e}")
+                user.profile_image = profile_image
 
-        # if email:
-        #     email = None
-
-        #     if email != user.email:
-        #         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        #             messages.error(request, "Invalid email format.")
-        #             errors = True
-        #         elif request.user.__class__.objects.filter(email=email).exclude(id=user.id).exists():
-        #             messages.error(request, "This email is already in use.")
-        #             errors = True
-        #         else:
-        #             user.email = email
-
-        
-        # if full_name:
-        #     user.full_name = full_name 
-
+        # Validate Password
+        if new_password:
+            if new_password != confirm_password:
+                messages.error(request, "Passwords do not match.")
+                errors = True
+            elif len(new_password) < 8:
+                messages.error(request, "Password must be at least 8 characters long.")
+                errors = True
+            elif not user.check_password(current_password):
+                messages.error(request, "Current password is incorrect.")
+                errors = True
+            else:
+                user.set_password(new_password)
 
         if not errors:
             try:
                 user.save()
                 messages.success(request, "Profile updated successfully!")
-                return redirect("account_overview")
+                return redirect("user_profile:account_overview")
             except Exception as e:
                 messages.error(request, f"Error saving profile: {str(e)}")
                 errors = True
 
     context = {
         "user": user,
-        "dob": user.dob.strftime("%Y-%m-%d") if user.dob else None,
+        "dob": user.dob.strftime("%Y-%m-%d") if user.dob else "",
+        "phone_number": user.phone_number or "",
         "alternate_phone_number": user.alternate_phone_number or "",
-        # "email": email,
-        # "full_name" : full_name
+        "username": user.username or "",
+        "full_name": user.full_name or "",
     }
-
     return render(request, "account_overview.html", context)
 
+@block_superuser_navigation
+@never_cache
+@login_required
+def request_email_verification(request):
+    if request.method == "POST":
+        import json
+        data = json.loads(request.body)
+        new_email = data.get("new_email")
+        if not new_email:
+            return JsonResponse({"success": False, "error": "Email is required."}, status=400)
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", new_email):
+            return JsonResponse({"success": False, "error": "Invalid email format."}, status=400)
+        if request.user.__class__.objects.filter(email=new_email).exclude(id=request.user.id).exists():
+            return JsonResponse({"success": False, "error": "This email is already in use."}, status=400)
+        
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        request.session['email_confirmation_code'] = code
+        request.session['new_email'] = new_email
+        try:
+            send_mail(
+                'Email Verification',
+                f'Your verification code is {code}',
+                settings.DEFAULT_FROM_EMAIL,
+                [new_email],
+            )
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": f"Error sending email: {str(e)}"}, status=500)
+    return JsonResponse({"success": False, "error": "Invalid request."}, status=400)
 
+@block_superuser_navigation
+@never_cache
+@login_required
+def verify_email(request):
+    if request.method == "POST":
+        import json
+        data = json.loads(request.body)
+        code = data.get("code")
+        new_email = data.get("new_email")
+        if code == request.session.get('email_confirmation_code') and new_email == request.session.get('new_email'):
+            user = request.user
+            user.email = new_email
+            user.save()
+            request.session.pop('email_confirmation_code', None)
+            request.session.pop('new_email', None)
+            return JsonResponse({"success": True})
+        return JsonResponse({"success": False, "error": "Invalid code or email."}, status=400)
+    return JsonResponse({"success": False, "error": "Invalid request."}, status=400)
 
 @block_superuser_navigation
 @login_required

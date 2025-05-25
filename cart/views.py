@@ -22,14 +22,16 @@ from decimal import Decimal
 from authentication.views import block_superuser_navigation
 from customadmin.models import Coupon, UsedCoupon
 from product.views import login_required_custom
+from wishlist.models import Wishlist, WishlistItem
 
 # 
+
+from wishlist.models import WishlistItem  # Adjust import as per your app structure
 
 @block_superuser_navigation
 @never_cache
 @login_required_custom
 def add_to_cart(request, variant_id):
-
     if request.method == 'POST':
         if not variant_id:
             return JsonResponse({'success': False, 'error': 'Variant ID is missing'}, status=400)
@@ -39,24 +41,44 @@ def add_to_cart(request, variant_id):
         except Variant.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Product variant not found'}, status=404)
 
+        # ✅ Parse quantity from request body
+        try:
+            data = json.loads(request.body)
+            quantity = int(data.get('quantity', 1))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid quantity'}, status=400)
 
-        cart, created = Cart.objects.get_or_create(user=request.user)
+        if quantity < 1:
+            return JsonResponse({'success': False, 'error': 'Quantity must be at least 1'}, status=400)
 
-        
+        if quantity > variant.quantity_in_stock:
+            return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
+
+        if quantity > 10:
+            return JsonResponse({'success': False, 'error': 'Maximum allowed quantity is 10'}, status=400)
+
+        cart, _ = Cart.objects.get_or_create(user=request.user)
         cart_item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
 
         if created:
-            cart_item.quantity = 1  # Set initial quantity to 1
+            cart_item.quantity = quantity
         else:
-            # Check if adding one more exceeds available stock
-            if cart_item.quantity + 1 > variant.quantity_in_stock:
+            new_quantity = cart_item.quantity + quantity
+            if new_quantity > variant.quantity_in_stock:
                 return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
-            
-            cart_item.quantity += 1  # Increment quantity if already in cart
+            if new_quantity > 10:
+                return JsonResponse({'success': False, 'error': 'Maximum allowed quantity is 10'}, status=400)
+            cart_item.quantity = new_quantity
 
-        cart_item.save()  # Save the cart item
+        cart_item.save()
 
-        # Update cart total price
+        # ✅ Remove from wishlist
+        try:
+            wishlist = request.user.wishlist  
+            WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
+        except Wishlist.DoesNotExist:
+            pass
+
         cart_item_count = cart.items.count()
         total_price = cart.total_price
 
@@ -65,8 +87,8 @@ def add_to_cart(request, variant_id):
             'total_price': total_price,
             'cart_item_count': cart_item_count
         })
-    else:
-        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
 
 
 
@@ -77,8 +99,7 @@ def add_to_cart(request, variant_id):
 @require_POST
 def update_quantity(request):
     try:
-        data = json.loads(request.body)  
-
+        data = json.loads(request.body)
         item_id = data.get('item_id')
         new_quantity = data.get('quantity')
 
@@ -86,32 +107,22 @@ def update_quantity(request):
             return JsonResponse({'error': 'Invalid request data'}, status=400)
 
         new_quantity = int(new_quantity)
-
-
         cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
 
         if new_quantity > cart_item.product_variant.quantity_in_stock:
             return JsonResponse({'error': 'Requested quantity exceeds available stock'}, status=400)
+        
+        elif new_quantity > 10:
+            return JsonResponse({'error': 'Please order quantity 10 or less from the available stock'}, status=400)
 
         cart_item.quantity = new_quantity
         cart_item.save()
 
-        # Calculate the new item total price
-        item_total_price = cart_item.total_price
+        return JsonResponse({'success': True})
 
-        # Calculate the new cart total price
-        cart_total_price = cart_item.cart.total_price
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'Invalid data'}, status=400)
 
-        return JsonResponse({
-            'item_total_price': item_total_price,
-            'cart_total_price': cart_total_price
-        })
-
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-
-    except ValueError:
-        return JsonResponse({'error': 'Invalid quantity value'}, status=400)
 
 
 @block_superuser_navigation
@@ -119,16 +130,20 @@ def update_quantity(request):
 @login_required_custom
 def remove_cart_item(request, item_id):
     if request.method == 'POST':
-        # Fetch the CartItem object
+        
         cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
         
         # Remove the item from the cart
         cart_item.delete()
 
-        # Calculate the new cart total price
-        cart_total_price = sum(item.quantity * item.product_variant.product.variant_price for item in cart_item.cart.items.all())
 
-        # Return success response with updated cart total price
+        cart_total_price = sum(
+    item.quantity * item.product_variant.product.variant_price
+    for item in cart_item.cart.items.all()
+)
+
+
+        
         return JsonResponse({
             'message': 'Item removed from cart.',
             'cart_total_price': cart_total_price
@@ -143,10 +158,20 @@ def remove_cart_item(request, item_id):
 def view_cart(request):
     cart = Cart.objects.filter(user=request.user).first()
     if cart:
-        items = cart.items.all()
-        return render(request, 'cart.html', {'cart': cart, 'items': items})
+        items = cart.items.select_related("product_variant", "product_variant__product")  
+        cart_total_price = sum(item.total_price for item in items)
+
+        return render(request, 'cart.html', {
+            'cart': cart,
+            'items': items,
+            'cart_total_price': cart_total_price,
+        })
     else:
-        return render(request, 'cart.html', {'message': 'Your cart is empty.'})
+        return render(request, 'cart.html', {
+            'message': 'Your cart is empty.',
+            'cart_total_price': 0
+        })
+
 
 
 
@@ -202,36 +227,36 @@ def checkout(request):
             address_id = request.POST.get("address")
             payment_method = request.POST.get("payment_method")
 
-            # original_total_price_str = request.POST.get("original_total_price")
-            # discounted_total_price_str = request.POST.get("discounted_total_price")
+            original_total_price_str = request.POST.get("original_total_price")
+            discounted_total_price_str = request.POST.get("discounted_total_price")
 
-            # if original_total_price_str is None:
-            #     messages.error(request, "Original total price is missing.")
-            #     return redirect("cart:checkout")
+            if original_total_price_str is None:
+                messages.error(request, "Original total price is missing.")
+                return redirect("cart:checkout")
 
-            # try:
-            #     original_total_price = float(original_total_price_str)
-            # except ValueError:
-            #     messages.error(request, "Invalid original total price.")
-            #     return redirect("cart:checkout")
+            try:
+                original_total_price = float(original_total_price_str)
+            except ValueError:
+                messages.error(request, "Invalid original total price.")
+                return redirect("cart:checkout")
 
-            # if discounted_total_price_str:
-            #     try:
-            #         discounted_total_price = float(discounted_total_price_str)
-            #     except ValueError:
-            #         messages.error(request, "Invalid discounted total price.")
-            #         return redirect("cart:checkout")
-            # else:
-            #     discounted_total_price = original_total_price
+            if discounted_total_price_str:
+                try:
+                    discounted_total_price = float(discounted_total_price_str)
+                except ValueError:
+                    messages.error(request, "Invalid discounted total price.")
+                    return redirect("cart:checkout")
+            else:
+                discounted_total_price = original_total_price
 
-            # if discounted_total_price:
-            #     total_price = Decimal(discounted_total_price) + shipping_charge
-            # else:
-            #     total_price = Decimal(original_total_price) + shipping_charge
+            if discounted_total_price:
+                total_price = Decimal(discounted_total_price) + shipping_charge
+            else:
+                total_price = Decimal(original_total_price) + shipping_charge
 
-            # if not address_id or not payment_method:
-            #     messages.error(request, "Please select an address and payment method.")
-            #     return redirect("cart:checkout")
+            if not address_id or not payment_method:
+                messages.error(request, "Please select an address and payment method.")
+                return redirect("cart:checkout")
 
             try:
                 shipping_address = Address.objects.get(user=request.user, id=address_id)
@@ -327,19 +352,22 @@ def checkout(request):
                     if not is_buy_now:
                         cart_items.delete()
                     return redirect("cart:order_success", order_id=order.id)
+                
+        total_price_with_shipping = total_price + shipping_charge
 
         return render(
             request,
             "checkout.html",
             {
                 "cart_items": cart_items if not variant_id else [],
-                "cart_total": cart_total,
+                "cart_total": float(cart_total),
                 "discount": discount,
-                "total_price": total_price,
-                "shipping_charge": shipping_charge,
+                "total_price": float(total_price),
+                "shipping_charge": float(shipping_charge),
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,
+                "total_price_with_shipping": total_price_with_shipping
             },
         )
 
@@ -352,10 +380,10 @@ def checkout(request):
             "checkout.html",
             {
                 "cart_items": cart_items if not variant_id else [],
-                "cart_total": cart_total,
+                "cart_total": float(cart_total),
                 "discount": discount,
-                "total_price": total_price,
-                "shipping_charge": shipping_charge,
+                "total_price": float(total_price),
+                "shipping_charge": float(shipping_charge),
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,

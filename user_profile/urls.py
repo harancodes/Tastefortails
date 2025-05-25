@@ -24,6 +24,9 @@ urlpatterns = [
     # path('search/', views.search_products, name='search_products'),
     # path('<int:id>/', product_detail_view, name='product_detail'),
     path("update-profile-image/", views.update_profile_image, name="update_profile_image"),
+    path('request-email-verification/', views.request_email_verification, name='request_email_verification'),
+     path('verify-email/', views.verify_email, name='verify_email'),
+    #    path('update-2fa/', views.update_2fa, name='update_2fa'),
 
     path('account-overview/', views.account_overview, name='account_overview'),
     path("manage-address/", views.manage_address, name="manage_address"),
@@ -38,6 +41,9 @@ urlpatterns = [
     path("wallet/", views.wallet_view, name="wallet_page"),
     path('submit-review/<int:order_item_id>/', views.submit_review, name='submit_review'),
     # path('api/products/', ProductAPI.as_view(), name='product_api')
+    # urls.py
+path('orders/search/', views.search_products, name='search_orders')
+
 
 
 

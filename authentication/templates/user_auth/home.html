@@ -991,10 +991,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error fetching products:', error));
     }
 
-    // Load latest products by default
     loadProducts();
 
-    // Add event listeners to category links
     categoryLinks.forEach(link => {
         link.addEventListener('click', function(event) {
             event.preventDefault();
@@ -1016,7 +1014,6 @@ function toggleWishlist(variantId) {
     .then(data => {
         if (data.success) {
             console.log('Added to wishlist');
-            // You can toggle the icon or button state here
         } else {
             console.error(data.error);
         }

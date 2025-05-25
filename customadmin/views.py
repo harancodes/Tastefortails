@@ -17,7 +17,7 @@ import logging
 from django.db.models import Sum
 from django.core.paginator import PageNotAnInteger, Paginator, EmptyPage
 from cart.models import Order, OrderItem, Wallet, Payment, transaction
-
+from decimal import Decimal
 
 def block_superuser_navigation(view_func):
     def wrapper(request, *args, **kwargs):
@@ -885,14 +885,52 @@ def toggle_active_status(request, brand_id):
 
 
 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
+from django.shortcuts import render
+
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q, F
+from django.shortcuts import render
+
 @admin_required
 @never_cache
 def admin_order_list_view(request):
-    # Fetch all orders with related user and order items
-    orders_list = Order.objects.select_related('user').prefetch_related('items__product_variant__product').order_by('-created_at')
-    
+    search_query = request.GET.get('search', '').strip()
+    sort_by = request.GET.get('sort', '').strip()
 
-    paginator = Paginator(orders_list, 5)  # Show 10 orders per page
+    # Base queryset with related optimization
+    orders_list = Order.objects.select_related('user')\
+        .prefetch_related('items__product_variant__product')\
+        .order_by('-created_at')
+
+    # Search filter
+    if search_query:
+        query = Q(user__email__icontains=search_query) | \
+                Q(items__product_variant__product__name__icontains=search_query) | \
+                Q(user__first_name__icontains=search_query) | \
+                Q(user__full_name__icontains=search_query)
+        if search_query.isdigit():
+            query |= Q(id=int(search_query))
+        orders_list = orders_list.filter(query).distinct()
+
+    # Sorting logic
+    if sort_by == 'price_asc':
+        # Order by total amount ascending (assumed total_amount field)
+        orders_list = orders_list.order_by('total_amount')
+    elif sort_by == 'price_desc':
+        orders_list = orders_list.order_by('-total_amount')
+    elif sort_by == 'name_asc':
+        # Sort by user's first name ascending
+        orders_list = orders_list.order_by('user__first_name')
+    elif sort_by == 'name_desc':
+        orders_list = orders_list.order_by('-user__first_name')
+    else:
+        # Default ordering
+        orders_list = orders_list.order_by('-created_at')
+
+    
+    paginator = Paginator(orders_list, 5)
     page_number = request.GET.get('page')
     try:
         orders = paginator.page(page_number)
@@ -901,7 +939,17 @@ def admin_order_list_view(request):
     except EmptyPage:
         orders = paginator.page(paginator.num_pages)
 
-    return render(request, 'orders/admin_order.html', {'orders': orders})
+    context = {
+        'orders': orders,
+        'search_query': search_query,
+        'sort_by': sort_by,
+    }
+
+    return render(request, 'orders/admin_order.html', context)
+
+
+
+
 
 
 @admin_required
@@ -978,14 +1026,14 @@ def admin_return_requests(request):
 def admin_handle_return_request(request, item_id):
     if request.method != 'POST':
         messages.error(request, "Invalid request method.")
-        return redirect('admin_return_requests')
+        return redirect('customadmin:admin_return_requests')
 
     order_item = get_object_or_404(OrderItem, id=item_id)
     action = request.POST.get('action')
 
     if action not in ['approve', 'reject']:
         messages.error(request, "Invalid action.")
-        return redirect('admin_return_requests')
+        return redirect('customamdin:admin_return_requests')
 
     try:
         with transaction.atomic():
@@ -1029,6 +1077,6 @@ def admin_handle_return_request(request, item_id):
         print(f"Exception: {e}")  # Debugging
         messages.error(request, "An error occurred while processing the return request.")
 
-    return redirect('admin_return_requests')
+    return redirect('customadmin:admin_return_requests')
 
 

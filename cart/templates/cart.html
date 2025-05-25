@@ -248,7 +248,7 @@
               <div class="cart-item-details">
                 <h3>{{ item.product_variant.product.name }}</h3>
                 <p>{{ item.product_variant.product.description|truncatewords:20 }}</p>
-                <p class="font-semibold mt-2">Price: ₹{{ item.product_variant.product.variant_price }}</p>
+                <p class="item-price font-semibold mt-2">Price: ₹{{ item.product_variant.variant_price }}</p>
                 <p class="text-sm mt-1">Current variant: {{ item.product_variant.weight }}</p>
                 
                 <!-- Variant Selection -->
@@ -311,237 +311,232 @@
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      // Function to show Toastify notifications
-      function showToast(message, type = 'success') {
-        Toastify({
-          text: message,
-          duration: 3000,
-          close: true,
-          gravity: "bottom",
-          position: "right",
-          backgroundColor: type === 'success' ? '#4CAF50' : '#F44336',
-        }).showToast();
-      }
+<style>
+  .price-flash {
+    animation: flash 0.6s;
+  }
 
-      function updateQuantity(itemId, quantity) {
-        fetch("{% url 'cart:update_quantity' %}", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-          },
-          body: JSON.stringify({
-            item_id: itemId,
-            quantity: quantity
-          })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            showToast(data.error, 'error');
-          } else {
-            
-            const itemTotalPrice = document.querySelector(`.cart-item[data-item-id="${itemId}"] .item-total-price`);
-            if (itemTotalPrice) itemTotalPrice.textContent = `Total: ₹${data.item_total_price}`;
+  @keyframes flash {
+    0% { background-color: #ffffcc; }
+    100% { background-color: transparent; }
+  }
+</style>
 
-            
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    function showToast(message, type = 'success') {
+      Toastify({
+        text: message,
+        duration: 3000,
+        close: true,
+        gravity: "bottom",
+        position: "right",
+        backgroundColor: type === 'success' ? '#4CAF50' : '#F44336',
+      }).showToast();
+    }
+
+    function updateQuantity(itemId, quantity) {
+      fetch("{% url 'cart:update_quantity' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ item_id: itemId, quantity: quantity })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          showToast(data.error, 'error');
+        } else {
+          const itemTotalPrice = document.querySelector(`.cart-item[data-item-id="${itemId}"] .item-total-price`);
+          if (itemTotalPrice) {
+            itemTotalPrice.textContent = `Total: ₹${data.item_total_price}`;
+          }
+
+          const subtotal = document.getElementById('subtotal');
+          const totalCartPrice = document.getElementById('total_cart_price');
+          if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
+          if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
+
+          const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+          const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
+          if (incrementButton && quantity >= availableStock) {
+            incrementButton.disabled = true;
+          } else if (incrementButton) {
+            incrementButton.disabled = false;
+          }
+
+          showToast('Quantity updated successfully.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to update quantity. Please try again.', 'error');
+      });
+    }
+
+    function updateVariant(itemId, variantId) {
+      fetch("{% url 'cart:update_variant' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ item_id: itemId, variant_id: variantId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          showToast(data.error, 'error');
+        } else {
+          const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+          if (cartItem) {
+            cartItem.setAttribute('data-available-stock', data.variant_stock);
+
+            const variantDisplay = cartItem.querySelector('.cart-item-details p.text-sm');
+            if (variantDisplay) {
+              variantDisplay.textContent = `Current variant: ${data.variant_weight}`;
+            }
+
+            const productImage = cartItem.querySelector('img');
+            if (productImage && data.variant_image) {
+              productImage.src = data.variant_image;
+            }
+
+            // ✅ Updated item price with animation
+            const itemPrice = cartItem.querySelector('.item-price');
+            if (itemPrice && data.variant_price !== undefined) {
+              itemPrice.textContent = `Price: ₹${data.variant_price}`;
+              itemPrice.classList.add('price-flash');
+              setTimeout(() => itemPrice.classList.remove('price-flash'), 600);
+            }
+
+            const quantityInput = cartItem.querySelector('.quantity-input');
+            if (quantityInput && parseInt(quantityInput.value) > data.variant_stock) {
+              quantityInput.value = data.variant_stock > 0 ? data.variant_stock : 1;
+            }
+
+            cartItem.querySelectorAll('.variant-option').forEach(option => {
+              option.classList.toggle('selected', option.getAttribute('data-variant-id') == variantId);
+            });
+
             const subtotal = document.getElementById('subtotal');
             const totalCartPrice = document.getElementById('total_cart_price');
             if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
             if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
 
-            const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
-            const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
-            if (incrementButton && quantity >= availableStock) {
-              incrementButton.disabled = true;
-            } else if (incrementButton) {
-              incrementButton.disabled = false;
-            }
-
-            showToast('Quantity updated successfully.');
+            showToast('Variant updated successfully.');
           }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          showToast('Failed to update quantity. Please try again.', 'error');
-        });
-      }
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to update variant. Please try again.', 'error');
+      });
+    }
 
-      function updateVariant(itemId, variantId) {
-        fetch("{% url 'cart:update_variant' %}", {
+    // Quantity - Increment
+    document.querySelectorAll('.increment-quantity').forEach(button => {
+      button.addEventListener('click', function () {
+        const itemId = this.getAttribute('data-item-id');
+        const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+        let value = parseInt(input.value);
+        const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+        const availableStock = parseInt(cartItem.getAttribute('data-available-stock'));
+
+        const MAX_QUANTITY = 10;
+
+        if (value < availableStock && value < MAX_QUANTITY) {
+          input.value = value + 1;
+          updateQuantity(itemId, input.value);
+        } else if (value >= MAX_QUANTITY) {
+          showToast('10 is the maximum quantity allowed.', 'error');
+        } else {
+          showToast('Max quantity or stock limit reached', 'error');
+        }
+      });
+    });
+
+    // Quantity - Decrement
+    document.querySelectorAll('.decrement-quantity').forEach(button => {
+      button.addEventListener('click', function () {
+        const itemId = this.getAttribute('data-item-id');
+        const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+        let value = parseInt(input.value);
+        if (value > 1) {
+          input.value = value - 1;
+          updateQuantity(itemId, input.value);
+
+          const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+          if (incrementButton && incrementButton.disabled) {
+            incrementButton.disabled = false;
+          }
+        }
+      });
+    });
+
+    // Variant selection
+    document.addEventListener('click', function (e) {
+      const option = e.target.closest('.variant-option:not(.unavailable)');
+      if (option) {
+        const variantId = option.getAttribute('data-variant-id');
+        const itemId = option.getAttribute('data-item-id');
+        const variantContainer = option.closest('.variant-options');
+        const currentVariantId = variantContainer.getAttribute('data-current-variant-id');
+
+        if (variantId !== currentVariantId) {
+          updateVariant(itemId, variantId);
+          variantContainer.setAttribute('data-current-variant-id', variantId);
+        }
+      }
+    });
+
+    // Remove item
+    document.querySelectorAll('.remove-item').forEach(button => {
+      button.addEventListener('click', function () {
+        const itemId = this.getAttribute('data-item-id');
+        fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
-          },
-          body: JSON.stringify({
-            item_id: itemId,
-            variant_id: variantId
-          })
+          }
         })
         .then(response => response.json())
         .then(data => {
-          if (data.error) {
-            showToast(data.error, 'error');
-          } else {
+          if (data.message) {
             const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
-            if (cartItem) {
-              cartItem.setAttribute('data-available-stock', data.variant_stock);
-              
-              const variantDisplay = cartItem.querySelector('.cart-item-details p.text-sm');
-              if (variantDisplay) {
-                variantDisplay.textContent = `Current variant: ${data.variant_weight}`;
-              }
-              
-              const productImage = cartItem.querySelector('img');
-              if (productImage && data.variant_image) {
-                productImage.src = data.variant_image;
-              }
-              
-              // Reset quantity to 1 or update max if needed
-              const quantityInput = cartItem.querySelector('.quantity-input');
-              if (quantityInput) {
-                if (parseInt(quantityInput.value) > data.variant_stock) {
-                  quantityInput.value = data.variant_stock > 0 ? data.variant_stock : 1;
-                }
-              }
-              
-              // Update variant options highlight
-              const variantOptions = cartItem.querySelectorAll('.variant-option');
-              variantOptions.forEach(option => {
-                if (option.getAttribute('data-variant-id') == variantId) {
-                  option.classList.add('selected');
-                } else {
-                  option.classList.remove('selected');
-                }
-              });
-              
-              // Update cart totals
-              const subtotal = document.getElementById('subtotal');
-              const totalCartPrice = document.getElementById('total_cart_price');
-              if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
-              if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
-              
-              showToast('Variant updated successfully.');
-            }
+            if (cartItem) cartItem.remove();
+
+            const subtotal = document.getElementById('subtotal');
+            const totalCartPrice = document.getElementById('total_cart_price');
+            if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
+            if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
+
+            showToast(data.message);
           }
         })
         .catch(error => {
           console.error('Error:', error);
-          showToast('Failed to update variant. Please try again.', 'error');
+          showToast('Failed to remove item. Please try again.', 'error');
         });
-      }
-
-      // Increment Quantity
-      document.querySelectorAll('.increment-quantity').forEach(button => {
-        button.addEventListener('click', function () {
-          console.log('Increment button clicked'); // Debug logging
-          const itemId = this.getAttribute('data-item-id');
-          console.log('Item ID:', itemId); // Debug logging
-          const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
-          console.log('Input element:', input); // Debug logging
-          let value = parseInt(input.value);
-          console.log('Current value:', value); // Debug logging
-          const availableStock = parseInt(document.querySelector(`.cart-item[data-item-id="${itemId}"]`).getAttribute('data-available-stock'));
-          console.log('Available stock:', availableStock); // Debug logging
-
-          if (value < availableStock) {
-            input.value = value + 1;
-            console.log('New value:', input.value); // Debug logging
-            updateQuantity(itemId, input.value);
-          }
-        });
-      });
-
-      // Decrement Quantity
-      document.querySelectorAll('.decrement-quantity').forEach(button => {
-        button.addEventListener('click', function () {
-          const itemId = this.getAttribute('data-item-id');
-          const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
-          let value = parseInt(input.value);
-          if (value > 1) {
-            input.value = value - 1;
-            updateQuantity(itemId, input.value);
-
-            // Enable the increment button if it was previously disabled
-            const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
-            if (incrementButton && incrementButton.disabled) {
-              incrementButton.disabled = false;
-            }
-          }
-        });
-      });
-
-      // Variant Selection
-document.addEventListener('click', function (e) {
-  const option = e.target.closest('.variant-option:not(.unavailable)');
-  if (option) {
-    const variantId = option.getAttribute('data-variant-id');
-    const itemId = option.getAttribute('data-item-id');
-    const variantContainer = option.closest('.variant-options');
-    const currentVariantId = variantContainer.getAttribute('data-current-variant-id');
-
-    if (variantId !== currentVariantId) {
-      updateVariant(itemId, variantId);
-
-      // Update the current variant id in the DOM
-      variantContainer.setAttribute('data-current-variant-id', variantId);
-
-      // Optional: update UI to reflect the selection
-      variantContainer.querySelectorAll('.variant-option').forEach(el => el.classList.remove('selected'));
-      option.classList.add('selected');
-    }
-  }
-});
-
- 
-
-      // Remove Item
-      document.querySelectorAll('.remove-item').forEach(button => {
-        button.addEventListener('click', function () {
-          const itemId = this.getAttribute('data-item-id');
-          fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': '{{ csrf_token }}'
-            }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              // Remove the item from the DOM
-              const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
-              if (cartItem) cartItem.remove();
-
-              // Update the cart's subtotal and total price
-              const subtotal = document.getElementById('subtotal');
-              const totalCartPrice = document.getElementById('total_cart_price');
-              if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
-              if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
-
-              showToast(data.message);
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            showToast('Failed to remove item. Please try again.', 'error');
-          });
-        });
-      });
-
-      document.querySelectorAll('.cart-item').forEach(item => {
-        const itemId = item.getAttribute('data-item-id');
-        const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
-        const availableStock = parseInt(item.getAttribute('data-available-stock'));
-        const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
-
-        if (quantityInput && incrementButton && parseInt(quantityInput.value) >= availableStock) {
-          incrementButton.disabled = true;
-        }
       });
     });
-  </script>
+
+    // Disable increment buttons on load if quantity matches stock
+    document.querySelectorAll('.cart-item').forEach(item => {
+      const itemId = item.getAttribute('data-item-id');
+      const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+      const availableStock = parseInt(item.getAttribute('data-available-stock'));
+      const incrementButton = document.querySelector(`.increment-quantity[data-item-id="${itemId}"]`);
+
+      if (quantityInput && incrementButton && parseInt(quantityInput.value) >= availableStock) {
+        incrementButton.disabled = true;
+      }
+    });
+  });
+</script>
+
+
 {% endblock %}

@@ -191,58 +191,66 @@
                     </ul>
                 </div>
             </div>
+<!--  -->
 
-            <div class="mt-4">
-                <div class="flex justify-between items-center mb-1">
-                    <span id="stockText" class="text-sm font-medium {% if variants.0.quantity_in_stock > 10 %}text-green-600{% elif variants.0.quantity_in_stock > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
-                        {% if variants.0.quantity_in_stock > 10 %}
-                            In stock ({{ variants.0.quantity_in_stock }} available)
-                        {% elif variants.0.quantity_in_stock > 0 %}
-                            Only {{ variants.0.quantity_in_stock }} left!
-                        {% else %}
-                            Out of stock
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div id="stockIndicator" class="{% if variants.0.quantity_in_stock > 10 %}bg-green-500{% elif variants.0.quantity_in_stock > 0 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full" 
-                         style="width: {% if variants.0.quantity_in_stock > 10 %}100%{% elif variants.0.quantity_in_stock > 0 %}{{variants.0.quantity_in_stock|floatformat:0}}0%{% else %}0%{% endif %}"></div>
-                </div>
-            </div>
+<div class="mt-4">
+    <div class="flex justify-between items-center mb-1">
+        <span id="stockText" class="text-sm font-medium text-green-600">
+            In stock
+        </span>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2">
+        <div id="stockIndicator" class="bg-green-500 h-2 rounded-full" style="width: 100%;"></div>
+    </div>
+</div>
 
-            {% if variants %}
-                <div class="mt-6">
-                    <h4 class="text-xl font-semibold text-gray-700 mb-2">Select Variant</h4>
-                    <div class="flex flex-wrap gap-3">
-                        {% for variant in variants %}
-                            <div class="variant-option {% if forloop.first %}bg-blue-100 border-2 border-blue-500{% else %}border-2 border-gray-300 hover:border-blue-300{% endif %} px-4 py-2 rounded-md cursor-pointer transition-all duration-200"
-                                 data-variant-id="{{ variant.id }}" 
-                                 data-price="{{ variant.variant_price }}" 
-                                 data-stock="{{ variant.quantity_in_stock }}">
-                                {{ variant.weight }}
-                            </div>
-                        {% endfor %}
-                    </div>
+<!-- Variant Selection -->
+{% if variants %}
+    <div class="mt-6">
+        <h4 class="text-xl font-semibold text-gray-700 mb-2">Select Variant</h4>
+        <div class="flex flex-wrap gap-3">
+            {% for variant in variants %}
+                <div class="variant-option {% if forloop.first %}bg-blue-100 border-2 border-blue-500{% else %}border-2 border-gray-300 hover:border-blue-300{% endif %} px-4 py-2 rounded-md cursor-pointer transition-all duration-200"
+                     onclick="selectVariant(this)"
+                     data-variant-id="{{ variant.id }}"
+                     data-price="{{ variant.variant_price }}"
+                     data-stock="{{ variant.quantity_in_stock }}">
+                    {{ variant.weight }}
                 </div>
-            {% else %}
-                <p class="text-red-500">No variants available.</p>
-            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <p class="text-red-500">No variants available.</p>
+{% endif %}
 
-            <div class="mt-6">
-                <h4 class="text-lg font-semibold text-gray-700 mb-2">Quantity</h4>
-                <div class="flex items-center space-x-2">
-                    <button id="decreaseQty" class="bg-gray-200 px-3 py-1 rounded-l hover:bg-gray-300">-</button>
-                    <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input border text-center w-16 py-1 focus:outline-none">
-                    <button id="increaseQty" class="bg-gray-200 px-3 py-1 rounded-r hover:bg-gray-300">+</button>
-                </div>
-            </div>
+<!-- Hidden field to store selected variant -->
+<input type="hidden" id="selectedVariantId" value="{{ variants.0.id }}">
 
-            <div class="mt-8 flex space-x-4">
-                <button id="addToCartBtn"
-                    onclick="event.preventDefault(); addCartItem({{ variants.0.id }}, document.getElementById('quantity').value)"
-                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex-grow flex items-center justify-center gap-2">
-                    <i class="fas fa-shopping-cart"></i> Add to Cart
-                </button>
+<!-- Quantity Selector -->
+<div class="mt-6">
+    <h4 class="text-lg font-semibold text-gray-700 mb-2">Quantity</h4>
+    <div class="flex items-center space-x-2">
+        <button id="decreaseQty" class="bg-gray-200 px-3 py-1 rounded-l hover:bg-gray-300">-</button>
+        <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input border text-center w-16 py-1 focus:outline-none">
+        <button id="increaseQty" class="bg-gray-200 px-3 py-1 rounded-r hover:bg-gray-300">+</button>
+    </div>
+</div>
+
+<!-- Add to Cart Button -->
+<div class="mt-8 flex space-x-4">
+    <button
+        id="addToCartBtn"
+        type="button"
+        onclick="handleAddToCart()"
+        class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mt-4"
+    >
+        <i class="fas fa-shopping-cart"></i> Add to Cart
+    </button>
+</div>
+
+<!--  -->
+           
              <button id="addToCartBtn"
                     onclick="event.preventDefault(); buyNowBtn({{ variants.0.id }}, document.getElementById('quantity').value)"
                     class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex-grow flex items-center justify-center gap-2">
@@ -896,6 +904,90 @@
     });
 });
 
+</script>
+
+<script>
+    // Select a variant
+    function selectVariant(element) {
+        const variantId = element.dataset.variantId;
+        const stock = parseInt(element.dataset.stock);
+
+        document.getElementById('selectedVariantId').value = variantId;
+
+        document.querySelectorAll('.variant-option').forEach(el => {
+            el.classList.remove('bg-blue-100', 'border-blue-500');
+            el.classList.add('border-gray-300');
+        });
+        element.classList.add('bg-blue-100', 'border-blue-500');
+        element.classList.remove('border-gray-300');
+
+        // Update stock indicator
+        const stockText = document.getElementById('stockText');
+        const stockIndicator = document.getElementById('stockIndicator');
+
+        if (stock > 10) {
+            stockText.textContent = `In stock (${stock} available)`;
+            stockText.className = "text-sm font-medium text-green-600";
+            stockIndicator.style.width = "100%";
+            stockIndicator.className = "bg-green-500 h-2 rounded-full";
+        } else if (stock > 0) {
+            stockText.textContent = `Only ${stock} left!`;
+            stockText.className = "text-sm font-medium text-yellow-600";
+            stockIndicator.style.width = `${stock * 10}%`;
+            stockIndicator.className = "bg-yellow-500 h-2 rounded-full";
+        } else {
+            stockText.textContent = "Out of stock";
+            stockText.className = "text-sm font-medium text-red-600";
+            stockIndicator.style.width = "0%";
+            stockIndicator.className = "bg-red-500 h-2 rounded-full";
+        }
+    }
+
+    // Add to Cart
+    function handleAddToCart() {
+        const variantId = document.getElementById('selectedVariantId').value;
+        const quantity = document.getElementById('quantity').value;
+
+        if (!variantId) {
+            showToast("Please select a variant first.", "error");
+            return;
+        }
+
+        fetch(`/cart/add_to_cart/${variantId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ quantity: quantity || 1 })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast("Added to Cart!", "success");
+                const cartCount = document.getElementById("cartCount");
+                if (cartCount) {
+                    cartCount.textContent = data.cart_count;
+                    cartCount.classList.add("animate-bounce");
+                    setTimeout(() => cartCount.classList.remove("animate-bounce"), 1000);
+                }
+            } else {
+                showToast(data.error || "Failed to add to cart", "error");
+            }
+        })
+        .catch(err => {
+            console.error("Add to cart failed", err);
+            showToast("Something went wrong", "error");
+        });
+    }
+
+    // Auto-select first variant on load
+    document.addEventListener("DOMContentLoaded", () => {
+        const firstVariant = document.querySelector('.variant-option');
+        if (firstVariant) {
+            selectVariant(firstVariant);
+        }
+    });
 </script>
 
 {% endblock %}

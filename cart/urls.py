@@ -21,6 +21,6 @@ urlpatterns = [
     # path('retry-payment/<int:order_id>/', views.retry_payment, name='retry_payment'),
     # path('verify-payment/<int:order_id>/', views.verify_payment, name='verify_payment'),
     # path("apply-coupon/", views.apply_coupon, name="apply_coupon"),
-    # path('remove-coupon/', views.remove_coupon, name='remove_coupon')
+    # path('remove-coupon/', views.remove_coupon, name='remove_coupon'),
       path('update-variant/', views.update_variant, name='update_variant'),
 ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

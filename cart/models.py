@@ -19,8 +19,11 @@ class Cart(models.Model):
 
     @property
     def total_price(self):
-        total = sum(item.total_price for item in self.items.all())
+        # total = sum(item.product_variant.variant_price for item in self.items.all())
+        # return total
+        total = sum(item.total_price for item in self.items.all())  # use CartItem.total_price
         return total
+
 
 
 from django.db import models
@@ -70,25 +73,22 @@ class CartItem(models.Model):
 
 
 
-
-
 class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")
     shipping_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  
-    applied_coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)  
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    applied_coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
     shipping_charge = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    notes = models.TextField(blank=True, null=True)  # New field
 
     def calculate_total_amount(self):
-        """Calculate total amount including the shipping charge"""
         items_total = sum(item.total_price for item in self.items.all())
         self.total_amount = items_total + self.shipping_charge
         self.save()
-
 
     def __str__(self):
         return f"Order {self.id} - {self.user.email}"
@@ -146,7 +146,7 @@ class OrderItem(models.Model):
 
         with transaction.atomic():
             
-            self.product_variant.stock += self.quantity
+            self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
 
             
@@ -160,7 +160,7 @@ class OrderItem(models.Model):
 
         with transaction.atomic():
             
-            self.product_variant.stock += self.quantity
+            self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
 
             
@@ -177,10 +177,10 @@ class OrderItem(models.Model):
 
     @property
     def total_price(self):
-        return self.product_variant.product.sales_price * self.quantity
+        return self.product_variant.variant_price * self.quantity
 
     def __str__(self):
-        return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.color})"
+        return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"
 
 
 class Payment(models.Model):
@@ -253,6 +253,14 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} - {self.amount} - {self.timestamp}"
+    
+
+
+
+
+
+
+
     
 # class ProductReview(models.Model):
 #     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reviews")

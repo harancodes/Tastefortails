@@ -4,6 +4,18 @@
 <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold text-gray-900 mb-6">Return Requests</h1>
 
+    {% if messages %}
+  <div id="messages-container">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
     {% if return_requests %}
         <div class="space-y-4">
             {% for item in return_requests %}
@@ -41,7 +53,7 @@
                         </ul>
 
                         <div class="mt-4">
-                            <form action="{% url 'admin_handle_return_request' item.id %}" method="POST" class="inline-flex">
+                            <form action="{% url 'customadmin:admin_handle_return_request' item.id %}" method="POST" class="inline-flex">
                                 {% csrf_token %}
                                 <button type="submit" name="action" value="approve" class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
                                     Approve
