@@ -22,11 +22,11 @@ path('products/delete/<int:product_id>/', views.soft_delete_product, name='soft_
 path('products/edit/<int:product_id>/', views.edit_product, name='edit_product'),
 
     
-    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    
     path('admin/logout/', views.admin_logout, name='admin_logout'),
      path('categories/toggle/<int:category_id>/', views.toggle_list_category, name='toggle_list_category'),
       path('categories/delete/<int:category_id>/', views.soft_delete_category, name='soft_delete_category'),
-    #   path('banner/' ,views.banner_list , name='banner_list'),
+
       path('banner/', views.banner_list, name='banner_list'),
       path('banner', views.add_banner, name='add_banner'),
       path('banner/toggle-list/<int:banner_id>/', views.toggle_list_banner, name='toggle_list_banner'),
@@ -51,9 +51,18 @@ path('orders/', views.admin_order_list_view, name='admin_order_list_view'),
     path('handle-return-request/<int:item_id>/', views.admin_handle_return_request, name='admin_handle_return_request'),
 
 
+path('sales/', views.sales, name='sales'), 
+path('coupons/', views.coupon_management, name='coupon_management'),
+path('coupons/details/<int:coupon_id>/', views.get_coupon_details, name='get_coupon_details'),
+path('coupons/delete/<int:coupon_id>/', views.delete_coupon, name='delete_coupon'),
+path('coupons/edit/<int:coupon_id>/' ,views.edit_coupon, name="edit_coupon" ),
 
+#dashboard
 
-
+path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+path('sales_data/' ,views.sales_data, name='sales_data'),
+path('download_pdf', views.generate_pdf, name='download_pdf'),
+path('download_excel', views.generate_excel, name='download_excel'),
 
 ]
 

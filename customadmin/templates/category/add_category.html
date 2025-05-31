@@ -24,6 +24,14 @@
                     <div class="text-danger small mt-1" id="nameError"></div>
                 </div>
 
+
+                <div class="mb-3">
+    <label for="offer_percentage" class="form-label">Offer Percentage (%)</label>
+    <input type="number" name="offer_percentage" class="form-control" id="offer_percentage" min="0" max="100" placeholder="Enter discount percentage">
+    <div class="text-danger small mt-1" id="offerError"></div>
+</div>
+
+
                 <div class="mb-3">
                     <label for="image" class="form-label">Category Image</label>
                     <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
@@ -116,6 +124,14 @@
             });
     }
 });
+
+const offerInput = document.getElementById('offer_percentage');
+const offer = offerInput.value.trim();
+if (offer && (isNaN(offer) || offer < 0 || offer > 100)) {
+    document.getElementById('offerError').textContent = 'Offer must be a number between 0 and 100.';
+    isValid = false;
+}
+
 
 </script>
 {% endblock %}

@@ -5,5 +5,5 @@ def get_cart_item_count(request):
     if request.user.is_authenticated:
         cart = Cart.objects.filter(user=request.user).first()
         if cart:
-            cart_item_count = cart.items.count()  # Count distinct product variants
+            cart_item_count = cart.items.count()  
     return {"cart_item_count": cart_item_count}

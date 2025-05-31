@@ -7,7 +7,7 @@ from django.db import transaction
 from customadmin.models import Coupon
 from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+import uuid
 
 class Cart(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="cart")
@@ -83,7 +83,9 @@ class Order(models.Model):
     applied_coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
     shipping_charge = models.DecimalField(max_digits=10, decimal_places=2, default=100)
-    notes = models.TextField(blank=True, null=True)  # New field
+    notes = models.TextField(blank=True, null=True) 
+
+
 
     def calculate_total_amount(self):
         items_total = sum(item.total_price for item in self.items.all())
@@ -116,6 +118,7 @@ class OrderItem(models.Model):
     ]
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    # order_item_id = models.CharField(max_length=36, unique=True, editable=False, default=uuid.uuid4)
     product_variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="order_items")
     quantity = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="pending")

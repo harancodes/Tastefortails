@@ -192,3 +192,29 @@ def product_detail_view(request, slug):
 
 def about(request):
     return render(request, 'about.html')
+
+
+
+# class ProductAPI(View):
+#     def get(self, request):
+#         category_id = request.GET.get('category')
+        
+#         if category_id and category_id.isdigit():
+#             products = Product.objects.filter(category_id=int(category_id), is_blocked=False)
+#         else:
+#             products = Product.objects.filter(is_blocked=False).order_by('-created_at')[:8] 
+
+#         product_list = []
+#         for product in products:
+#             product_list.append({
+#                 'id': product.id,
+#                 'name': product.name,
+#                 'regular_price': str(product.regular_price),
+#                 'sales_price': str(product.sales_price),
+#                 'image': product.image.url,
+#                 'offer_percentage': product.offer_percentage,
+#                 'average_rating': product.average_rating(),
+#                 'reviews': list(product.reviews.values()),
+#                 'variants': list(product.variants.values()),
+#             })
+#         return JsonResponse({'products': product_list})

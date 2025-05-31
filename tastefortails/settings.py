@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'cart',
     'wishlist',
     'user_profile',
+    # 'payment_app'
 
 
     'django.contrib.sites',
@@ -284,3 +285,11 @@ cloudinary.config(
 
 # SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = config('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
 # SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+RAZORPAY_KEY_ID = config("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = config("RAZORPAY_KEY_SECRET")

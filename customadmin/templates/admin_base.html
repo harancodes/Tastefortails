@@ -133,7 +133,7 @@
                 <i class="bi bi-person"></i> Customer
             </a>
             
-            <a href="#" class="nav-link {% if active_tab == 'sales' %}active{% endif %}">
+            <a href="{% url 'customadmin:sales'%}" class="nav-link {% if active_tab == 'sales' %}active{% endif %}">
                 <i class="bi bi-graph-up"></i> Sales
             </a>
             
@@ -141,7 +141,7 @@
                 <i class="bi bi-grid"></i> Category
             </a>
             
-            <a href="#" class="nav-link {% if active_tab == 'coupons' %}active{% endif %}">
+            <a href="{% url 'customadmin:coupon_management' %}" class="nav-link {% if active_tab == 'coupons' %}active{% endif %}">
                 <i class="bi bi-ticket-perforated"></i> Coupons
             </a>
             

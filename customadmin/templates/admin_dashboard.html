@@ -1,164 +1,166 @@
-{% extends 'admin_base.html'%}
+{% extends 'admin_base.html' %}
 {% block content %}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Taste for Tails Admin Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100">
 
-        <div class="flex-1 flex flex-col overflow-hidden lg:ml-64">
+    <div class="flex-1 flex flex-col overflow-hidden lg:ml-64">
+        <main class="flex-1 p-6 bg-gray-100 overflow-y-auto">
+            {% block admin_side %}
+            <div class="container mx-auto p-6">
 
-            <main class="flex-1 p-6 bg-gray-100 overflow-y-auto">
-                {% block admin_side %}
-                <div class="container mx-auto p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-white p-4 shadow-md rounded-lg">
-                            <h2 class="text-lg font-semibold">Total Orders</h2>
-                            <p id="total-orders" class="text-2xl font-bold">{{ total_orders }}</p>
-                        </div>
-                        <div class="bg-white p-4 shadow-md rounded-lg">
-                            <h2 class="text-lg font-semibold">Total Revenue</h2>
-                            <p id="total-revenue" class="text-2xl font-bold">${{ total_revenue }}</p>
-                        </div>
-                        <div class="bg-white p-4 shadow-md rounded-lg">
-                            <h2 class="text-lg font-semibold">Total Users</h2>
-                            <p id="total-users" class="text-2xl font-bold">{{ total_users }}</p>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-4 shadow-md rounded-lg">
+                        <h2 class="text-lg font-semibold">Total Orders</h2>
+                        <p id="total-orders" class="text-2xl font-bold">{{ total_orders }}</p>
                     </div>
-
-                    <div class="flex flex-wrap gap-4 mb-6">
-                        <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="today">Today</button>
-                        <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="week">Last 7 Days</button>
-                        <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="month">This Month</button>
-                        <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="year">This Year</button>
-                        <a href="#" class="px-4 py-2 bg-green-600 text-white rounded">Download PDF</a>
-                        <a href="#`" class="px-4 py-2 bg-green-600 text-white rounded">Download Excel</a>
+                    <div class="bg-white p-4 shadow-md rounded-lg">
+                        <h2 class="text-lg font-semibold">Total Revenue</h2>
+                        <p id="total-revenue" class="text-2xl font-bold">₹{{ total_revenue }}</p>
                     </div>
-
-                    <div class="bg-white p-6 shadow-md rounded-lg">
-                        <canvas id="salesChart"></canvas>
-                    </div>
-
-                    <div class="bg-white p-6 shadow-md rounded-lg mt-6">
-                        <h2 class="text-lg font-semibold mb-4">Top Selling Products</h2>
-                        <canvas id="topSellingProductsChart"></canvas>
-                    </div>
-
-                    <div class="bg-white p-6 shadow-md rounded-lg mt-6">
-                        <h2 class="text-lg font-semibold mb-4">Top Selling Categories</h2>
-                        <canvas id="topSellingCategoriesChart"></canvas>
-                    </div>
-
-                    <div class="bg-white p-6 shadow-md rounded-lg mt-6">
-                        <h2 class="text-lg font-semibold mb-4">Top Selling Brands</h2>
-                        <canvas id="topSellingBrandsChart"></canvas>
-                    </div>
-
-                    <div class="bg-white p-6 shadow-md rounded-lg mt-6">
-                        <h2 class="text-lg font-semibold mb-4">Low Stock Products</h2>
-                        <ul id="low-stock-products">
-                            {% for product in low_stock_products %}
-                                <li class="mb-2">
-                                    <span class="font-medium">{{ product.product.name }} ({{ product.color }})</span> - 
-                                    <span class="text-red-600">{{ product.stock }} left</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                    <div class="bg-white p-4 shadow-md rounded-lg">
+                        <h2 class="text-lg font-semibold">Total Users</h2>
+                        <p id="total-users" class="text-2xl font-bold">{{ total_users }}</p>
                     </div>
                 </div>
-                {% endblock %}
-            </main>
 
-            <footer class="bg-white text-center p-4 shadow-md">
-                <p class="text-gray-600">&copy; 2025 Tastefortails. All rights reserved.</p>
-            </footer>
-        </div>
+                <div class="flex flex-wrap gap-4 mb-6">
+                    <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="today">Today</button>
+                    <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="week">Last 7 Days</button>
+                    <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="month">This Month</button>
+                    <button class="filter-btn px-4 py-2 bg-blue-600 text-white rounded" data-filter="year">This Year</button>
+                    <a href="{% url 'customadmin:download_pdf' %}" class="px-4 py-2 bg-green-600 text-white rounded">Download PDF</a>
+                    <a href="{% url 'customadmin:download_excel' %}" class="px-4 py-2 bg-green-600 text-white rounded">Download Excel</a>
+                </div>
+
+                <div class="bg-white p-6 shadow-md rounded-lg">
+                    <canvas id="salesChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-md rounded-lg mt-6">
+                    <h2 class="text-lg font-semibold mb-4">Top Selling Products</h2>
+                    <canvas id="topSellingProductsChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-md rounded-lg mt-6">
+                    <h2 class="text-lg font-semibold mb-4">Top Selling Categories</h2>
+                    <canvas id="topSellingCategoriesChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-md rounded-lg mt-6">
+                    <h2 class="text-lg font-semibold mb-4">Top Selling Brands</h2>
+                    <canvas id="topSellingBrandsChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-md rounded-lg mt-6">
+                    <h2 class="text-lg font-semibold mb-4">Low Stock Products</h2>
+                    <ul id="low-stock-products">
+                        {% for product in low_stock_products %}
+                        <li class="mb-2">
+                            <span class="font-medium">{{ product.product.name }} ({{ product.color }})</span> - 
+                            <span class="text-red-600">{{ product.stock }} left</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+            </div>
+            {% endblock %}
+        </main>
+
+        <footer class="bg-white text-center p-4 shadow-md">
+            <p class="text-gray-600">&copy; 2025 Tastefortails. All rights reserved.</p>
+        </footer>
     </div>
 
-    <button class="lg:hidden fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg" id="sidebarToggle">
-        ☰
-    </button>
+    <button class="lg:hidden fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg" id="sidebarToggle">☰</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Sidebar Toggle for Mobile
+        document.addEventListener("DOMContentLoaded", function () {
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('-translate-x-full');
-            });
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('-translate-x-full');
+                });
+            }
 
-            // Initialize Charts and Fetch Data (same as before)
-            let salesCtx = document.getElementById("salesChart").getContext("2d");
-            let salesChart = new Chart(salesCtx, {
+            const salesCtx = document.getElementById("salesChart").getContext("2d");
+            const salesChart = new Chart(salesCtx, {
                 type: 'bar',
                 data: { labels: [], datasets: [{ label: 'Sales Growth', data: [], backgroundColor: 'blue' }] },
                 options: { responsive: true }
             });
 
-            let topProductsCtx = document.getElementById("topSellingProductsChart").getContext("2d");
-            let topSellingProductsChart = new Chart(topProductsCtx, {
+            const topProductsCtx = document.getElementById("topSellingProductsChart").getContext("2d");
+            const topSellingProductsChart = new Chart(topProductsCtx, {
                 type: 'bar',
                 data: { labels: [], datasets: [{ label: 'Top Selling Products', data: [], backgroundColor: 'green' }] },
                 options: { responsive: true }
             });
 
-            let topCategoriesCtx = document.getElementById("topSellingCategoriesChart").getContext("2d");
-            let topSellingCategoriesChart = new Chart(topCategoriesCtx, {
+            const topCategoriesCtx = document.getElementById("topSellingCategoriesChart").getContext("2d");
+            const topSellingCategoriesChart = new Chart(topCategoriesCtx, {
                 type: 'bar',
                 data: { labels: [], datasets: [{ label: 'Top Selling Categories', data: [], backgroundColor: 'orange' }] },
                 options: { responsive: true }
             });
 
-            let topBrandsCtx = document.getElementById("topSellingBrandsChart").getContext("2d");
-            let topSellingBrandsChart = new Chart(topBrandsCtx, {
+            const topBrandsCtx = document.getElementById("topSellingBrandsChart").getContext("2d");
+            const topSellingBrandsChart = new Chart(topBrandsCtx, {
                 type: 'bar',
                 data: { labels: [], datasets: [{ label: 'Top Selling Brands', data: [], backgroundColor: 'purple' }] },
                 options: { responsive: true }
             });
 
             function fetchSalesData(filter) {
-                fetch(`/admin-panel/sales-data/?filter=${filter}`)
+                fetch(`/customadmin/sales_data/?filter=${filter}`)
+
                     .then(response => response.json())
                     .then(data => {
                         document.getElementById("total-orders").textContent = data.total_orders;
                         document.getElementById("total-revenue").textContent = `$${data.total_revenue}`;
+
                         salesChart.data.labels = data.labels;
                         salesChart.data.datasets[0].data = data.values;
                         salesChart.update();
 
-                        topSellingProductsChart.data.labels = data.top_selling_products.map(item => item.product_variant__product__name);
+                        topSellingProductsChart.data.labels = data.top_selling_products.map(item => item.product_variant__product__name || item.product_variant_product__name || item.product_variant__product__name || item['product_variant__product__name'] || item['product_variant_product__name'] || item['product_variant__product__name'] || item["product_variant__product__name"]);
                         topSellingProductsChart.data.datasets[0].data = data.top_selling_products.map(item => item.total_sold);
                         topSellingProductsChart.update();
 
-                        topSellingCategoriesChart.data.labels = data.top_selling_categories.map(item => item.product_variant__product__category__name);
+                        topSellingCategoriesChart.data.labels = data.top_selling_categories.map(item => item.product_variant__product__category__name || item.product_variant_product_category_name || item["product_variant__product__category__name"]);
                         topSellingCategoriesChart.data.datasets[0].data = data.top_selling_categories.map(item => item.total_sold);
                         topSellingCategoriesChart.update();
 
-                        topSellingBrandsChart.data.labels = data.top_selling_brands.map(item => item.product_variant__product__brand__name);
+                        topSellingBrandsChart.data.labels = data.top_selling_brands.map(item => item.product_variant__product__brand__name || item["product_variant__product__brand__name"]);
                         topSellingBrandsChart.data.datasets[0].data = data.top_selling_brands.map(item => item.total_sold);
                         topSellingBrandsChart.update();
+                    })
+                    .catch(err => {
+                        console.error("Error fetching sales data:", err);
                     });
             }
 
             document.querySelectorAll(".filter-btn").forEach(btn => {
-                btn.addEventListener("click", function() {
+                btn.addEventListener("click", function () {
                     fetchSalesData(this.dataset.filter);
                 });
             });
 
+            // Load initial data for "month"
             fetchSalesData("month");
         });
     </script>
 </body>
 </html>
 
-{% endblock%}
+{% endblock %}

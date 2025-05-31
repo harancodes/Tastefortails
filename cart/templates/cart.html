@@ -3,10 +3,10 @@
 {% block content %}
   <style>
     :root {
-      --primary: #2A3F5F;    /* Navy blue */
-      --secondary: #4A5568;  /* Slate gray */
-      --accent: #2C7A7B;     /* Teal */
-      --light: #F8FAFC;      /* Off white */
+      --primary: #2A3F5F;    
+      --secondary: #4A5568;  
+      --accent: #2C7A7B;     
+      --light: #F8FAFC;      
     }
 
     body {
@@ -304,7 +304,6 @@
     </div>
   </div>
 
-  <!-- Font Awesome for Icons -->
   <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
 
   <!-- Toastify for Notifications -->
@@ -492,7 +491,7 @@
       }
     });
 
-    // Remove item
+    
     document.querySelectorAll('.remove-item').forEach(button => {
       button.addEventListener('click', function () {
         const itemId = this.getAttribute('data-item-id');

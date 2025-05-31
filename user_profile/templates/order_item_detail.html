@@ -42,33 +42,11 @@
                 <!-- Product Image -->
                 <div class="md:w-1/3">
                     <div class="bg-gray-50 rounded-xl overflow-hidden">
-                        {% if order_item.product_variant.image1 %}
-                            <img src="{{ order_item.product_variant.image1.url }}" alt="{{ order_item.product_variant.product.name }}" class="w-full h-64 object-contain p-4">
-                        {% else %}
-                            <div class="w-full h-64 flex items-center justify-center bg-gray-100">
-                                <i class="fas fa-image text-gray-300 text-4xl"></i>
-                            </div>
-                        {% endif %}
+                      <img src="{{ order_item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class=" object-cover rounded-lg" /> 
                     </div>
                     
-                    <!-- Thumbnail gallery -->
-                    <div class="grid grid-cols-4 gap-2 mt-2">
-                        {% if order_item.product_variant.image1 %}
-                        <div class="bg-gray-50 rounded-lg overflow-hidden border-2 border-blue-500">
-                            <img src="{{ order_item.product_variant.image1.url }}" alt="" class="w-full h-16 object-cover">
-                        </div>
-                        {% endif %}
-                        {% if order_item.product_variant.image2 %}
-                        <div class="bg-gray-50 rounded-lg overflow-hidden">
-                            <img src="{{ order_item.product_variant.image2.url }}" alt="" class="w-full h-16 object-cover">
-                        </div>
-                        {% endif %}
-                        {% if order_item.product_variant.image3 %}
-                        <div class="bg-gray-50 rounded-lg overflow-hidden">
-                            <img src="{{ order_item.product_variant.image3.url }}" alt="" class="w-full h-16 object-cover">
-                        </div>
-                        {% endif %}
-                    </div>
+                    
+                  
                 </div>
 
                 <!-- Product Details -->
@@ -86,7 +64,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Unit Price</p>
-                            <p class="font-medium">${{ order_item.product_variant.product.sales_price }}</p>
+                            <p class="font-medium">₹ {{ order_item.product_variant.variant_price }}</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Quantity</p>
@@ -94,7 +72,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Price</p>
-                            <p class="font-bold text-blue-600">#</p>
+                            <p class="font-bold text-blue-600">{{ order_item.total_price}}</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Date Ordered</p>
@@ -206,7 +184,6 @@
                         </div>
                     </div>
 
-                    <!-- Actions Section -->
                     <div class="mt-8 flex flex-wrap gap-3 justify-end">
                         {% if order_item.status == 'shipped' %}
                             <a href="#" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
@@ -235,10 +212,9 @@
                             </form>
                         {% endif %}
 
-                        <!-- Pay Later and Retry Payment Buttons -->
                         {% if order_item.order.payment.status != 'completed' %}
                         <button onclick="retryPayment({{ order_item.order.id }})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                            Retry Payment
+                            Pay Now
                         </button>
                     {% endif %}
                     </div>

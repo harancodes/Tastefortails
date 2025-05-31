@@ -24,6 +24,9 @@ import re
 import datetime
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Q
+import random
+import string
 
 
 
@@ -55,11 +58,10 @@ logger = logging.getLogger(__name__)
 def add_address(request):
     if request.method == "POST":
         try:
-            # Log the received data for debugging
             logger.info(f"POST data: {request.POST}")
             logger.info(f"Content type: {request.content_type}")
             
-            # Get data from POST request
+            
             name = request.POST.get("name")
             phone = request.POST.get("phone")
             address_line = request.POST.get("address_line")
@@ -69,7 +71,7 @@ def add_address(request):
             postal_code = request.POST.get("postal_code")
             country = request.POST.get("country")
             
-            # Validate required fields
+            
             required_fields = {
                 'name': name,
                 'phone': phone,
@@ -88,7 +90,7 @@ def add_address(request):
                     "error": f"Missing required fields: {', '.join(missing_fields)}"
                 }, status=400)
             
-            # Create and save the address
+            
             address = Address(
                 user=request.user,
                 name=name,
@@ -197,7 +199,7 @@ def order_list_view(request):
     if status:
         orders_list = orders_list.filter(items__status=status).distinct()
 
-    paginator = Paginator(orders_list.order_by('id'), 5)  
+    paginator = Paginator(orders_list, 5)  
     page_number = request.GET.get('page')
     orders = paginator.get_page(page_number)
     
@@ -215,17 +217,16 @@ def generate_invoice(request, item_id):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="invoice_{item.id}.pdf"'
 
-    # Create the PDF object, using the response object as its "file."
     pdf = SimpleDocTemplate(response, pagesize=letter)
     styles = getSampleStyleSheet()
     
-    # Define custom styles
+    
     title_style = ParagraphStyle(
         'Title',
         parent=styles['Title'],
         fontSize=18,
         spaceAfter=12,
-        alignment=TA_CENTER  # Center alignment
+        alignment=TA_CENTER  
     )
     
     header_style = ParagraphStyle(
@@ -262,15 +263,15 @@ def generate_invoice(request, item_id):
         content.append(Paragraph(f"{address.country}", normal_style))
     content.append(Spacer(1, 12))
     
-    # Add order details
+    
     content.append(Paragraph("Order Details", header_style))
     order_details = [
         ["Order ID", item.order.id],
-        ["Product", Paragraph(item.product_variant.product.name, normal_style)],  # Wrap product name
+        ["Product", Paragraph(item.product_variant.product.name, normal_style)],  
         ["Quantity", item.quantity],
-        ["Price per unit", f"${item.product_variant.variant_price}"],
+        ["Price per unit", f"Rs {item.product_variant.variant_price}"],
 
-        ["Total Price", f"${item.total_price}"]
+        ["Total Price", f"Rs {item.total_price}"]
     ]
     
     # Define column widths
@@ -291,10 +292,10 @@ def generate_invoice(request, item_id):
     content.append(table)
     content.append(Spacer(1, 12))
     
-    # Add thank you message
+    
     content.append(Paragraph("Thank you for your purchase!", normal_style))
     
-    # Build the PDF
+    
     pdf.build(content)
     
     return response
@@ -309,10 +310,10 @@ def order_item_detail(request, item_id):
     """
     View for displaying detailed information about a specific order item
     """
-    # Get the order item and make sure it belongs to the current user
+    
     order_item = get_object_or_404(OrderItem, id=item_id)
     
-    # Security check: Make sure the order belongs to the current user
+    
     if order_item.order.user != request.user:
         messages.error(request, "You don't have permission to view this order item.")
         return redirect('order_list')
@@ -345,7 +346,7 @@ def cancel_order_item(request, item_id):
         with transaction.atomic():
             reason = request.POST.get('reason', '')
 
-            # **1. Restock the cancelled item**
+            ### restock
             product_variant = order_item.product_variant
             product_variant.quantity_in_stock += order_item.quantity
             product_variant.save()
@@ -602,7 +603,7 @@ def account_overview(request):
         else:
             user.alternate_phone_number = None
 
-        # Validate Profile Image
+        ### Validate Profile Image
         if profile_image:
             if not profile_image.content_type.startswith("image"):
                 messages.error(request, "Invalid file type! Please upload an image.")
@@ -666,7 +667,10 @@ def request_email_verification(request):
         if request.user.__class__.objects.filter(email=new_email).exclude(id=request.user.id).exists():
             return JsonResponse({"success": False, "error": "This email is already in use."}, status=400)
         
-        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        # code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+ 
+        code = ''.join(random.choices(string.digits, k=6))
+
         request.session['email_confirmation_code'] = code
         request.session['new_email'] = new_email
         try:

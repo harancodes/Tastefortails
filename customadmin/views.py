@@ -18,6 +18,30 @@ from django.db.models import Sum
 from django.core.paginator import PageNotAnInteger, Paginator, EmptyPage
 from cart.models import Order, OrderItem, Wallet, Payment, transaction
 from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta, time, datetime
+from openpyxl import Workbook
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+# from reportlab.lib.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from django.http import HttpResponse
+from customadmin.models import Coupon, UsedCoupon
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def block_superuser_navigation(view_func):
     def wrapper(request, *args, **kwargs):
@@ -123,23 +147,35 @@ def add_category(request):
     if request.method == "POST":
         name = request.POST.get('name')
         image = request.FILES.get('image')
+        offer_percentage = request.POST.get('offer_percentage', '0')
 
-        # Check if name is empty
+        # Clean up and validate name
         if not name.strip():
             messages.error(request, "Category name cannot be empty.")
             return redirect('customadmin:add_category')
 
-        # Check if category already exists
         if Category.objects.filter(name__iexact=name.strip()).exists():
             messages.error(request, "This category already exists.")
             return redirect('customadmin:add_category')
 
-        default_image = 'category/default_image.jpg'  
+        # Validate offer_percentage
+        try:
+            offer_percentage = int(offer_percentage)
+            if offer_percentage < 0 or offer_percentage > 100:
+                raise ValueError
+        except ValueError:
+            messages.error(request, "Offer percentage must be between 0 and 100.")
+            return redirect('customadmin:add_category')
 
-        # Create the category object with the uploaded image or default image
-        Category.objects.create(name=name.strip(), image=image if image else default_image)
+        default_image = 'category/default_image.jpg'
 
-        # Success message
+        # Create Category
+        Category.objects.create(
+            name=name.strip(),
+            image=image if image else default_image,
+            offer_percentage=offer_percentage
+        )
+
         messages.success(request, "Category added successfully.")
         return redirect('customadmin:category_list')
 
@@ -178,7 +214,6 @@ def toggle_list_category(request, category_id):
 
 
 
-
 @admin_required
 def edit_category(request, category_id):
     category = get_object_or_404(Category, id=category_id)
@@ -186,6 +221,7 @@ def edit_category(request, category_id):
     if request.method == "POST":
         name = request.POST.get('name', '').strip()
         image = request.FILES.get('image')
+        offer_percentage = request.POST.get('offer_percentage', '').strip()
 
         has_error = False
 
@@ -198,6 +234,21 @@ def edit_category(request, category_id):
         else:
             category.name = name
 
+        # Validate offer_percentage if provided
+        if offer_percentage:
+            try:
+                offer_val = float(offer_percentage)
+                if offer_val < 0 or offer_val > 100:
+                    messages.error(request, "Offer percentage must be between 0 and 100.")
+                    has_error = True
+                else:
+                    category.offer_percentage = offer_val
+            except ValueError:
+                messages.error(request, "Offer percentage must be a valid number.")
+                has_error = True
+        else:
+            category.offer_percentage = None  # clear if empty
+
         if image:
             category.image = image
 
@@ -206,9 +257,8 @@ def edit_category(request, category_id):
             messages.success(request, "Category updated successfully.")
             return redirect('customadmin:category_list')
 
-        # If there's an error, fall through and re-render the form with messages
-
     return render(request, 'category/edit_category.html', {'category': category})
+
 
 
 
@@ -243,12 +293,12 @@ def product_list(request):
     
     products = Products.objects.filter(is_active=True).order_by('-created_at')
 
-    # Search functionality
+
     search_query = request.GET.get('search', '')
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
-            Q(description__icontains=search_query) |
+            
             Q(category__name__icontains=search_query)
         )
 
@@ -284,6 +334,9 @@ def product_list(request):
         'products': products,
         'search_query': search_query,
     })
+
+
+
 import cloudinary
 import cloudinary.uploader
 import base64
@@ -899,12 +952,12 @@ def admin_order_list_view(request):
     search_query = request.GET.get('search', '').strip()
     sort_by = request.GET.get('sort', '').strip()
 
-    # Base queryset with related optimization
+    
     orders_list = Order.objects.select_related('user')\
         .prefetch_related('items__product_variant__product')\
         .order_by('-created_at')
 
-    # Search filter
+    
     if search_query:
         query = Q(user__email__icontains=search_query) | \
                 Q(items__product_variant__product__name__icontains=search_query) | \
@@ -916,17 +969,17 @@ def admin_order_list_view(request):
 
     # Sorting logic
     if sort_by == 'price_asc':
-        # Order by total amount ascending (assumed total_amount field)
+        
         orders_list = orders_list.order_by('total_amount')
     elif sort_by == 'price_desc':
         orders_list = orders_list.order_by('-total_amount')
     elif sort_by == 'name_asc':
-        # Sort by user's first name ascending
+        
         orders_list = orders_list.order_by('user__first_name')
     elif sort_by == 'name_desc':
         orders_list = orders_list.order_by('-user__first_name')
     else:
-        # Default ordering
+        
         orders_list = orders_list.order_by('-created_at')
 
     
@@ -951,55 +1004,43 @@ def admin_order_list_view(request):
 
 
 
-
 @admin_required
 @never_cache   
 def admin_change_order_item_status_view(request, order_item_id):
     try:
-        # Fetch the order item with related order and payment
         order_item = get_object_or_404(OrderItem, id=order_item_id)
         order = order_item.order
 
         if request.method == 'POST':
             new_status = request.POST.get('status', '').strip()
 
-            # Validate status choice
             if new_status not in dict(OrderItem.STATUS_CHOICES).keys():
                 messages.error(request, "Invalid status selected.")
                 return redirect('customadmin:admin_order_list_view')
 
-            # Prevent changing to 'cancelled' status
             if new_status == 'cancelled':
                 messages.error(request, "Cannot manually change status to cancelled.")
                 return redirect('customadmin:admin_order_list_view')
 
-            # Comprehensive Status Change Logic
             try:
                 with transaction.atomic():
-                    # Update Order Item Status
                     order_item.status = new_status
                     order_item.save()
 
-                    # Handle Payment Status for COD Orders
                     try:
                         payment = order.payment
                         
-                        # Update payment status based on order item status and payment method
                         if payment.payment_method == 'cod':
                             if new_status in ['shipped', 'delivered']:
                                 payment.status = 'completed'
                             payment.save()
 
                     except Payment.DoesNotExist:
-                        # Log or handle case where payment doesn't exist
                         messages.warning(request, "No payment record found for this order.")
 
-                    # Optional: Update overall order status if all items are in same status
                     order_statuses = order.items.values_list('status', flat=True).distinct()
                     if len(order_statuses) == 1:
-                        # If all items have same status, potentially update order status
                         if new_status == 'delivered':
-                            # Mark order as fully delivered
                             order.status = 'completed'
                             order.save()
 
@@ -1013,6 +1054,7 @@ def admin_change_order_item_status_view(request, order_item_id):
     except Exception as e:
         messages.error(request, f"An unexpected error occurred: {str(e)}")
         return redirect('customadmin:admin_order_list_view')
+    
 
 @admin_required
 @never_cache   
@@ -1020,9 +1062,8 @@ def admin_return_requests(request):
     return_requests = OrderItem.objects.filter(return_status="requested")
     return render(request, 'orders/admin_return_requests.html', {'return_requests': return_requests})
 
-
 @admin_required
-@never_cache   
+@never_cache
 def admin_handle_return_request(request, item_id):
     if request.method != 'POST':
         messages.error(request, "Invalid request method.")
@@ -1033,50 +1074,428 @@ def admin_handle_return_request(request, item_id):
 
     if action not in ['approve', 'reject']:
         messages.error(request, "Invalid action.")
-        return redirect('customamdin:admin_return_requests')
+        return redirect('customadmin:admin_return_requests')
 
     try:
         with transaction.atomic():
             if action == 'approve':
-                # **1. Restock the product**
                 product_variant = order_item.product_variant
-                product_variant.stock += order_item.quantity
+
+
+                product_variant.quantity_in_stock += order_item.quantity
                 product_variant.save()
 
-                # **2. Calculate Refund (Item Price + Shipping Share)**
                 order = order_item.order
-                total_items = order.items.filter(status__in=["pending", "processing", "shipped", "delivered"]).count()
+
+
+                total_items = order.items.exclude(status__in=["returned", "cancelled"]).count()
 
                 if total_items > 1:
-                    per_item_shipping_charge = order.shipping_charge / Decimal(total_items)
+                    per_item_shipping_charge = order.shipping_charge / total_items
                 else:
-                    per_item_shipping_charge = order.shipping_charge  # If only one item, refund full shipping charge
+                    per_item_shipping_charge = order.shipping_charge
 
-                refund_amount = (order_item.product_variant.product.variant_price * Decimal(order_item.quantity)) + per_item_shipping_charge
+                
+                refund_amount = order_item.total_price + per_item_shipping_charge
 
-                # **3. Check if the order has a valid payment**
-                payment = getattr(order, "payment", None)  # Safely get the payment attribute
+                
+                payment = getattr(order, "payment", None)
                 if payment and payment.status == "completed":
-                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                    wallet, _ = Wallet.objects.select_for_update().get_or_create(user=order.user)
                     wallet.add_amount(refund_amount, reason="Order Return Refund")
+                    messages.success(request, f"Refund of ₹{refund_amount} added to wallet.")
                 else:
-                    messages.warning(request, "Order has no valid payment. Refund not processed.")
+                    messages.warning(request, "Payment not completed. Refund not processed.")
 
-                # **4. Mark the order item as returned**
+                # Update order item status
                 order_item.return_status = "approved"
                 order_item.status = "returned"
                 order_item.save()
 
-                messages.success(request, "Return request approved. Refund processed if payment exists.")
+                messages.success(request, "Return request approved successfully.")
             else:
                 order_item.return_status = "rejected"
                 order_item.save()
                 messages.success(request, "Return request rejected.")
 
     except Exception as e:
-        print(f"Exception: {e}")  # Debugging
+        print(f"Error in processing return request: {e}")
         messages.error(request, "An error occurred while processing the return request.")
 
     return redirect('customadmin:admin_return_requests')
 
 
+
+@admin_required
+@never_cache
+def sales(request):
+    today = timezone.now().date()
+    last_7_days = today - timedelta(days=7)
+    last_30_days = today - timedelta(days=30)
+
+    total_revenue = Order.objects.filter(payment__status='completed').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_orders = Order.objects.count()
+    completed_orders = Order.objects.filter(items__status='delivered').distinct().count()
+    cancelled_orders = Order.objects.filter(items__status='cancelled').distinct().count()
+    weekly_sales = Order.objects.filter(payment__status='completed', created_at__gte=last_7_days).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    monthly_sales = Order.objects.filter(payment__status='completed', created_at__gte=last_30_days).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+
+    best_selling_products = OrderItem.objects.values('product_variant__product__name')\
+        .annotate(total_sold=Sum('quantity'))\
+        .order_by('-total_sold')[:5]
+    
+    payment_breakdown = Payment.objects.values('payment_method')\
+        .annotate(total=Sum('amount'))\
+        .order_by('-total')
+
+    context = {
+        'total_revenue': total_revenue,
+        'total_orders': total_orders,
+        'completed_orders': completed_orders,
+        'cancelled_orders': cancelled_orders,
+        'weekly_sales': weekly_sales,
+        'monthly_sales': monthly_sales,
+        'best_selling_products': best_selling_products,
+        'payment_breakdown': payment_breakdown,
+    }
+    return render(request, "sales/sale_report.html", context)
+
+
+    
+
+
+
+#dashboard
+from io import BytesIO
+from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
+from django.db.models import Sum
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from openpyxl import Workbook
+from datetime import datetime, timedelta, time
+
+# Assuming your models:
+# Order, OrderItem
+
+@admin_required
+@never_cache
+def generate_pdf(request):
+    orders = Order.objects.all()
+    buffer = BytesIO()
+    pdf = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    title = Paragraph('Sales Report', styles['Title'])
+    elements.append(title)
+
+    data = [['Order ID', 'User Email', 'Total Amount', 'Offer Percentage', 'Created At']]
+
+    for order in orders:
+        # offer_percentages = [
+        #     item.product_variant.product.offer_percentage 
+        #     for item in order.items.all()
+        # ]
+        # avg_offer_percentage = round(sum(offer_percentages) / len(offer_percentages), 2) if offer_percentages else 0
+
+        data.append([
+            str(order.id),
+            order.user.email,
+            f"Rs {order.total_amount}",
+            # f"{avg_offer_percentage}%",
+            order.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(table)
+
+    pdf.build(elements)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
+    return response
+
+
+@admin_required
+@never_cache
+def generate_excel(request):
+    orders = Order.objects.all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sales Report"
+
+    ws.append(['Order ID', 'User Email', 'Total Amount', 'Created At'])
+
+    for order in orders:
+        ws.append([
+            order.id,
+            order.user.email,
+            order.total_amount,
+            order.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="sales_report.xlsx"'
+    return response
+
+
+@admin_required
+@never_cache
+def sales_data(request):
+    filter_type = request.GET.get('filter', 'month')
+    today = timezone.now().date()
+
+    if filter_type == 'today':
+        start_date = today
+
+        hours = range(24)
+        labels = [f'{hour}:00' for hour in hours]
+        values = []
+
+        for hour in hours:
+            hour_start = timezone.make_aware(datetime.combine(today, time(hour=hour)))
+            hour_end = hour_start + timedelta(hours=1)
+            hour_revenue = Order.objects.filter(
+                created_at__gte=hour_start,
+                created_at__lt=hour_end
+            ).aggregate(total=Sum("total_amount"))["total"] or 0
+            values.append(hour_revenue)
+
+    elif filter_type == 'week':
+        start_date = today - timedelta(days=6)  # last 7 days including today
+        labels = []
+        values = []
+
+        for i in range(7):
+            date = start_date + timedelta(days=i)
+            labels.append(date.strftime('%a'))
+            day_revenue = Order.objects.filter(
+                created_at__date=date
+            ).aggregate(total=Sum("total_amount"))["total"] or 0
+            values.append(day_revenue)
+
+    elif filter_type == 'month':
+        start_date = today.replace(day=1)
+        num_days = today.day
+        labels = []
+        values = []
+
+        for i in range(num_days):
+            date = start_date + timedelta(days=i)
+            labels.append(date.strftime('%d'))
+            day_revenue = Order.objects.filter(
+                created_at__date=date
+            ).aggregate(total=Sum("total_amount"))["total"] or 0
+            values.append(day_revenue)
+
+    elif filter_type == 'year':
+        start_date = today.replace(month=1, day=1)
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        values = []
+
+        for month in range(1, 13):
+            month_start = today.replace(month=month, day=1)
+            if month == 12:
+                month_end = month_start.replace(year=month_start.year + 1, month=1, day=1)
+            else:
+                month_end = month_start.replace(month=month + 1, day=1)
+
+            month_revenue = Order.objects.filter(
+                created_at__date__gte=month_start,
+                created_at__date__lt=month_end
+            ).aggregate(total=Sum("total_amount"))["total"] or 0
+            values.append(month_revenue)
+
+    else:
+        start_date = today.replace(day=1)
+        labels = []
+        values = []
+
+    orders_in_range = Order.objects.filter(created_at__date__gte=start_date)
+    total_orders = orders_in_range.count()
+    total_revenue = orders_in_range.aggregate(total=Sum("total_amount"))["total"] or 0
+
+    top_selling_products = (
+        OrderItem.objects.filter(order__created_at__date__gte=start_date)
+        .values("product_variant__product__name")
+        .annotate(total_sold=Sum("quantity"))
+        .order_by("-total_sold")[:10]
+    )
+
+    top_selling_categories = (
+        OrderItem.objects.filter(order__created_at__date__gte=start_date)
+        .values("product_variant__product__category__name")
+        .annotate(total_sold=Sum("quantity"))
+        .order_by("-total_sold")[:10]
+    )
+
+    top_selling_brands = (
+        OrderItem.objects.filter(order__created_at__date__gte=start_date)
+        .values("product_variant__product__brand__name")
+        .annotate(total_sold=Sum("quantity"))
+        .order_by("-total_sold")[:10]
+    )
+
+    data = {
+        "total_orders": total_orders,
+        "total_revenue": round(total_revenue, 2),
+        "labels": labels,
+        "values": values,
+        "top_selling_products": list(top_selling_products),
+        "top_selling_categories": list(top_selling_categories),
+        "top_selling_brands": list(top_selling_brands),
+    }
+
+    return JsonResponse(data)
+
+
+
+
+
+@admin_required
+@never_cache   
+def coupon_management(request):
+    """Handles adding, updating, and listing coupons"""
+    coupons = Coupon.objects.all()
+    coupons_list = Coupon.objects.all()
+        # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(coupons_list, 10)  #
+
+    try:
+        coupons = paginator.page(page)
+    except PageNotAnInteger:
+        coupons = paginator.page(1)
+    except EmptyPage:
+        coupons = paginator.page(paginator.num_pages)
+
+    if request.method == "POST":
+        coupon_id = request.POST.get("coupon_id")
+        code = request.POST.get("code")
+        discount_percentage = request.POST.get("discount_percentage")  # Updated field name
+        min_cart_value = request.POST.get("min_cart_value")
+        start_date = request.POST.get("start_date")
+        expiry_date = request.POST.get("expiry_date") or None
+        is_active = request.POST.get("is_active") == "on"
+
+        
+        try:
+            discount_percentage = float(discount_percentage)
+            if not (1 <= discount_percentage <= 100):
+                raise ValueError("Discount percentage must be between 1 and 100.")
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect("coupon_management")
+
+        if coupon_id:  
+            coupon = get_object_or_404(Coupon, id=coupon_id)
+            coupon.code = code
+            coupon.discount_percentage = discount_percentage  
+            coupon.min_cart_value = min_cart_value
+            coupon.start_date = start_date
+            coupon.expiry_date = expiry_date
+            coupon.is_active = is_active
+            coupon.save()
+        else:  
+            Coupon.objects.create(
+                code=code,
+                discount_percentage=discount_percentage,  
+                min_cart_value=min_cart_value,
+                start_date=start_date,
+                expiry_date=expiry_date,
+                is_active=is_active
+            )
+
+        return redirect("customadmin:coupon_management")
+
+    return render(request, "coupon/manage_coupons.html", {"coupons": coupons})
+
+
+@admin_required
+@never_cache   
+def get_coupon_details(request, coupon_id):
+    """Fetch coupon details via AJAX for editing"""
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    data = {
+        "id": coupon.id,
+        "code": coupon.code,
+        "discount_percentage": str(coupon.discount_percentage),  # Updated field name
+        "min_cart_value": str(coupon.min_cart_value),
+        "start_date": str(coupon.start_date),
+        "expiry_date": str(coupon.expiry_date) if coupon.expiry_date else "",
+        "is_active": coupon.is_active,
+    }
+    return JsonResponse(data)
+
+
+@admin_required
+@never_cache   
+def delete_coupon(request, coupon_id):
+    
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    coupon.delete()
+    return JsonResponse({"message": "Coupon deleted successfully"})
+
+@admin_required
+@never_cache
+def edit_coupon(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+
+    if request.method == "POST":
+        code = request.POST.get('code', '').strip()
+        discount_percentage = request.POST.get('discount_percentage')
+        min_cart_value = request.POST.get('min_cart_value')
+        start_date = request.POST.get('start_date')
+        expiry_date = request.POST.get('expiry_date')
+        is_active = request.POST.get('is_active') == 'on'
+
+        has_error = False
+
+        if not code:
+            messages.error(request, "Coupon code cannot be empty.")
+            has_error = True
+        elif Coupon.objects.filter(code__iexact=code).exclude(id=coupon_id).exists():
+            messages.error(request, f"A coupon with the code '{code}' already exists.")
+            has_error = True
+        else:
+            coupon.code = code
+
+        try:
+            coupon.discount_percentage = float(discount_percentage)
+            coupon.min_cart_value = float(min_cart_value)
+            coupon.start_date = start_date
+            coupon.expiry_date = expiry_date or None
+            coupon.is_active = is_active
+        except ValueError:
+            messages.error(request, "Please enter valid numbers for percentage and cart value.")
+            has_error = True
+
+        if not has_error:
+            coupon.save()
+            messages.success(request, "Coupon updated successfully.")
+            return redirect('customadmin:coupon_list')
+
+    return render(request, 'coupon/manage_coupons.html', {'coupon': coupon})
+
+ 

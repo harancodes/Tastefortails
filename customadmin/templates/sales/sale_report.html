@@ -1,0 +1,83 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block admin_side %}
+<div class="container mx-auto p-5">
+    <h2 class="text-2xl font-bold mb-4">Sales Report</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-blue-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Total Revenue</h3>
+            <p class="text-2xl">₹{{ total_revenue|default:0 }}</p>
+        </div>
+
+        <div class="bg-green-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Total Orders</h3>
+            <p class="text-2xl">{{ total_orders }}</p>
+        </div>
+
+        <div class="bg-yellow-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Completed Orders</h3>
+            <p class="text-2xl">{{ completed_orders }}</p>
+        </div>
+
+        <div class="bg-red-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Cancelled Orders</h3>
+            <p class="text-2xl">{{ cancelled_orders }}</p>
+        </div>
+
+        <div class="bg-gray-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Sales in Last 7 Days</h3>
+            <p class="text-2xl">₹{{ weekly_sales|default:0 }}</p>
+        </div>
+
+        <div class="bg-purple-500 text-white p-4 rounded-xl">
+            <h3 class="text-lg font-semibold">Sales in Last 30 Days</h3>
+            <p class="text-2xl">₹{{ monthly_sales|default:0 }}</p>
+        </div>
+    </div>
+
+    <h3 class="text-xl font-semibold mt-6">Best Selling Products</h3>
+    <table class="min-w-full bg-white border border-gray-200 mt-2">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="border px-4 py-2">Product</th>
+                <th class="border px-4 py-2">Total Sold</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in best_selling_products %}
+            <tr>
+                <td class="border px-4 py-2">{{ product.product_variant__product__name }}</td>
+                <td class="border px-4 py-2">{{ product.total_sold }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="text-center py-2">No sales yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="text-xl font-semibold mt-6">Payment Breakdown</h3>
+    <table class="min-w-full bg-white border border-gray-200 mt-2">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="border px-4 py-2">Payment Method</th>
+                <th class="border px-4 py-2">Total Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payment_breakdown %}
+            <tr>
+                <td class="border px-4 py-2">{{ payment.payment_method }}</td>
+                <td class="border px-4 py-2">₹{{ payment.total }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="text-center py-2">No payments recorded.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

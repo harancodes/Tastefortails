@@ -65,13 +65,13 @@ def validate_min_cart_value(value):
 class Coupon(models.Model):
     code = models.CharField(max_length=50, unique=True)
     discount_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00,  # Set default value
+        max_digits=5, decimal_places=2, default=0.00,  
         validators=[validate_discount_percentage]
     )
 
     min_cart_value = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        validators=[validate_min_cart_value]  # Ensures min cart value is not negative
+        validators=[validate_min_cart_value]  
     )
     start_date = models.DateField(default=timezone.now)
     expiry_date = models.DateTimeField(null=True, blank=True)
@@ -87,17 +87,17 @@ class Coupon(models.Model):
 
     def calculate_discount(self, cart_total):
         """Calculate the discount amount based on the cart total."""
-        # Convert cart_total to Decimal if it's a float
+        
         from decimal import Decimal
         
         if isinstance(cart_total, float):
             cart_total = Decimal(str(cart_total))
             
         if cart_total < self.min_cart_value:
-            return Decimal('0')  # No discount if cart total is below the minimum required value
+            return Decimal('0')  
 
         discount_amount = (self.discount_percentage / Decimal('100')) * cart_total
-        return round(discount_amount, 2)  # Round to 2 decimal places
+        return round(discount_amount, 2)  
 
     def clean(self):
         """Extra validation before saving."""

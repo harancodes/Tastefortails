@@ -2,7 +2,6 @@
 
 {% block content %}
 
-
 <div class="container-fluid px-4 mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="fw-bold">CATEGORY</h2>
@@ -18,7 +17,6 @@
     {% endfor %}
   </div>
 {% endif %}
-
 
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -38,9 +36,7 @@
     </div>
     <div class="col-md-6 text-end">
       <div class="btn-group" role="group">
-        <!-- <a href="?sort=price_high" class="btn btn-outline-dark">Price High-Low</a>
-        <a href="?sort=price_low" class="btn btn-outline-dark">Price Low-High</a>
-        <a href="?sort=latest" class="btn btn-outline-dark">Last Added First</a> -->
+        <!-- Sort buttons could go here -->
       </div>
     </div>
   </form>
@@ -52,8 +48,6 @@
         <tr>
           <th>SNO</th>
           <th>Category Name</th>
-          <!-- <th>Sales</th>
-          <th>Stock</th> -->
           <th>Created</th>
           <th>List / Unlist</th>
           <th>Action</th>
@@ -65,8 +59,6 @@
         <tr>
           <td>{{ forloop.counter }}</td>
           <td>{{ category.name }}</td>
-          <!-- <td>{{ category.sales }}</td>
-          <td>{{ category.stock }}</td> -->
           <td>{{ category.created_at|date:"d M Y" }}</td>
           <td>
             <button type="button"
@@ -81,29 +73,33 @@
           <td>
             <a href="{% url 'customadmin:edit_category' category.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
             <a href="{% url 'customadmin:soft_delete_category' category.id %}"  class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-category-id="{{ category.id }}">
-    <i class="bi bi-trash"></i>
-</a>
+              <i class="bi bi-trash"></i>
+            </a>
 
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                  <div class="modal-content">
+                      <div class="modal-header">
+                          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                          Are you sure you want to soft delete this category? This action cannot be undone.
+                      </div>
+                      <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                          <a id="confirmDeleteBtn" href="#" class="btn btn-danger">Confirm</a>
+                      </div>
+                  </div>
+              </div>
             </div>
-            <div class="modal-body">
-                Are you sure you want to soft delete this category? This action cannot be undone.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a id="confirmDeleteBtn" href="#" class="btn btn-danger">Confirm</a>
-            </div>
-        </div>
-    </div>
-</div>
           </td>
           <td>
-            {% if category.offer %}{{ category.offer }}{% else %}<span class="text-muted">--</span>{% endif %}
+            {% if category.offer_percentage %}
+              {{ category.offer_percentage }}%
+            {% else %}
+              <span class="text-muted">--</span>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
@@ -133,6 +129,7 @@
   </div>
 </div>
 
+<!-- Toggle Modal -->
 <div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -166,37 +163,30 @@ document.addEventListener('DOMContentLoaded', function () {
     actionSpan.textContent = action;
   });
 });
-</script>
 
+document.addEventListener('DOMContentLoaded', function() {
+  var deleteLinks = document.querySelectorAll('[data-bs-toggle="modal"]');
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var deleteLinks = document.querySelectorAll('[data-bs-toggle="modal"]');
+  deleteLinks.forEach(function(link) {
+    link.addEventListener('click', function(event) {
+      var categoryId = link.getAttribute('data-category-id');
+      var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-        deleteLinks.forEach(function(link) {
-            link.addEventListener('click', function(event) {
-                var categoryId = link.getAttribute('data-category-id');
-                var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-
-                var url = '{% url "customadmin:soft_delete_category" 0 %}'.replace('0', categoryId);
-                confirmDeleteBtn.setAttribute('href', url);
-            });
-        });
-    });
-
-      window.addEventListener('DOMContentLoaded', () => {
-    const alertList = document.querySelectorAll('.alert-dismissible');
-    alertList.forEach(alert => {
-      // Auto close after 3 seconds
-      setTimeout(() => {
-        // Bootstrap 5's alert instance to close alert
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-        bsAlert.close();
-      }, 3000); // 3000ms = 3 seconds
+      var url = '{% url "customadmin:soft_delete_category" 0 %}'.replace('0', categoryId);
+      confirmDeleteBtn.setAttribute('href', url);
     });
   });
 
+  window.addEventListener('DOMContentLoaded', () => {
+    const alertList = document.querySelectorAll('.alert-dismissible');
+    alertList.forEach(alert => {
+      setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+      }, 3000);
+    });
+  });
+});
 </script>
 
 {% endblock %}
-

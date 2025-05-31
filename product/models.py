@@ -15,6 +15,7 @@ class Category(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    offer_percentage = models.PositiveIntegerField(default=0, help_text="Discount percentage for this brand.")
 
 
     class Meta:
@@ -70,6 +71,7 @@ class Products(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     is_listed = models.BooleanField(default=True)
+    offer_percentage = models.PositiveIntegerField(default=0, help_text="Discount percentage for this brand.")
 
     class Meta:
         ordering = ['-created_at']
@@ -112,6 +114,7 @@ class Variant(models.Model):
     weight = models.CharField(max_length=50)
     quantity_in_stock = models.PositiveIntegerField(default=0)
     variant_price = models.DecimalField(max_digits=10, decimal_places=2)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  
     is_active = models.BooleanField(default=True)
     sku = models.CharField(max_length=100, unique=True, blank=True, null=True)
 
@@ -119,6 +122,29 @@ class Variant(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
         ]
+
+    def apply_offer(self):
+        """Applies the best available offer (Product > Category > Brand) to set sales_price."""
+        original_price = self.variant_price
+
+        # Get offer percentages
+        product_offer = self.product.offer_percentage or 0
+        category_offer = self.product.category.offer_percentage if self.product.category else 0
+        brand_offer = self.product.brand.offer_percentage if self.product.brand else 0
+
+        # Choose the best offer
+        best_offer = max(product_offer, category_offer, brand_offer)
+
+        # Apply discount
+        if best_offer > 0:
+            discount_amount = (best_offer / 100) * float(original_price)
+            self.sales_price = round(float(original_price) - discount_amount, 2)
+        else:
+            self.sales_price = original_price
+
+    def save(self, *args, **kwargs):
+        self.apply_offer()  
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.product.name} - {self.weight}"
@@ -156,7 +182,7 @@ class Review(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['created_at']),  # Index for sorting
+            models.Index(fields=['created_at']),  
         ]
 
     def __str__(self):

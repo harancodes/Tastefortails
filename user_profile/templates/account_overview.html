@@ -129,7 +129,7 @@
                             {% if request.user.full_name %}
                                 {{ request.user.full_name }}
                             {% else %}
-                                {{ request.user.username }}
+                                {{ request.user.first_name }}
                             {% endif %}
                         </span>
                         <i class="fas fa-chevron-down ml-1 text-sm"></i>
@@ -183,7 +183,7 @@
                     <img id="profileImagePreview" src="{{ user.profile_image.url }}" alt="Profile"
                         class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
                     {% else %}
-                    <img id="profileImagePreview" src="{% static 'default_profile.png' %}" alt="Profile"
+                    <img id="profileImagePreview" src="#" alt="Profile"
                         class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
                     {% endif %}
                     <div class="absolute inset-0 rounded-full bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -196,7 +196,7 @@
                 {% if user.full_name %}
                     {{ user.full_name }}
                 {% else %}
-                    {{ user.username }}
+                    {{ user.first_name }}
                 {% endif %}
             </h3>
             <p class="text-sm text-gray-500">{{ user.email }}</p>

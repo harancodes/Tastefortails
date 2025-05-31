@@ -14,7 +14,7 @@
         <div class="space-y-4">
             {% for item in order_items %}
             <div class="flex items-center bg-gray-50 p-4 rounded-lg shadow">
-                <img src="{{ item.product_variant.image1.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg">
+              <td><img src="{{ item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg" /></td> 
                 <div class="ml-4 text-left">
                     <h3 class="text-lg font-medium text-gray-900">{{ item.product_variant.product.name }}</h3>
                     <p class="text-gray-600">Quantity: {{ item.quantity }}</p>
@@ -27,12 +27,12 @@
             {% endfor %}
         </div> 
 
-        <!-- Action Buttons -->
+
         <div class="flex justify-center space-x-4 mt-6">
-            <a href="{% url 'cart:order_list' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+            <a href="{% url 'user_profile:order_list' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
                 View Orders
             </a>
-            <a href="{% url 'authentication:home' %}" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">
+            <a href="{% url 'product:list' %}" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">
                 Continue Shopping
             </a>
         </div>

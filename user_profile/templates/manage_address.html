@@ -1,6 +1,5 @@
 {% extends "account_overview.html" %}
 
-<!-- Main Content -->
 {% block user %}
 
 <main class="flex-1 p-6 bg-gray-50 min-h-screen">
@@ -265,14 +264,14 @@
             console.log(`${key}: ${value}`);
         }
 
-        // Show loading state
+        
         const submitButton = this.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.textContent = 'Saving...';
         submitButton.disabled = true;
 
-        // ✅ Use Django's URL resolver here
-        const addAddressUrl = "{% url 'user_profile:add_address' %}";  // Or just 'add_address' if not namespaced
+        
+        const addAddressUrl = "{% url 'user_profile:add_address' %}";  
         
         try {
             const response = await fetch(addAddressUrl, {
@@ -283,7 +282,6 @@
                 }
             });
             
-            // Log response details for debugging
             console.log('Response status:', response.status);
             console.log('Response headers:', response.headers);
             
