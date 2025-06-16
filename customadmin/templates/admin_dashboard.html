@@ -120,35 +120,37 @@
                 data: { labels: [], datasets: [{ label: 'Top Selling Brands', data: [], backgroundColor: 'purple' }] },
                 options: { responsive: true }
             });
+function fetchSalesData(filter) {
+    fetch(`/customadmin/sales_data/?filter=${filter}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("total-orders").textContent = data.total_orders;
+            document.getElementById("total-revenue").textContent = `₹${data.total_revenue}`;
 
-            function fetchSalesData(filter) {
-                fetch(`/customadmin/sales_data/?filter=${filter}`)
+            
+            salesChart.data.labels = data.labels;
+            salesChart.data.datasets[0].data = data.values;
+            salesChart.update();
 
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById("total-orders").textContent = data.total_orders;
-                        document.getElementById("total-revenue").textContent = `$${data.total_revenue}`;
+            
+            topSellingProductsChart.data.labels = data.top_selling_products.map(item => item["product_variant__product__name"] || "Unknown");
+            topSellingProductsChart.data.datasets[0].data = data.top_selling_products.map(item => item.total_sold);
+            topSellingProductsChart.update();
 
-                        salesChart.data.labels = data.labels;
-                        salesChart.data.datasets[0].data = data.values;
-                        salesChart.update();
+            
+            topSellingCategoriesChart.data.labels = data.top_selling_categories.map(item => item["product_variant__product__category__name"] || "Unknown");
+            topSellingCategoriesChart.data.datasets[0].data = data.top_selling_categories.map(item => item.total_sold);
+            topSellingCategoriesChart.update();
 
-                        topSellingProductsChart.data.labels = data.top_selling_products.map(item => item.product_variant__product__name || item.product_variant_product__name || item.product_variant__product__name || item['product_variant__product__name'] || item['product_variant_product__name'] || item['product_variant__product__name'] || item["product_variant__product__name"]);
-                        topSellingProductsChart.data.datasets[0].data = data.top_selling_products.map(item => item.total_sold);
-                        topSellingProductsChart.update();
-
-                        topSellingCategoriesChart.data.labels = data.top_selling_categories.map(item => item.product_variant__product__category__name || item.product_variant_product_category_name || item["product_variant__product__category__name"]);
-                        topSellingCategoriesChart.data.datasets[0].data = data.top_selling_categories.map(item => item.total_sold);
-                        topSellingCategoriesChart.update();
-
-                        topSellingBrandsChart.data.labels = data.top_selling_brands.map(item => item.product_variant__product__brand__name || item["product_variant__product__brand__name"]);
-                        topSellingBrandsChart.data.datasets[0].data = data.top_selling_brands.map(item => item.total_sold);
-                        topSellingBrandsChart.update();
-                    })
-                    .catch(err => {
-                        console.error("Error fetching sales data:", err);
-                    });
-            }
+            
+            topSellingBrandsChart.data.labels = data.top_selling_brands.map(item => item["product_variant__product__brand__name"] || "Unknown");
+            topSellingBrandsChart.data.datasets[0].data = data.top_selling_brands.map(item => item.total_sold);
+            topSellingBrandsChart.update();
+        })
+        .catch(err => {
+            console.error("Error fetching sales data:", err);
+        });
+}
 
             document.querySelectorAll(".filter-btn").forEach(btn => {
                 btn.addEventListener("click", function () {
@@ -156,7 +158,7 @@
                 });
             });
 
-            // Load initial data for "month"
+            
             fetchSalesData("month");
         });
     </script>

@@ -16,10 +16,14 @@ urlpatterns = [
     path('razorpay_payment_success/', views.razorpay_payment_success, name='razorpay_payment_success'),
     path('order-success/<int:order_id>/', views.order_success, name='order_success'),
     path('create_razorpay_order/', views.create_razorpay_order, name='create_razorpay_order'),
-    path('verify_razorpay_payment/', views.verify_razorpay_payment, name='verify_razorpay_payment'), 
+    path('verify_razorpay_payment/', views.verify_razorpay_payment, name='verify_razorpay_payment'),
+
+    path('cart/webhook/', views.webhook, name='webhook'),
+     
     path('pay-later/<int:order_id>/', views.pay_later, name='pay_later'),
     path('retry-payment/<int:order_id>/', views.retry_payment, name='retry_payment'),
-    path('verify-payment/<int:order_id>/', views.verify_payment, name='verify_payment'),
+  
+    # path('verify_payment/<int:order_id>/', views.verify_payment, name='verify_payment'),
       path('update-variant/', views.update_variant, name='update_variant'),
       path('apply_coupon/', views.apply_coupon, name="apply_coupon"),
       path('remove_coupon/', views.remove_coupon, name="remove_coupon"),

@@ -87,10 +87,10 @@ def admin_login(request):
 def admin_dashboard(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to access this page")
+    User= get_user_model()
+    total_users = User.objects.count()
     
-    # total_user = User.objects.aggregate(Sum('points'))['points__sum']
-    
-    return render(request, 'admin_dashboard.html')
+    return render(request, 'admin_dashboard.html', {"total_users": total_users})
 
 @admin_required
 def user_list(request):
@@ -234,7 +234,6 @@ def edit_category(request, category_id):
         else:
             category.name = name
 
-        # Validate offer_percentage if provided
         if offer_percentage:
             try:
                 offer_val = float(offer_percentage)
@@ -247,7 +246,7 @@ def edit_category(request, category_id):
                 messages.error(request, "Offer percentage must be a valid number.")
                 has_error = True
         else:
-            category.offer_percentage = None  # clear if empty
+            category.offer_percentage = None  
 
         if image:
             category.image = image
@@ -349,32 +348,25 @@ from django.http import JsonResponse
 def add_product(request):
     if request.method == "POST":
         try:
-            
             name = request.POST.get('name')
             description = request.POST.get('description', '')
             category_id = request.POST.get('category')
             brand_id = request.POST.get('brand')
             product_type = request.POST.get('product_type')
+            offer_percentage = int(request.POST.get('offer_percentage', 0) or 0)
 
-            
             if not all([name, category_id, product_type]):
                 messages.error(request, "Please fill in all required fields.")
                 return redirect('customadmin:add_product')
 
-            
             if Products.objects.filter(name__iexact=name).exists():
                 messages.error(request, f"A product with the name '{name}' already exists.")
                 return redirect('customadmin:add_product')
 
-            
-            variants_weight = request.POST.getlist('variants_weight[]')
-            variants_price = request.POST.getlist('variants_price[]')
-            variants_stock = request.POST.getlist('variants_stock[]')
-
-            
-            variants_weight = [w.strip() for w in variants_weight if w.strip()]
-            variants_price = [p.strip() for p in variants_price if p.strip()]
-            variants_stock = [s.strip() for s in variants_stock if s.strip()]
+            # Variants
+            variants_weight = [w.strip() for w in request.POST.getlist('variants_weight[]') if w.strip()]
+            variants_price = [p.strip() for p in request.POST.getlist('variants_price[]') if p.strip()]
+            variants_stock = [s.strip() for s in request.POST.getlist('variants_stock[]') if s.strip()]
 
             if not all([variants_weight, variants_price, variants_stock]):
                 messages.error(request, "At least one variant is required.")
@@ -392,14 +384,14 @@ def add_product(request):
                     messages.error(request, "Variant weight, price, and stock must be valid numbers.")
                     return redirect('customadmin:add_product')
 
+            # Total stock and min price
             try:
-                total_stock = sum(int(s) for s in variants_stock if s)
-                min_price = min(float(p) for p in variants_price if p)
+                total_stock = sum(int(s) for s in variants_stock)
             except ValueError:
-                messages.error(request, "Variant prices and stock must be valid numbers.")
+                messages.error(request, "Variant stock must be valid numbers.")
                 return redirect('customadmin:add_product')
 
-            # Create product
+            # Create Product
             product = Products.objects.create(
                 name=name,
                 description=description,
@@ -408,19 +400,21 @@ def add_product(request):
                 product_type=product_type,
                 stock=total_stock,
                 is_active=True,
+                offer_percentage=offer_percentage
             )
 
-            
+            # Add Variants and apply offer logic
             for w, p, s in zip(variants_weight, variants_price, variants_stock):
-                if w and p and s:
-                    Variant.objects.create(
-                        product=product,
-                        weight=w,
-                        variant_price=float(p),
-                        quantity_in_stock=int(s),
-                    )
+                variant = Variant.objects.create(
+                    product=product,
+                    weight=w,
+                    variant_price=float(p),
+                    quantity_in_stock=int(s),
+                )
+                variant.apply_offer()
+                variant.save()
 
-            
+            # Add Main Image
             main_image_data = request.POST.get('main_image_data')
             if main_image_data:
                 main_image = save_cropped_image(main_image_data)
@@ -432,7 +426,7 @@ def add_product(request):
                 else:
                     messages.warning(request, "No main image was provided. Product added without a primary image.")
 
-            
+            # Add Additional Images
             for i in range(1, 4):
                 other_image_data = request.POST.get(f'other_image_data_{i}')
                 if other_image_data:
@@ -446,7 +440,6 @@ def add_product(request):
             messages.success(request, f"Product '{product.name}' added successfully.")
             redirect_url = reverse('customadmin:product_list')
 
-            
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'status': 'success',
@@ -459,13 +452,11 @@ def add_product(request):
         except Exception as e:
             error_message = f"An error occurred: {str(e)}"
             messages.error(request, error_message)
-
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'status': 'error', 'message': error_message}, status=400)
-
             return redirect('customadmin:add_product')
 
-    # Handle GET request
+    # GET request
     categories = Category.objects.filter(is_active=True)
     brands = Brand.objects.filter(is_active=True)
 
@@ -508,8 +499,9 @@ def save_cropped_image(base64_data):
         raise ValueError(f"Error processing image: {str(e)}")
 
 
-@admin_required
 
+
+@admin_required
 def edit_product(request, product_id):
     product = get_object_or_404(Products, id=product_id)
 
@@ -520,6 +512,7 @@ def edit_product(request, product_id):
             category_id = request.POST.get('category')
             brand_id = request.POST.get('brand')
             product_type = request.POST.get('product_type')
+            offer_percentage = int(request.POST.get('offer_percentage', 0) or 0)
             
             if not all([name, category_id, product_type]):
                 messages.error(request, "Please fill in all required fields.")
@@ -544,11 +537,8 @@ def edit_product(request, product_id):
 
             for w, p, s in zip(variants_weight, variants_price, variants_stock):
                 try:
-                    if float(p) < 0:
-                        messages.error(request, "Variant price cannot be negative.")
-                        return redirect('customadmin:edit_product', product_id=product.id)
-                    if int(s) < 0:
-                        messages.error(request, "Variant stock cannot be negative.")
+                    if float(p) < 0 or int(s) < 0:
+                        messages.error(request, "Variant price and stock must be non-negative.")
                         return redirect('customadmin:edit_product', product_id=product.id)
                 except ValueError:
                     messages.error(request, "Variant weight, price, and stock must be valid numbers.")
@@ -565,18 +555,19 @@ def edit_product(request, product_id):
             product.category_id = category_id
             product.brand_id = brand_id or None
             product.product_type = product_type
+            product.offer_percentage = offer_percentage
             product.stock = total_stock
             product.save()
 
             existing_variant_ids = list(Variant.objects.filter(product=product).values_list('id', flat=True))
             updated_variant_ids = []
-            
+
             for i, (w, p, s) in enumerate(zip(variants_weight, variants_price, variants_stock)):
                 try:
                     v_id = variant_ids[i] if i < len(variant_ids) and variant_ids[i] else None
                     price = float(p)
                     stock = int(s)
-                    
+
                     if v_id and v_id.isdigit():
                         v_id = int(v_id)
                         variant = Variant.objects.filter(id=v_id, product=product).first()
@@ -584,6 +575,7 @@ def edit_product(request, product_id):
                             variant.weight = w
                             variant.variant_price = price
                             variant.quantity_in_stock = stock
+                            variant.apply_offer()
                             variant.save()
                             updated_variant_ids.append(v_id)
                     else:
@@ -593,11 +585,13 @@ def edit_product(request, product_id):
                             variant_price=price,
                             quantity_in_stock=stock,
                         )
+                        variant.apply_offer()
+                        variant.save()
                         updated_variant_ids.append(variant.id)
                 except (ValueError, IndexError) as e:
                     messages.error(request, f"Error with variant {i+1}: {str(e)}")
                     return redirect('customadmin:edit_product', product_id=product.id)
-            
+
             variants_to_delete = set(existing_variant_ids) - set(updated_variant_ids)
             Variant.objects.filter(id__in=variants_to_delete).delete()
 
@@ -608,14 +602,12 @@ def edit_product(request, product_id):
             main_image_data = request.POST.get('main_image_data')
             if main_image_data:
                 ProductImage.objects.filter(product=product, is_primary=True).delete()
-                
                 main_image = save_cropped_image(main_image_data)
                 ProductImage.objects.create(product=product, image=main_image, is_primary=True)
             else:
                 main_image = request.FILES.get('main_image')
                 if main_image:
                     ProductImage.objects.filter(product=product, is_primary=True).delete()
-                    
                     ProductImage.objects.create(product=product, image=main_image, is_primary=True)
 
             for i in range(1, 4):
@@ -629,23 +621,23 @@ def edit_product(request, product_id):
                         ProductImage.objects.create(product=product, image=other_image, is_primary=False)
 
             messages.success(request, f"Product '{product.name}' updated successfully.")
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'status': 'success', 
+                    'status': 'success',
                     'message': f"Product '{product.name}' updated successfully.",
                     'redirect_url': reverse('customadmin:product_list')
                 })
-                
+
             return redirect('customadmin:product_list')
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}"
             messages.error(request, error_message)
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'status': 'error', 'message': error_message}, status=400)
-                
+
             return redirect('customadmin:edit_product', product_id=product.id)
 
     categories = Category.objects.filter(is_active=True)
@@ -660,6 +652,7 @@ def edit_product(request, product_id):
         'variants': variants,
         'images': images,
     })
+
 
 @never_cache
 @admin_required
@@ -1139,6 +1132,7 @@ def sales(request):
     cancelled_orders = Order.objects.filter(items__status='cancelled').distinct().count()
     weekly_sales = Order.objects.filter(payment__status='completed', created_at__gte=last_7_days).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     monthly_sales = Order.objects.filter(payment__status='completed', created_at__gte=last_30_days).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
 
     best_selling_products = OrderItem.objects.values('product_variant__product__name')\
         .annotate(total_sold=Sum('quantity'))\
@@ -1195,17 +1189,17 @@ def generate_pdf(request):
     data = [['Order ID', 'User Email', 'Total Amount', 'Offer Percentage', 'Created At']]
 
     for order in orders:
-        # offer_percentages = [
-        #     item.product_variant.product.offer_percentage 
-        #     for item in order.items.all()
-        # ]
-        # avg_offer_percentage = round(sum(offer_percentages) / len(offer_percentages), 2) if offer_percentages else 0
+        offer_percentages = [
+            item.product_variant.product.offer_percentage 
+            for item in order.items.all()
+        ]
+        avg_offer_percentage = round(sum(offer_percentages) / len(offer_percentages), 2) if offer_percentages else 0
 
         data.append([
             str(order.id),
             order.user.email,
             f"Rs {order.total_amount}",
-            # f"{avg_offer_percentage}%",
+            f"{avg_offer_percentage}%",
             order.created_at.strftime('%Y-%m-%d %H:%M:%S')
         ])
 
@@ -1333,7 +1327,7 @@ def sales_data(request):
         values = []
 
     orders_in_range = Order.objects.filter(created_at__date__gte=start_date)
-    total_orders = orders_in_range.count()
+    total_orders = total_orders = Order.objects.count()
     total_revenue = orders_in_range.aggregate(total=Sum("total_amount"))["total"] or 0
 
     top_selling_products = (

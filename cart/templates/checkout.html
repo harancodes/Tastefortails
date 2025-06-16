@@ -32,7 +32,6 @@
       border-color: var(--accent);
     }
 
-    /* Modal Styling */
     .modal-input {
       width: 100%;
       padding: 0.75rem;
@@ -61,7 +60,6 @@
       box-shadow: 0 0 0 2px rgba(44, 122, 123, 0.1);
     }
 
-    /* Payment Method Styling */
     .payment-method {
       display: flex;
       align-items: center;
@@ -93,7 +91,6 @@
       color: var(--secondary);
     }
 
-    /* Responsive Design */
     @media (max-width: 768px) {
       .container {
         padding: 1rem;
@@ -127,8 +124,18 @@
 
   <form id="checkoutForm" method="POST" action="{% url 'cart:checkout' %}{% if buy_now_item %}?variant_id={{ buy_now_item.id }}{% endif %}">
     {% csrf_token %}
-    <input type="hidden" name="original_total_price" id="original_total_price" value="{{ cart_total }}">
-    <input type="hidden" name="discounted_total_price" id="discounted_total_price" value="{{ cart_total }}">
+    <input type="hidden" name="original_total_price" id="original_total_price" value="{{ cart_total|floatformat:2 }}">
+    <input type="hidden" name="discounted_total_price" id="discounted_total_price" value="{{ total_price|floatformat:2 }}">
+    <input type="hidden" id="total_price_with_shipping" value="{{ total_price_with_shipping|floatformat:2 }}">
+    <input type="hidden" id="razorpay_key" value="{{ RAZORPAY_KEY_ID }}" >
+    <input type="hidden" id="verify_payment_url" value="{% url 'cart:verify_razorpay_payment' %}">
+   <input type="hidden" id="order_success_url" value="/order/success/{order_id}/">
+ 
+
+    <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
+    <input type="hidden" id="user_email" value="{{ user.email }}">
+    <input type="hidden" id="user_phone" value="{{ user.phone_number }}">
+
     <div class="container mx-auto p-4">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -207,19 +214,33 @@
                   {% if buy_now_item %}
                   <tr class="border-b hover:bg-gray-50 transition-colors">
                     <td class="py-3 text-gray-700 text-sm px-4">{{ buy_now_item.product.name }}</td>
-                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
+                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.sales_price|default:buy_now_item.variant_price|floatformat:2 }}</td>
                     <td class="py-3 text-gray-700 text-sm px-4">1</td>
-                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.product.sales_price }}</td>
+                    <td class="py-3 text-gray-700 text-sm px-4">₹{{ buy_now_item.sales_price|default:buy_now_item.variant_price|floatformat:2 }}</td>
                   </tr>
                   {% else %}
                     {% for item in cart_items %}
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                   <td><img src="{{ item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg" /></td>
-
-                      <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.product_variant.variant_price }}</td>
-                      <td class="py-3 text-gray-700 text-sm px-4">{{ item.quantity }}</td>
-                      <td class="py-3 text-gray-700 text-sm px-4">₹{{ item.total_price }}</td>
-                    </tr>
+                   <tr class="border-b hover:bg-gray-50 transition-colors">
+  <td class="py-3 text-gray-700 text-sm px-4">
+    <div class="flex items-center gap-2">
+      <img src="{{ item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg" />
+      <span>{{ item.product_variant.product.name }} ({{ item.product_variant.weight }})</span>
+    </div>
+  </td>
+  <td class="py-3 text-gray-700 text-sm px-4">
+    {% if item.product_variant.get_discount_percentage %}
+      <span class="line-through text-sm text-gray-400 mr-1">₹{{ item.product_variant.variant_price|floatformat:2 }}</span>
+      <span class="font-medium text-green-700">₹{{ item.product_variant.sales_price|floatformat:2 }}</span>
+    {% else %}
+      ₹{{ item.product_variant.variant_price|floatformat:2 }}
+    {% endif %}
+  </td>
+  <td class="py-3 text-gray-700 text-sm px-4">{{ item.quantity }}</td>
+  <td class="py-3 text-gray-700 text-sm px-4">
+    ₹{{ cart_total|floatformat:2 }}
+  </td>
+</tr>
+ 
                     {% endfor %}
                   {% endif %}
                 </tbody>
@@ -230,28 +251,24 @@
             <div class="mt-6 pt-4 border-t">
               <div class="flex justify-between mb-2">
                 <span>Original Total</span>
-                <span class="font-semibold" id="original-total">₹{{ cart_total|default:0 }}</span>
+                <span class="font-semibold" id="original-total">₹{{ cart_total|floatformat:2 }}</span>
               </div>
-
-              <!-- Shipping Charges -->
+              {% if discount > 0 %}
+              <div class="flex justify-between mb-2">
+                <span>Discount</span>
+                <span class="font-semibold text-green-600">-₹{{ discount|floatformat:2 }}</span>
+              </div>
+              {% endif %}
               <div class="flex justify-between mb-2">
                 <span>Shipping Charges</span>
-                <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|default:0 }}</span>
+                <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|floatformat:2 }}</span>
               </div>
-
-              <!-- Total Due -->
               <div class="flex justify-between border-t pt-4">
                 <span class="font-bold">Total Due</span>
-                <span class="font-bold text-lg" id="totalDue">₹{{ total_price_with_shipping|default:0 }}</span>
+                <span class="font-bold text-lg" id="totalDue">₹{{ total_price_with_shipping|floatformat:2 }}</span>
               </div>
             </div>
 
-            <!-- Hidden Fields -->
-            <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
-            <input type="hidden" id="user_email" value="{{ user.email }}">
-            <input type="hidden" id="user_phone" value="{{ user.phone_number }}">
-
-            <!-- Error display if there is one -->
             {% if error %}
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
               <strong class="font-bold">Error:</strong>
@@ -259,40 +276,37 @@
             </div>
             {% endif %}
           </div>
-          <!-- Coupon Section -->
-<div class="mt-4">
-  <label for="coupon" class="block text-sm font-medium text-gray-700 mb-1">Apply Coupon</label>
-  <div class="flex gap-2">
-    <input
-      type="text"
-      id="couponCode"
-      placeholder="Enter coupon code"
-      class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-accent"
-    />
-    <button
-      id="applyCouponBtn"
-      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition-all"
-    >
-      Apply
-    </button>
-    <button
-      id="cancelCouponBtn"
-      class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-800 transition-all hidden"
-    >
-      Remove
-    </button>
-  </div>
-  <p id="couponMessage" class="text-sm mt-2 text-green-600 hidden">Coupon applied successfully!</p>
-  <p id="couponError" class="text-sm mt-2 text-red-600 hidden">Invalid coupon code.</p>
-  <p id="finalTotalPrice" class="mt-2 text-lg font-semibold text-gray-800">Final Total: <span id="finalTotalPriceAmount">₹{{ total_price_with_shipping}}</span></p>
-</div>
+          <div class="mt-4">
+            <label for="coupon" class="block text-sm font-medium text-gray-700 mb-1">Apply Coupon</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                id="couponCode"
+                placeholder="Enter coupon code"
+                class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-accent"
+              />
+              <button
+                id="applyCouponBtn"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition-all"
+              >
+                Apply
+              </button>
+              <button
+                id="cancelCouponBtn"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-800 transition-all hidden"
+              >
+                Remove
+              </button>
+            </div>
+            <p id="couponMessage" class="text-sm mt-2 text-green-600 hidden">Coupon applied successfully!</p>
+            <p id="couponError" class="text-sm mt-2 text-red-600 hidden">Invalid coupon code.</p>
+            <p id="finalTotalPrice" class="mt-2 text-lg font-semibold text-gray-800">Final Total: <span id="finalTotalPriceAmount">₹{{ total_price_with_shipping|floatformat:2 }}</span></p>
+          </div>
 
           <!-- Payment Methods -->
           <div class="mt-6">
             <h2 class="text-xl font-bold mb-4 gradient-text">Payment Method</h2>
             <div class="space-y-3">
-
-              <!-- Pay with Wallet -->
               <div class="payment-method" onclick="selectPaymentMethod('wallet')">
                 {% if wallet %}
                   <input 
@@ -300,18 +314,20 @@
                     id="paymentWallet" 
                     name="payment_method" 
                     value="wallet" 
+                    {% if wallet.balance < total_price_with_shipping %}disabled{% endif %}
                     {% if selected_payment == 'wallet' %}checked{% endif %}
                     required
                   >
                   <label for="paymentWallet" class="cursor-pointer flex items-center">
-                    <span class="ml-2">Wallet Balance (₹{{ wallet.balance }})</span>
+                    <span class="ml-2">Wallet Balance (₹{{ wallet.balance|floatformat:2 }})</span>
+                    {% if wallet.balance < total_price_with_shipping %}
+                      <span class="ml-2 text-red-500 text-sm">Insufficient balance</span>
+                    {% endif %}
                   </label>
                 {% else %}
                   <p class="text-sm text-gray-500">Wallet not available.</p>
                 {% endif %}
               </div>
-
-              <!-- Pay on Delivery -->
               <div class="payment-method" onclick="selectPaymentMethod('cod')">
                 <input 
                   type="radio" 
@@ -323,8 +339,6 @@
                 >
                 <label for="paymentCOD" class="cursor-pointer ml-2">Cash on Delivery</label>
               </div>
-
-              <!-- Online Payment -->
               <div class="payment-method" onclick="selectPaymentMethod('online')">
                 <input 
                   type="radio" 
@@ -334,13 +348,10 @@
                   {% if selected_payment == 'online' %}checked{% endif %}
                   required
                 >
-                <label for="paymentOnline" class="cursor-pointer ml-2">Online Payment</label>
+                <label for="paymentOnline" class="cursor-pointer ml-2">Online Payment (Razorpay)</label>
               </div>
             </div>
           </div>
-
-
-          
 
           <!-- Place Order Button -->
           <button 
@@ -386,282 +397,279 @@
     </div>
   </div>
 
- 
-<div id="editAddressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center" role="dialog" aria-modal="true" aria-labelledby="editAddressTitle">
-  <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
-    <h2 id="editAddressTitle" class="text-xl font-semibold mb-4">Edit Address</h2>
-    <form id="editAddressForm" method="POST">
-      {% csrf_token %}
-      <input type="hidden" name="address_id" id="editAddressId">
-      <div class="space-y-3">
-        <input type="text" name="name" id="editName" placeholder="Name (optional)" class="modal-input">
-        <input type="text" name="phone" id="editPhone" placeholder="Phone (e.g., +919876543210)" class="modal-input">
-        <input type="text" name="address_line" id="editAddressLine" placeholder="Address Line" class="modal-input" required>
-        <select name="address_type" id="editAddressType" class="modal-select" required>
-          <option value="home">Home</option>
-          <option value="work">Work</option>
-        </select>
-        <input type="text" name="city" id="editCity" placeholder="City" class="modal-input" required>
-        <input type="text" name="state" id="editState" placeholder="State" class="modal-input" required>
-        <input type="text" name="postal_code" id="editPostalCode" placeholder="Postal Code" class="modal-input" required>
-        <input type="text" name="country" id="editCountry" placeholder="Country" class="modal-input" required>
-        <label class="flex items-center">
-          <input type="checkbox" name="is_default" id="editIsDefault" class="mr-2">
-          <span>Set as default address</span>
-        </label>
-      </div>
-      <div class="flex justify-end mt-4 space-x-2">
-        <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
-      </div>
-    </form>
+  <!-- Edit Address Modal -->
+  <div id="editAddressModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center" role="dialog" aria-modal="true" aria-labelledby="editAddressTitle">
+    <div class="bg-white p-6 rounded-lg w-full max-w-lg relative">
+      <h2 id="editAddressTitle" class="text-xl font-semibold mb-4">Edit Address</h2>
+      <form id="editAddressForm" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="address_id" id="editAddressId">
+        <div class="space-y-3">
+          <input type="text" name="name" id="editName" placeholder="Name (optional)" class="modal-input">
+          <input type="text" name="phone" id="editPhone" placeholder="Phone (e.g., +919876543210)" class="modal-input">
+          <input type="text" name="address_line" id="editAddressLine" placeholder="Address Line" class="modal-input" required>
+          <select name="address_type" id="editAddressType" class="modal-select" required>
+            <option value="home">Home</option>
+            <option value="work">Work</option>
+          </select>
+          <input type="text" name="city" id="editCity" placeholder="City" class="modal-input" required>
+          <input type="text" name="state" id="editState" placeholder="State" class="modal-input" required>
+          <input type="text" name="postal_code" id="editPostalCode" placeholder="Postal Code" class="modal-input" required>
+          <input type="text" name="country" id="editCountry" placeholder="Country" class="modal-input" required>
+          <label class="flex items-center">
+            <input type="checkbox" name="is_default" id="editIsDefault" class="mr-2">
+            <span>Set as default address</span>
+          </label>
+        </div>
+        <div class="flex justify-end mt-4 space-x-2">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
 <script>
-  function openModal() {
-  document.getElementById('addressModal').classList.remove('hidden');
+/* ──────────────────────────────────────────────────────────────
+   1.  Helpers: notifications & modals
+   ────────────────────────────────────────────────────────────── */
+function displayNotification(msg, type) {
+  const note = document.createElement('div');
+  note.classList.add(
+    'fixed','bottom-5','right-5','p-3','rounded-lg','shadow-lg','text-white',
+    type === 'success' ? 'bg-green-600' : 'bg-red-600'
+  );
+  note.textContent = msg;
+  document.body.appendChild(note);
+  setTimeout(() => note.remove(), 3000);
 }
 
-function closeModal() {
-  document.getElementById('addressModal').classList.add('hidden');
-}
+function openModal()      { document.getElementById('addressModal').classList.remove('hidden'); }
+function closeModal()     { document.getElementById('addressModal').classList.add('hidden'); }
+function closeEditModal() { document.getElementById('editAddressModal').classList.add('hidden'); }
 
-function openEditModal(id, name, phone, address_line, address_type, city, state, postal_code, country, is_default) {
-  document.getElementById('editAddressId').value = id;
-  document.getElementById('editName').value = name || '';
-  document.getElementById('editPhone').value = phone || '';
-  document.getElementById('editAddressLine').value = address_line || '';
-  document.getElementById('editAddressType').value = address_type || 'home';
-  document.getElementById('editCity').value = city || '';
-  document.getElementById('editState').value = state || '';
-  document.getElementById('editPostalCode').value = postal_code || '';
-  document.getElementById('editCountry').value = country || '';
-  document.getElementById('editIsDefault').checked = is_default === true || is_default === 'true';
-  document.getElementById('editAddressForm').action = `/user_profile/edit-address/${id}/`;
+function openEditModal(id, name='', phone='', line='', type='home',
+                       city='', state='', pincode='', country='', isDefault=false) {
+  document.getElementById('editAddressId').value      = id;
+  document.getElementById('editName').value           = name;
+  document.getElementById('editPhone').value          = phone;
+  document.getElementById('editAddressLine').value    = line;
+  document.getElementById('editAddressType').value    = type || 'home';
+  document.getElementById('editCity').value           = city;
+  document.getElementById('editState').value          = state;
+  document.getElementById('editPostalCode').value     = pincode;
+  document.getElementById('editCountry').value        = country;
+  document.getElementById('editIsDefault').checked    = (isDefault === true || isDefault === 'true');
+  document.getElementById('editAddressForm').action   = `/user_profile/edit-address/${id}/`;
   document.getElementById('editAddressModal').classList.remove('hidden');
 }
 
-function closeEditModal() {
-  document.getElementById('editAddressModal').classList.add('hidden');
-}
-
-document.getElementById('addAddressForm').addEventListener('submit', function(event) {
-  event.preventDefault();
-  const formData = new FormData(this);
-
-  fetch(this.action, {
-    method: 'POST',
-    body: formData,
-    headers: {
-      'X-CSRFToken': '{{ csrf_token }}'
-    }
-  })
-  .then(response => {
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
-  })
-  .then(data => {
-    if (data.success) {
-      const addressList = document.getElementById('addressList');
-      const newAddress = document.createElement('div');
-      newAddress.className = 'flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50';
-      newAddress.innerHTML = `
-        <div class="flex items-start">
-          <input type="radio" id="address-${data.address.id}" name="address" value="${data.address.id}" class="mr-4 mt-1 address-radio" required ${data.address.is_default ? 'checked' : ''}>
-          <label for="address-${data.address.id}" class="text-md text-gray-700 cursor-pointer">
-            <p class="font-semibold text-gray-800">${data.address.name || 'Address'} ${data.address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
-            <p class="text-gray-600">${data.address.address_type.charAt(0).toUpperCase() + data.address.address_type.slice(1)}</p>
-            <p class="text-gray-600">${data.address.address_line}</p>
-            <p class="text-gray-600">${data.address.city}, ${data.address.state}</p>
-            <p class="text-gray-600">${data.address.country} - ${data.address.postal_code}</p>
-            ${data.address.phone ? `<p class="text-gray-600">Phone: ${data.address.phone}</p>` : ''}
-          </label>
-        </div>
-        <div class="ml-4 mt-1">
-          <button type="button" onclick="openEditModal(${data.address.id}, '${data.address.name || ''}', '${data.address.phone || ''}', '${data.address.address_line}', '${data.address.address_type}', '${data.address.city}', '${data.address.state}', '${data.address.postal_code}', '${data.address.country}', ${data.address.is_default})" class="text-sm text-blue-500 hover:underline">✏️ Edit</button>
-        </div>
-      `;
-      addressList.appendChild(newAddress);
-      closeModal();
-      displayNotification('Address added successfully', 'success');
-    } else {
-      displayNotification('Failed to add address: ' + data.error, 'error');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    displayNotification('Something went wrong. Please try again.', 'error');
-  });
-});
-
-document.getElementById('editAddressForm').addEventListener('submit', function(event) {
-  event.preventDefault();
-  const formData = new FormData(this);
-
-  fetch(this.action, {
-    method: 'POST',
-    body: formData,
-    headers: {
-      'X-CSRFToken': '{{ csrf_token }}'
-    }
-  })
-  .then(response => {
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
-  })
-  .then(data => {
-    if (data.success) {
-      const addressList = document.getElementById('addressList');
-      const addressInput = addressList.querySelector(`input[value="${data.address.id}"]`);
-      const addressDiv = addressInput.closest('div');
-
-      addressDiv.innerHTML = `
-        <div class="flex items-start">
-          <input type="radio" id="address-${data.address.id}" name="address" value="${data.address.id}" class="mr-4 mt-1 address-radio" required ${data.address.is_default ? 'checked' : ''}>
-          <label for="address-${data.address.id}" class="text-md text-gray-700 cursor-pointer">
-            <p class="font-semibold text-gray-800">${data.address.name || 'Address'} ${data.address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
-            <p class="text-gray-600">${data.address.address_type.charAt(0).toUpperCase() + data.address.address_type.slice(1)}</p>
-            <p class="text-gray-600">${data.address.address_line}</p>
-            <p class="text-gray-600">${data.address.city}, ${data.address.state}</p>
-            <p class="text-gray-600">${data.address.country} - ${data.address.postal_code}</p>
-            ${data.address.phone ? `<p class="text-gray-600">Phone: ${data.address.phone}</p>` : ''}
-          </label>
-        </div>
-        <div class="ml-4 mt-1">
-          <button type="button" onclick="openEditModal(${data.address.id}, '${data.address.name || ''}', '${data.address.phone || ''}', '${data.address.address_line}', '${data.address.address_type}', '${data.address.city}', '${data.address.state}', '${data.address.postal_code}', '${data.address.country}', ${data.address.is_default})" class="text-sm text-blue-500 hover:underline">✏️ Edit</button>
-        </div>
-      `;
-      closeEditModal();
-      displayNotification('Address updated successfully', 'success');
-    } else {
-      displayNotification('Failed to update address: ' + data.error, 'error');
-    }
-  })
-  .catch(error => {
-    displayNotification('Something went wrong. Please try again.', 'error');
-  });
-});
-
-function displayNotification(message, type) {
-  const notification = document.createElement('div');
-  notification.classList.add('fixed', 'bottom-5', 'right-5', 'p-3', 'rounded-lg', 'shadow-lg', 'text-white');
-  notification.classList.add(type === 'success' ? 'bg-green-600' : 'bg-red-600');
-  notification.innerText = message;
-  document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), 3000);
-}
-
 function selectPaymentMethod(method) {
-  const paymentMethods = document.querySelectorAll('.payment-method');
-  paymentMethods.forEach(pm => pm.classList.remove('selected'));
-  const selectedMethod = document.querySelector(`.payment-method input[value="${method}"]`).parentElement;
-  selectedMethod.classList.add('selected');
+  document.querySelectorAll('.payment-method')
+          .forEach(pm => pm.classList.remove('selected'));
+  const sel = document.querySelector(`.payment-method input[value="${method}"]`).parentElement;
+  sel.classList.add('selected');
 }
 
-document.getElementById("checkoutForm").addEventListener("submit", function(event) {
-  const selectedAddress = document.querySelector('input[name="address"]:checked');
-  const selectedPayment = document.querySelector('input[name="payment_method"]:checked');
+/* ──────────────────────────────────────────────────────────────
+   2.  Coupon logic
+   ────────────────────────────────────────────────────────────── */
+function showMessage(msg, isErr=false) {
+  const el = isErr ? document.getElementById('couponError')
+                   : document.getElementById('couponMessage');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
 
-  if (!selectedAddress) {
-    event.preventDefault();
-    alert('Please select a shipping address');
-    return false;
+document.getElementById('applyCouponBtn').addEventListener('click', async (ev)=>{
+  ev.preventDefault();
+  const code   = document.getElementById('couponCode').value.trim();
+  const total  = parseFloat(document.getElementById('original_total_price').value);
+  const ship   = parseFloat('{{ shipping_charge|floatformat:2 }}');
+
+  try {
+    const res  = await fetch("{% url 'cart:apply_coupon' %}", {
+      method : 'POST',
+      headers: { 'Content-Type':'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body   : JSON.stringify({ coupon_code:code, cart_total:total })
+    });
+    const data = await res.json();
+    if (!data.valid) return showMessage(data.message || 'Invalid coupon.', true);
+
+    const discTotal = total - data.discount_amount;
+    const grand     = discTotal + ship;
+    document.getElementById('finalTotalPriceAmount').textContent = `₹${grand.toFixed(2)}`;
+    document.getElementById('totalDue').textContent              = `₹${grand.toFixed(2)}`;
+    document.getElementById('discounted_total_price').value      = discTotal.toFixed(2);
+    document.getElementById('total_price_with_shipping').value   = grand.toFixed(2);
+    document.getElementById('applyCouponBtn').disabled = true;
+    document.getElementById('cancelCouponBtn').classList.remove('hidden');
+    showMessage('Coupon applied successfully!');
+  } catch (err) {
+    console.error(err);
+    showMessage('Something went wrong.', true);
   }
-
-  if (!selectedPayment) {
-    event.preventDefault();
-    alert('Please select a payment method');
-    return false;
-  }
-
-  if (selectedPayment.value === "online") {
-    event.preventDefault();
-    alert('Online payment is currently unavailable. Please select another payment method.');
-    return false;
-  }
-
-  return true;
 });
 
-// Coupon handling functionality
-function showMessage(message, isError) {
-  const messageElement = isError ? document.getElementById("couponError") : document.getElementById("couponMessage");
-  messageElement.innerText = message;
-  messageElement.classList.remove("hidden");
-  setTimeout(() => {
-    messageElement.classList.add("hidden");
-  }, 3000);
-}
-
-document.getElementById("applyCouponBtn").addEventListener("click", function (event) {
-  event.preventDefault();
-  
-  const couponCode = document.getElementById("couponCode").value.trim();
-  const originalTotal = parseFloat(document.getElementById("original_total_price").value);
-
-  fetch("{% url 'cart:apply_coupon' %}", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": "{{ csrf_token }}"
-    },
-    body: JSON.stringify({ 
-      "coupon_code": couponCode, 
-      "cart_total": originalTotal 
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.valid) {
-      const discountedTotal = originalTotal - data.discount_amount;
-      
-      // Update displayed prices
-      document.getElementById("finalTotalPriceAmount").textContent = `₹${discountedTotal.toFixed(2)}`;
-      document.getElementById("totalDue").textContent = `₹${discountedTotal.toFixed(2)}`;
-      
-      // Update hidden fields
-      document.getElementById("discounted_total_price").value = discountedTotal.toFixed(2);
-      
-      // Toggle buttons
-      document.getElementById("applyCouponBtn").disabled = true;
-      document.getElementById("cancelCouponBtn").classList.remove("hidden");
-      
-      showMessage("Coupon applied successfully!", false);
-    } else {
-      showMessage(data.message || "Invalid coupon code.", true);
-    }
-  })
-  .catch(error => {
-    console.error("Error:", error);
-    showMessage("Something went wrong. Please try again.", true);
+document.getElementById('cancelCouponBtn').addEventListener('click', async (ev)=>{
+  ev.preventDefault();
+  const total = parseFloat(document.getElementById('original_total_price').value);
+  const ship  = parseFloat('{{ shipping_charge|floatformat:2 }}');
+  const grand = total + ship;
+  document.getElementById('finalTotalPriceAmount').textContent   = `₹${grand.toFixed(2)}`;
+  document.getElementById('totalDue').textContent                = `₹${grand.toFixed(2)}`;
+  document.getElementById('discounted_total_price').value        = total.toFixed(2);
+  document.getElementById('total_price_with_shipping').value     = grand.toFixed(2);
+  document.getElementById('applyCouponBtn').disabled             = false;
+  document.getElementById('cancelCouponBtn').classList.add('hidden');
+  document.getElementById('couponCode').value                    = '';
+  await fetch("{% url 'cart:remove_coupon' %}", {
+    method : 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
   });
 });
 
-document.getElementById("cancelCouponBtn").addEventListener("click", function (event) {
-  event.preventDefault();
-  
-  const originalTotal = parseFloat(document.getElementById("original_total_price").value);
-  
-  // Reset prices
-  document.getElementById("finalTotalPriceAmount").textContent = `₹${originalTotal.toFixed(2)}`;
-  document.getElementById("totalDue").textContent = `₹${originalTotal.toFixed(2)}`;
-  document.getElementById("discounted_total_price").value = originalTotal.toFixed(2);
-  
-  // Toggle buttons
-  document.getElementById("applyCouponBtn").disabled = false;
-  document.getElementById("cancelCouponBtn").classList.add("hidden");
-  
-  // Clear coupon code
-  document.getElementById("couponCode").value = "";
-  
-  // Remove coupon from session
-  fetch("{% url 'cart:remove_coupon' %}", {
-    method: "POST",
-    headers: {
-      "X-CSRFToken": "{{ csrf_token }}"
+
+
+/* ──────────────────────────────────────────────────────────────
+   4.  Razorpay Integration
+   ────────────────────────────────────────────────────────────── */
+(function loadRazorpay() {
+  const s = document.createElement('script');
+  s.src   = 'https://checkout.razorpay.com/v1/checkout.js';
+  s.async = true;
+  s.onload  = () => console.log('✅ Razorpay loaded.');
+  s.onerror = () => displayNotification('Payment gateway load failed.', 'error');
+  document.body.appendChild(s);
+})();
+
+document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const addr = document.querySelector('input[name="address"]:checked');
+  const pay = document.querySelector('input[name="payment_method"]:checked');
+  const btn = document.getElementById('placeOrderBtn');
+
+  if (!addr) {
+    displayNotification('Select shipping address', 'error');
+    return;
+  }
+  if (!pay) {
+    displayNotification('Select payment method', 'error');
+    return;
+  }
+
+  if (pay.value !== 'online') {
+    return e.target.submit();
+  }
+
+  btn.disabled = true;
+
+  if (typeof Razorpay === 'undefined') {
+    displayNotification('Payment gateway not loaded.', 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const amountPaise = Math.round(
+      parseFloat(document.getElementById('total_price_with_shipping').value) * 100
+    );
+
+    // Create Razorpay order from backend
+    const resp = await fetch("{% url 'cart:create_razorpay_order' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        amount: amountPaise,
+        address_id: addr.value,
+        order_notes: e.target.order_notes?.value || '',
+        original_total_price: parseFloat(e.target.original_total_price.value),
+        discounted_total_price: parseFloat(e.target.discounted_total_price.value),
+        shipping_charge: parseFloat('{{ shipping_charge|floatformat:2 }}')
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'Failed to create order');
     }
-  });
+
+    const rzp = new Razorpay({
+      key: document.getElementById('razorpay_key').value,
+      amount: data.amount,
+      currency: 'INR',
+      name: 'Taste For Tails',
+      description: 'Complete your purchase',
+      order_id: data.razorpay_order_id,
+      prefill: {
+        email: document.getElementById('user_email').value,
+        contact: document.getElementById('user_phone').value
+      },
+      theme: { color: '#3399cc' },
+      handler: async function (res) {
+        console.log('✔️ Payment Success:', res);
+        try {
+          const verificationResp = await fetch("{% url 'cart:verify_razorpay_payment' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+              order_id: data.order_id,
+              razorpay_payment_id: res.razorpay_payment_id,
+              razorpay_order_id: res.razorpay_order_id,
+              razorpay_signature: res.razorpay_signature
+            })
+          });
+
+          const result = await verificationResp.json();
+          console.log("📩 Verification Result:", result);
+          console.log("🧮 total_price_with_shipping:", document.getElementById('total_price_with_shipping').value);
+console.log("🧮 amountPaise:", amountPaise);
+
+    
+
+
+          if (result.success && result.payment_success) {
+            const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
+            location.href = redirectUrl + '?payment_status=success';
+          } else {
+            throw new Error(result.error || 'Payment verification failed');
+          }
+        } catch (err) {
+          console.error("❌ Verification Error:", err);
+          displayNotification(err.message, 'error');
+          location.href = document.getElementById('cart_url').value + '?payment_status=failed';
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          console.warn('Checkout dismissed');
+          location.href = document.getElementById('cart_url').value + '?payment_status=cancelled';
+        }
+      }
+    });
+
+    rzp.on('payment.failed', function (err) {
+      console.error("💥 Razorpay Failure:", err.error);
+      displayNotification(`Payment failed: ${err.error.description}`, 'error');
+      location.href = document.getElementById('cart_url').value + '?payment_status=failed';
+    });
+
+    rzp.open();
+  } catch (err) {
+    console.error("⚠️ JS Error:", err);
+    displayNotification(err.message || 'Payment initialization failed', 'error');
+    btn.disabled = false;
+  }
 });
 </script>
+
+
 {% endblock %}

@@ -7,7 +7,7 @@ from django.db import models
 from django.core.validators import MinLengthValidator, RegexValidator
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-
+from cloudinary.models import CloudinaryField
 
 
 class CustomUserManager(BaseUserManager):
@@ -36,9 +36,12 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, full_name, **extra_fields)
 
 
-class CustomUser(AbstractUser):
-    username = models.CharField(max_length=200 , unique=True ,null=True)  
+import uuid
+import random
+from django.utils.crypto import get_random_string
 
+class CustomUser(AbstractUser):
+    username = models.CharField(max_length=200 , unique=True , null=True)  
     email = models.EmailField(unique=True)
     password = models.CharField(
         max_length=255,
@@ -54,13 +57,23 @@ class CustomUser(AbstractUser):
     )
     alternate_phone_number = models.CharField(max_length=15, blank=True, null=True)
     dob = models.DateField(blank=True, null=True)
-    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    # profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    profile_image = CloudinaryField('image', blank=True, null=True)
 
-    
+    referral_code = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
+
+    referred_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='referrals')
+
     USERNAME_FIELD = 'email'  
     REQUIRED_FIELDS = []  
 
     objects = CustomUserManager()
+
+    def save(self, *args, **kwargs):
+        if not self.referral_code:
+            # You can use uuid or generate a friendly code
+            self.referral_code = get_random_string(10).upper()
+        super().save(*args, **kwargs)
 
 
 

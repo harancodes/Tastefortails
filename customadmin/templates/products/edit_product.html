@@ -69,12 +69,15 @@
   <div class="invalid-feedback">Please select a valid product type.</div>
 </div> 
 
-    <div class="mb-3">
-      <label for="stock" class="form-label">Total Stock *</label>
-      <input type="number" class="form-control" id="stock" name="stock" value="{{ product.stock }}" 
-             required min="0" max="999999">
-      <div class="invalid-feedback">Stock must be a non-negative number.</div>
-    </div>
+  <div class="form-group">
+  <label for="offer_percentage">Offer Percentage (%)</label>
+  <input type="number" id="offer_percentage" name="offer_percentage"
+         class="form-control"
+         min="0" max="100" step="1"
+         value="{{ product.offer_percentage|default_if_none:0 }}">
+  <small class="form-text text-muted">Enter a discount percentage (0–100). Leave blank for no offer.</small>
+</div>
+ 
     
     <hr>
 
@@ -105,6 +108,7 @@
       {% endfor %}
     </div>
 
+     
     <button type="button" class="btn btn-secondary mb-3" id="add-variant">+ Add Variant</button>
 
     <hr>

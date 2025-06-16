@@ -3,59 +3,12 @@
 
 {% block title %}Dog Food Products - Taste for Tails{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+{% endblock %}
+
 {% block content %}
-
-<style>
-.pagination {
-  display: flex;
-  justify-content: center;
-  padding-left: 0;
-  list-style: none;
-  border-radius: 0.25rem;
-} 
-
-.page-item {
-  margin: 0 3px;
-}
-
-.page-link {
-  position: relative;
-  display: block;
-  padding: 8px 16px;
-  margin-left: -1px;
-  line-height: 1.25;
-  color: #007bff;
-  background-color: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 0.25rem;
-  text-decoration: none !important;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-.page-link:hover {
-  z-index: 2;
-  color: #0056b3;
-  background-color: #e9ecef;
-  border-color: #dee2e6;
-  cursor: pointer;
-}
-
-.page-item.active .page-link {
-  z-index: 3;
-  color: #fff;
-  background-color: #007bff;
-  border-color: #007bff;
-  cursor: default;
-}
-
-.page-item.disabled .page-link {
-  color: #6c757d;
-  pointer-events: none;
-  background-color: #fff;
-  border-color: #dee2e6;
-}
-</style>
-
 <div class="bg-gray-50 min-h-screen">
   <div class="container mx-auto px-4 py-12">
     <!-- Page Title -->
@@ -76,11 +29,12 @@
               value="{{ search_query|default:'' }}" 
               placeholder="Find the perfect food for your pet..." 
               class="w-full px-6 py-4 text-gray-700 focus:outline-none"
+              aria-label="Search for dog food products"
             >
-            <button type="submit" class="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2">
+            <button type="submit" class="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2" aria-label="Submit search">
               <i class="fas fa-search"></i><span class="hidden sm:inline">Search</span>
             </button>
-            <a href="{% url 'products:list' %}" class="px-6 py-4 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-lg flex items-center gap-2">
+            <a href="{% url 'products:list' %}" class="px-6 py-4 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-lg flex items-center gap-2" aria-label="Reset search and filters">
               <i class="fas fa-sync-alt"></i><span class="hidden sm:inline">Reset</span>
             </a>
           </div>
@@ -90,12 +44,12 @@
         <div class="flex justify-between items-center mb-5 pt-2">
           <h2 class="text-xl font-semibold text-gray-800">Refine Results</h2>
           <button id="toggleFilters" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
-            <i class="fas fa-sliders-h"></i><span>Hide Filters</span>
+            <i class="fas fa-filter"></i><span>Show Filters</span>
           </button>
         </div>
 
         <!-- Filters Section -->
-        <div id="filterSection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div id="filterSection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:block hidden">
           <!-- Brand -->
           <div>
             <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">Brand</label>
@@ -145,80 +99,90 @@
         </div>
       </form>
     </aside>
+ <section class="mb-12">
+    <div class="flex justify-between items-center mb-8">
+      <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
+      <span class="text-sm text-gray-500">Showing {{ page_obj.paginator.count }} products</span>
+    </div>
 
-  <section class="mb-12">
-  <div class="flex justify-between items-center mb-8">
-    <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
-    <span class="text-sm text-gray-500">Showing {{ page_obj.paginator.count }} products</span>
-  </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {% for product in page_obj %}
+        {% if product.is_active and product.is_listed %}
+          <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 relative">
+            <a href="{% url 'product:detail' product.slug %}" class="group block" aria-label="View details for {{ product.name }}">
+              <div class="relative">
+                <img src="{{ product.thumbnail|default:'https://via.placeholder.com/256x256.png?text=No+Image' }}"
+                     alt="{{ product.name }}" class="w-full h-64 object-cover">
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-    {% for product in page_obj %}
-      {% if product.is_active and product.is_listed %}
-        <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 relative">
-          
-          <a href="{% url 'product:detail' product.slug %}" class="group block">
-            <div class="relative">
-              {% if product.thumbnail %}
-                <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-64 object-cover">
-              {% else %}
-                <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
-              {% endif %}
-              {% if product.offer_percentage > 0 %}
-                <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-                  <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
-                </div>
-              {% endif %}
-              <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
-                <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
-                  <span class="text-gray-800 text-sm">View Details</span>
+                {% if product.offer_percentage > 0 %}
+                  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
+                  </div>
+                {% endif %}
+
+                <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                  <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
+                    <span class="text-gray-800 text-sm">View Details</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="p-4">
-              {% if product.brand %}
-                <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
-              {% endif %}
-              <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
+              <div class="p-4">
+                {% if product.brand %}
+                  <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ product.brand.name }}</p>
+                {% endif %}
 
-              <div class="flex text-yellow-400 text-sm mt-1 mb-2">
-                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-                <span class="ml-1 text-gray-500">(24)</span>
-              </div>
+                <h3 class="text-lg font-medium text-gray-800 group-hover:text-blue-600">{{ product.name }}</h3>
 
-              <div class="flex justify-between items-center">
-                <p class="text-2xl text-gray-800 font-bold">₹{{ product.min_price }}</p>
+                <div class="flex text-yellow-400 text-sm mt-1 mb-2">
+                  <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                  <span class="ml-1 text-gray-500">(24)</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  {% if product.offer_percentage > 0 %}
+                    <p class="text-lg text-gray-800 font-bold">₹{{ product.min_price }}</p>
+                    <p class="text-sm line-through text-gray-500">₹{{ product.original_price }}</p>
+                    <p class="text-sm text-green-600 font-medium">
+                      You save ₹{{ product.original_price|floatformat:0|add:"-"|add:product.min_price|floatformat:0 }}
+                    </p>
+                  {% else %}
+                    <p class="text-lg text-gray-800 font-bold">₹{{ product.min_price }}</p>
+                  {% endif %}
+                </div>
+
                 {% if product.variants.all %}
-                  <!-- <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+                  <button
+                    onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})"
+                    class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2"
+                    aria-label="Add {{ product.name }} to cart">
                     <i class="fas fa-shopping-cart"></i> Add
-                  </button> -->
+                  </button>
                 {% else %}
                   <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
                 {% endif %}
               </div>
-            </div>
-          </a>
-          <!-- Wishlist button OUTSIDE the <a> to avoid nested clickable -->
-          {% with variant=product.variants.first %}
-            {% if variant %}
-              <button
-                type="button"
-                class="wishlist-toggle-button bg-white p-2 rounded-full shadow hover:shadow-md absolute top-3 right-3"
-                data-variant-id="{{ variant.id }}"
-                data-add-url="{% url 'wishlist:add_to_wishlist' variant.id %}"
-                data-remove-url="{% url 'wishlist:remove_from_wishlist' variant.id %}">
-                <i class="{% if variant.id in wishlist_variant_ids %}fas{% else %}far{% endif %} fa-heart text-red-500"></i>
-              </button>
-            {% endif %}
-          {% endwith %}
-          
-        </div>
-      {% endif %}
-    {% endfor %}
-  </div>
-</section>
+            </a>
 
+            {% with variant=product.variants.first %}
+              {% if variant %}
+                <button
+                  type="button"
+                  class="wishlist-toggle-button bg-white p-2 rounded-full shadow hover:shadow-md absolute top-3 right-3"
+                  data-variant-id="{{ variant.id }}"
+                  data-add-url="{% url 'wishlist:add_to_wishlist' variant.id %}"
+                  data-remove-url="{% url 'wishlist:remove_from_wishlist' variant.id %}"
+                  aria-label="{% if variant.id in wishlist_variant_ids %}Remove {{ product.name }} from wishlist{% else %}Add {{ product.name }} to wishlist{% endif %}"
+                  aria-pressed="{% if variant.id in wishlist_variant_ids %}true{% else %}false{% endif %}">
+                  <i class="{% if variant.id in wishlist_variant_ids %}fas{% else %}far{% endif %} fa-heart text-red-500"></i>
+                </button>
+              {% endif %}
+            {% endwith %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
 
     <div class="flex justify-center mt-8">
       <nav aria-label="Page navigation">
@@ -228,7 +192,6 @@
               <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
             </li>
           {% endif %}
-
           {% for num in page_obj.paginator.page_range %}
             {% if page_obj.number == num %}
               <li class="page-item active"><span class="page-link">{{ num }}</span></li>
@@ -236,7 +199,6 @@
               <li class="page-item"><a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ num }}">{{ num }}</a></li>
             {% endif %}
           {% endfor %}
-
           {% if page_obj.has_next %}
             <li class="page-item">
               <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|safe }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
@@ -251,38 +213,87 @@
 
 {% block extra_js %}
 <script>
-
-  // filter section
-  document.addEventListener('DOMContentLoaded', () => {
-    const toggleFilters = document.getElementById('toggleFilters');
-    const filterSection = document.getElementById('filterSection');
-
-    if (toggleFilters && filterSection) {
-      toggleFilters.addEventListener('click', () => {
-        filterSection.classList.toggle('hidden');
-        const icon = toggleFilters.querySelector('i');
-        const text = toggleFilters.querySelector('span');
-        if (filterSection.classList.contains('hidden')) {
-          icon.classList.replace('fa-sliders-h', 'fa-filter');
-          text.textContent = 'Show Filters';
-        } else {
-          icon.classList.replace('fa-filter', 'fa-sliders-h');
-          text.textContent = 'Hide Filters';
-        }
-      });
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
     }
+  }
+  return cookieValue;
+}
 
-    // Update wishlist UI on page load
-    updateWishlistUI();
-  });
-
-  // cart section
-
-  function addCartItem(variantId) {
-    console.log(`Add to cart: ${variantId}`);
-    showToast('Product added to cart!', 'success');
+document.addEventListener('DOMContentLoaded', () => {
+  // Filter toggle
+  const toggleFilters = document.getElementById('toggleFilters');
+  const filterSection = document.getElementById('filterSection');
+  if (toggleFilters && filterSection) {
+    toggleFilters.addEventListener('click', () => {
+      filterSection.classList.toggle('hidden');
+      const icon = toggleFilters.querySelector('i');
+      const text = toggleFilters.querySelector('span');
+      if (filterSection.classList.contains('hidden')) {
+        icon.classList.replace('fa-sliders-h', 'fa-filter');
+        text.textContent = 'Show Filters';
+        filterSection.style.maxHeight = '0';
+      } else {
+        icon.classList.replace('fa-filter', 'fa-sliders-h');
+        text.textContent = 'Hide Filters';
+        filterSection.style.maxHeight = filterSection.scrollHeight + 'px';
+      }
+    });
   }
 
+  // Wishlist toggle
+  document.querySelectorAll('.wishlist-toggle-button').forEach(button => {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const variantId = this.dataset.variantId;
+      const icon = this.querySelector('i');
+      const isWishlisted = icon.classList.contains('fas');
+      const url = isWishlisted ? this.dataset.removeUrl : this.dataset.addUrl;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json',
+        },
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          icon.classList.toggle('fas', !isWishlisted);
+          icon.classList.toggle('far', isWishlisted);
+          button.setAttribute('aria-pressed', !isWishlisted);
+          button.setAttribute('aria-label', isWishlisted ? `Add ${button.closest('.relative').querySelector('h3').textContent} to wishlist` : `Remove ${button.closest('.relative').querySelector('h3').textContent} from wishlist`);
+          showToast(data.message, 'success');
+          if (window.location.pathname.includes('/wishlist') && isWishlisted) {
+            const card = this.closest('.shadow-lg');
+            if (card) card.remove();
+          }
+        } else {
+          showToast(data.error || 'Something went wrong', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Wishlist toggle error:', error);
+        showToast('Error toggling wishlist', 'error');
+      });
+    });
+  });
+
+  // Cart
+  window.addCartItem = function(variantId) {
+    console.log(`Add to cart: ${variantId}`);
+    showToast('Product added to cart!', 'success');
+  };
+
+  // Toast
   function showToast(message, type) {
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
@@ -295,125 +306,13 @@
     toast.className = `toast ${type} p-4 rounded-lg shadow-md text-white flex items-center justify-between`;
     toast.innerHTML = `
       <span>${message}</span>
-      <button onclick="this.parentElement.remove()" class="ml-4">
+      <button onclick="this.parentElement.remove()" class="ml-4" aria-label="Close toast">
         <i class="fas fa-times"></i>
       </button>
     `;
     toastContainer.appendChild(toast);
-    if (!document.getElementById('toast-styles')) {
-      const style = document.createElement('style');
-      style.id = 'toast-styles';
-      style.textContent = `
-        .toast {
-          animation: slideIn 0.5s ease-out;
-        }
-        .toast.success {
-          background-color: #48BB78;
-        }
-        .toast.error {
-          background-color: #F56565;
-        }
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
+    setTimeout(() => toast.remove(), 3000);
   }
-</script>
-
-<script>
-
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            // Check if this cookie string starts with the name we want
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.wishlist-toggle-button').forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const variantId = this.dataset.variantId;
-            const icon = this.querySelector('i');
-            const isWishlisted = icon.classList.contains('fas');
-
-            // Choose URL based on current state
-            const url = isWishlisted ? this.dataset.removeUrl : this.dataset.addUrl;
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Toggle icon classes
-                    if (isWishlisted) {
-                        icon.classList.remove('fas');
-                        icon.classList.add('far');
-                    } else {
-                        icon.classList.remove('far');
-                        icon.classList.add('fas');
-                    }
-                    showToast(data.message, 'success');
-
-                    // Optional: If on wishlist page and removing, remove product card
-                    if (window.location.pathname.includes('/wishlist') && isWishlisted) {
-                        const card = this.closest('.shadow-lg');
-                        if (card) card.remove();
-                    }
-                } else {
-                    showToast(data.error || 'Something went wrong', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Wishlist toggle error:', error);
-                showToast('Error toggling wishlist', 'error');
-            });
-        });
-    });
 });
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-
 </script>
-
 {% endblock %}

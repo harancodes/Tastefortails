@@ -16,12 +16,12 @@ class Cart(models.Model):
 
     def __str__(self):
         return f"Cart of {self.user.email}"
-
+    
     @property
     def total_price(self):
         # total = sum(item.product_variant.variant_price for item in self.items.all())
         # return total
-        total = sum(item.total_price for item in self.items.all())  # use CartItem.total_price
+        total = sum(item.total_price for item in self.items.all())  
         return total
 
 
@@ -31,12 +31,12 @@ from django.core.exceptions import ValidationError
 
 class CartItem(models.Model):
     cart = models.ForeignKey(
-        'cart.Cart',  # Update this if Cart is in a different app
+        'cart.Cart',  
         on_delete=models.CASCADE,
         related_name="items"
     )
     product_variant = models.ForeignKey(
-        'product.Variant',  # Make sure 'products' is the actual app label
+        'product.Variant',  
         on_delete=models.CASCADE,
         related_name="cart_items"
     )
@@ -48,9 +48,12 @@ class CartItem(models.Model):
         ordering = ['-id']
 
     @property
+
     def total_price(self):
-        """Return total price of this item (unit price * quantity)."""
-        return self.product_variant.variant_price * self.quantity
+        """Return total price of this item (unit price * quantity). Uses offer/sales price if available."""
+        price = self.product_variant.sales_price or self.product_variant.variant_price
+        return price * self.quantity
+
 
     def __str__(self):
         return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.weight})"
@@ -265,15 +268,4 @@ class Transaction(models.Model):
 
 
     
-# class ProductReview(models.Model):
-#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reviews")
-#     product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name="reviews")
-#     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-#     review = models.TextField(blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
 
-#     class Meta:
-#         unique_together = ('user', 'product')  
-
-#     def __str__(self):
-#         return f"{self.user.email} - {self.product.name} ({self.rating} Stars)"

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Wishlist - Taste for Tails{% endblock %}
+{% block title %}My Wishlist – Taste for Tails{% endblock %}
 
 {% block content %}
 <div class="bg-gray-50 min-h-screen">
@@ -15,7 +15,8 @@
     {% if page_obj %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {% for item in page_obj %}
-          <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300">
+          <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+               data-variant="{{ item.variant.id }}">
             <div class="relative">
               {% with item.variant.product.thumbnail as image_url %}
                 {% if image_url %}
@@ -24,114 +25,166 @@
                   <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-64 object-cover">
                 {% endif %}
               {% endwith %}
-
-              <div class="absolute top-3 right-3">
-                <button type="button" onclick="toggleWishlist({{ item.variant.id }});" class="bg-white p-2 rounded-full shadow hover:shadow-md">
-                  {% with item.variant.id as variant_id %}
-                    {% if variant_id in wishlist_ids %}
-                      <i class="fas fa-heart text-red-500"></i>  {# Solid red heart #}
-                    {% else %}
-                      <i class="far fa-heart text-gray-400"></i>  {# Outlined gray heart #}
-                    {% endif %}
-                  {% endwith %}
-                </button>
-              </div>
+              <button type="button"
+                      onclick="toggleWishlist({{ item.variant.id }});"
+                      class="absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:shadow-md">
+                {% if item.variant.id in wishlist_ids %}
+                  <i class="fas fa-heart text-red-500" id="heart-{{ item.variant.id }}"></i>
+                {% else %}
+                  <i class="far fa-heart text-gray-400" id="heart-{{ item.variant.id }}"></i>
+                {% endif %}
+              </button>
             </div>
+
             <div class="p-4">
               {% if item.variant.product.brand %}
-                <p class="text-blue-600 text-xs uppercase font-semibold mb-1">{{ item.variant.product.brand.name }}</p>
+                <p class="text-blue-600 text-xs uppercase font-semibold mb-1">
+                  {{ item.variant.product.brand.name }}
+                </p>
               {% endif %}
-              <h3 class="text-lg font-medium text-gray-800">
-                {{ item.variant.product.name }}{% if item.variant.weight %} - {{ item.variant.weight }}{% endif %}
-              </h3>
-              <p class="text-2xl text-gray-800 font-bold mt-2">₹{{ item.variant.variant_price }}</p>
+             <h3 class="text-lg font-medium text-gray-800">
+  {{ item.variant.product.name }}
+  {% if item.variant.weight %} – {{ item.variant.weight }}{% endif %}
+</h3>
+
+{% if item.variant.sales_price < item.variant.variant_price %}
+  <p class="text-2xl text-gray-400 font-bold mt-2 line-through">
+    ₹{{ item.variant.variant_price|floatformat:2 }}
+  </p>
+  <p class="text-2xl text-green-700 font-bold mt-2">
+    Offer Price: ₹{{ item.variant.sales_price|floatformat:2 }}
+  </p>
+{% else %}
+  <p class="text-2xl text-gray-800 font-bold mt-2">
+    ₹{{ item.variant.variant_price|floatformat:2 }}
+  </p>
+{% endif %}
+
               <div class="mt-4 flex justify-between items-center">
-                <a href="{% url 'product:detail' item.variant.product.slug %}" class="text-blue-600 hover:underline">View Details</a>
-                <!-- <button onclick="addCartItem({{ item.variant.id }})" class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+                <a href="{% url 'product:detail' item.variant.product.slug %}"
+                   class="text-blue-600 hover:underline">View&nbsp;Details</a>
+
+                <button onclick="addCartItem({{ item.variant.id }})"
+                        class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
                   <i class="fas fa-shopping-cart"></i> Add to Cart
-                </button> -->
+                </button>
               </div>
             </div>
           </div>
         {% endfor %}
       </div>
 
+      <!-- paginator -->
       <div class="flex justify-center mt-8 space-x-4">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Previous</a>
+          <a href="?page={{ page_obj.previous_page_number }}"
+             class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Previous</a>
         {% endif %}
-        <span class="px-4 py-2">
-          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-        </span>
+
+        <span class="px-4 py-2">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</a>
+          <a href="?page={{ page_obj.next_page_number }}"
+             class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next</a>
         {% endif %}
       </div>
 
     {% else %}
       <div class="text-center py-12">
         <p class="text-gray-600 text-lg">Your wishlist is empty.</p>
-        <a href="{% url 'products:list' %}" class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">Shop Now</a>
+        <a href="{% url 'products:list' %}"
+           class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+          Shop&nbsp;Now
+        </a>
       </div>
     {% endif %}
     </section>
-
   </div>
 </div>
 
+<!-- Helpers -->
 <script>
-function toggleWishlist(variantId) {
-    const button = document.querySelector(`button[onclick="toggleWishlist(${variantId});"] i`);
-    const isWishlisted = button.classList.contains('fas') && button.classList.contains('fa-heart');
-
-    const url = isWishlisted
-        ? `/wishlist/remove/${variantId}/`
-    : `/wishlist/add/${variantId}/`; 
-
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (isWishlisted) {
-                button.classList.remove('fas', 'text-red-500');
-                button.classList.add('far', 'text-gray-400');
-                const card = button.closest('.shadow-lg');
-                if (card && window.location.pathname.includes('/wishlist')) {
-                    card.remove();
-                }
-            } else {
-                button.classList.remove('far', 'text-gray-400');
-                button.classList.add('fas', 'text-red-500');
-            }
-        } else {
-            alert(data.error || 'Something went wrong.');
-        }
-    })
-    .catch(error => {
-        console.error('Wishlist toggle error:', error);
-        alert('Error toggling wishlist.');
-    });
-}
-
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        for (const cookie of document.cookie.split(';')) {
-            const trimmed = cookie.trim();
-            if (trimmed.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(trimmed.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
+  let result = null;
+  document.cookie.split(';').forEach(cookie => {
+      const c = cookie.trim();
+      if (c.startsWith(name + '=')) {
+          result = decodeURIComponent(c.slice(name.length + 1));
+      }
+  });
+  return result;
 }
 </script>
 
+<!-- Wishlist toggle -->
+<script>
+function toggleWishlist(variantId) {
+  const heart = document.getElementById('heart-' + variantId);
+  const isFav  = heart.classList.contains('fas');
+
+  fetch(isFav ? `/wishlist/remove/${variantId}/` : `/wishlist/add/${variantId}/`, {
+      method: 'POST',
+      headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+      }
+  })
+  .then(r => r.json())
+  .then(d => {
+      if (!d.success) throw new Error(d.error || 'Server error');
+
+      // update icon
+      heart.classList.toggle('fas');
+      heart.classList.toggle('far');
+      heart.classList.toggle('text-red-500');
+      heart.classList.toggle('text-gray-400');
+
+      // If we’re on /wishlist and user just unfavourited => remove card
+      if (isFav && window.location.pathname.includes('/wishlist')) {
+          document.querySelector(`[data-variant="${variantId}"]`).remove();
+      }
+  })
+  .catch(e => {
+      console.error(e);
+      alert('Could not update wishlist: ' + e.message);
+  });
+}
+</script>
+
+<!-- Add to cart -->
+<script>
+function addCartItem(variantId, qty = 1) {
+  fetch(`cart/add_to_cart/${variantId}/`, {
+      method: 'POST',
+      headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({quantity: qty})
+  })
+  .then(r => r.json())
+  .then(d => {
+      if (!d.success) throw new Error(d.error || 'Server error');
+
+      
+      const badge = document.getElementById('cart-count');
+      if (badge) badge.textContent = d.cart_item_count;
+
+
+      const card = document.querySelector(`[data-variant="${variantId}"]`);
+      if (card) card.remove();
+
+
+      const heart = document.getElementById('heart-' + variantId);
+      if (heart) {
+          heart.classList.remove('fas', 'text-red-500');
+          heart.classList.add('far', 'text-gray-400');
+      }
+  })
+  .catch(e => {
+      console.error(e);
+      showToast('Could not add to cart: ' + e.message);
+  });
+}
+</script>
 {% endblock %}

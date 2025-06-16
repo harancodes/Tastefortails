@@ -13,11 +13,10 @@ from .models import Products, Category
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.db.models import Q, Min
-from .models import Products, Brand, Category
+from .models import Products, Brand, Category, Variant
 
 
 
-##### decaortor for making login mandatory ###
 from functools import wraps
 
 def login_required_custom(view_func):
@@ -27,8 +26,11 @@ def login_required_custom(view_func):
             return redirect('/login/')  
         return view_func(request, *args, **kwargs)
     return wrapper
+from django.db.models import Prefetch, Min, Q
+from django.core.paginator import Paginator
+from django.shortcuts import render
 
-
+from django.db.models import Q, Min, F, ExpressionWrapper, FloatField
 
 def product_list_view(request):
     search_query = request.GET.get('search', '')
@@ -38,16 +40,20 @@ def product_list_view(request):
     sort_by = request.GET.get('sort', '')
     page_number = request.GET.get('page')
 
+    variant_qs = Variant.objects.filter(is_active=True).order_by('id')
+
     products = Products.objects.filter(
         is_active=True,
+        is_listed=True,
         brand__is_active=True,
         brand__is_listed=True,
         category__is_active=True,
         category__is_listed=True,
     ).select_related('brand', 'category') \
-     .prefetch_related('variants', 'images') \
-     .annotate(min_price=Min('variants__variant_price'))
+     .prefetch_related(Prefetch('variants', queryset=variant_qs), 'images') \
+     .annotate(min_price=Min('variants__sales_price'))
 
+    # Filters
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
@@ -67,7 +73,6 @@ def product_list_view(request):
         except ValueError:
             pass
 
-    # Sorting
     if sort_by == 'price_asc':
         products = products.order_by('min_price')
     elif sort_by == 'price_desc':
@@ -82,7 +87,6 @@ def product_list_view(request):
     paginator = Paginator(products, 8)
     page_obj = paginator.get_page(page_number)
 
-    # Get wishlist variant ids for logged in user
     wishlist_variant_ids = []
     if request.user.is_authenticated:
         wishlist_variant_ids = WishlistItem.objects.filter(
@@ -127,7 +131,6 @@ def product_detail_view(request, slug):
         
         logger.info(f"Found product: {product.name} (ID: {product.id})")
 
-        # Primary image logic
         images = list(product.images.all())
         primary_image = product.images.filter(is_primary=True).first() or (images[0] if images else None)
         if primary_image:
@@ -140,7 +143,8 @@ def product_detail_view(request, slug):
         if not variants:
             logger.warning("No variants found")
 
-        min_price = variants.aggregate(Min('variant_price'))['variant_price__min']
+        min_price = variants.aggregate(Min('sales_price'))['sales_price__min']
+ 
 
         reviews = product.reviews.all().order_by('-created_at')
         average_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0
@@ -194,27 +198,3 @@ def about(request):
     return render(request, 'about.html')
 
 
-
-# class ProductAPI(View):
-#     def get(self, request):
-#         category_id = request.GET.get('category')
-        
-#         if category_id and category_id.isdigit():
-#             products = Product.objects.filter(category_id=int(category_id), is_blocked=False)
-#         else:
-#             products = Product.objects.filter(is_blocked=False).order_by('-created_at')[:8] 
-
-#         product_list = []
-#         for product in products:
-#             product_list.append({
-#                 'id': product.id,
-#                 'name': product.name,
-#                 'regular_price': str(product.regular_price),
-#                 'sales_price': str(product.sales_price),
-#                 'image': product.image.url,
-#                 'offer_percentage': product.offer_percentage,
-#                 'average_rating': product.average_rating(),
-#                 'reviews': list(product.reviews.values()),
-#                 'variants': list(product.variants.values()),
-#             })
-#         return JsonResponse({'products': product_list})

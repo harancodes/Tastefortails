@@ -24,72 +24,67 @@ from customadmin.models import Coupon, UsedCoupon
 from product.views import login_required_custom
 from wishlist.models import Wishlist, WishlistItem
 import razorpay
+from django.http import JsonResponse
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+import json
 
-# 
-
+from cart.models import Cart, CartItem
+from wishlist.models import WishlistItem
+from product.models import Variant
 
 @block_superuser_navigation
 @never_cache
-@login_required_custom
+@login_required  
+@require_POST
 def add_to_cart(request, variant_id):
-    if request.method == 'POST':
-        if not variant_id:
-            return JsonResponse({'success': False, 'error': 'Variant ID is missing'}, status=400)
 
-        try:
-            variant = Variant.objects.get(id=variant_id)
-        except Variant.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Product variant not found'}, status=404)
+    try:
+        variant = Variant.objects.get(pk=variant_id)
+    except Variant.DoesNotExist:
+        return JsonResponse({'success': False,
+                             'error': 'Product variant not found'}, status=404)
 
-        # ✅ Parse quantity from request body
-        try:
-            data = json.loads(request.body)
-            quantity = int(data.get('quantity', 1))
-        except (json.JSONDecodeError, ValueError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Invalid quantity'}, status=400)
+    try:
+        data = json.loads(request.body or "{}")
+        qty = int(data.get("quantity", 1))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JsonResponse({'success': False,
+                             'error': 'Invalid quantity'}, status=400)
 
-        if quantity < 1:
-            return JsonResponse({'success': False, 'error': 'Quantity must be at least 1'}, status=400)
+    if not 1 <= qty <= 10:
+        return JsonResponse({'success': False,
+                             'error': 'Quantity must be between 1 and 10'}, status=400)
 
-        if quantity > variant.quantity_in_stock:
-            return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
+    if qty > variant.quantity_in_stock:
+        return JsonResponse({'success': False,
+                             'error': 'Insufficient stock available'}, status=400)
 
-        if quantity > 10:
-            return JsonResponse({'success': False, 'error': 'Maximum allowed quantity is 10'}, status=400)
+    cart, _ = Cart.objects.get_or_create(user=request.user)
 
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-        cart_item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
+    item, created = CartItem.objects.get_or_create(
+        cart=cart, product_variant=variant)
 
-        if created:
-            cart_item.quantity = quantity
-        else:
-            new_quantity = cart_item.quantity + quantity
-            if new_quantity > variant.quantity_in_stock:
-                return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
-            if new_quantity > 10:
-                return JsonResponse({'success': False, 'error': 'Maximum allowed quantity is 10'}, status=400)
-            cart_item.quantity = new_quantity
+    new_qty = qty if created else item.quantity + qty
+    if new_qty > 10 or new_qty > variant.quantity_in_stock:
+        return JsonResponse({'success': False,
+                             'error': 'Quantity exceeds allowed limit or stock'}, status=400)
 
-        cart_item.save()
+    item.quantity = new_qty
+    item.save()
 
-        # ✅ Remove from wishlist
-        try:
-            wishlist = request.user.wishlist  
-            WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
-        except Wishlist.DoesNotExist:
-            pass
+    
+    WishlistItem.objects.filter(
+        wishlist__user=request.user,
+        variant_id=variant_id
+    ).delete()
 
-        cart_item_count = cart.items.count()
-        total_price = cart.total_price
-
-        return JsonResponse({
-            'success': True,
-            'total_price': total_price,
-            'cart_item_count': cart_item_count
-        })
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
-
+    return JsonResponse({
+        'success': True,
+        'cart_item_count': cart.items.count(),
+        'total_price': cart.total_price,   
+    })
 
 
 
@@ -138,7 +133,7 @@ def remove_cart_item(request, item_id):
 
 
         cart_total_price = sum(
-    item.quantity * item.product_variant.product.variant_price
+    item.quantity * item.product_variant.product.sales_price
     for item in cart_item.cart.items.all()
 )
 
@@ -159,18 +154,22 @@ def view_cart(request):
     cart = Cart.objects.filter(user=request.user).first()
     if cart:
         items = cart.items.select_related("product_variant", "product_variant__product")  
-        cart_total_price = sum(item.total_price for item in items)
+        cart_total_price = sum(item.total_price for item in items)  # after offers
+        cart_original_total = sum(item.product_variant.variant_price * item.quantity for item in items)  # before offers
 
         return render(request, 'cart.html', {
             'cart': cart,
             'items': items,
             'cart_total_price': cart_total_price,
+            'cart_original_total': cart_original_total,
         })
     else:
         return render(request, 'cart.html', {
             'message': 'Your cart is empty.',
-            'cart_total_price': 0
+            'cart_total_price': 0,
+            'cart_original_total': 0,
         })
+
 
 
 
@@ -314,6 +313,7 @@ def checkout(request):
                             quantity=cart_item.quantity,
                             status="processing",
                         )
+                
 
                 # Wallet Payment Logic
                 if payment_method == "wallet":
@@ -367,10 +367,10 @@ def checkout(request):
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,
-                "total_price_with_shipping": total_price_with_shipping
+                "total_price_with_shipping": total_price_with_shipping,
+                "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,  
             },
         )
-
     except Exception as e:
         print(f"Error in checkout: {str(e)}")
         messages.error(request, f"Error: {str(e)}")
@@ -388,6 +388,8 @@ def checkout(request):
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,
                 "error": str(e),
+                "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
+
             },
         )
 
@@ -443,7 +445,6 @@ def update_variant(request):
         if variant_stock <= 0:
             return JsonResponse({'error': 'Selected variant is out of stock'}, status=400)
 
-        # Adjust quantity 
         if cart_item.quantity > variant_stock:
             cart_item.quantity = variant_stock
 
@@ -462,7 +463,6 @@ def update_variant(request):
             'cart_total_price': float(cart_total)
         }
 
-        # Optional: Add image URL if available
         if hasattr(new_variant, 'image1') and new_variant.image1:
             response_data['variant_image'] = new_variant.image1.url
 
@@ -501,18 +501,17 @@ def apply_coupon(request):
     try:
         coupon = Coupon.objects.get(code=coupon_code, is_active=True)
 
-        # Check if the coupon has already been used by the user
+        
         if UsedCoupon.objects.filter(user=request.user, coupon=coupon).exists():
             return JsonResponse({"valid": False, "message": "This coupon has already been used."})
 
-        # Validate minimum cart value
         if cart_total < float(coupon.min_cart_value):
             return JsonResponse({"valid": False, "message": f"Minimum cart value to use this coupon is ₹{coupon.min_cart_value}."})
 
-        # Calculate the discount amount using the model method
+        
         discount_amount = coupon.calculate_discount(cart_total)
 
-        # Save applied coupon & discount amount in session
+        
         request.session['applied_coupon'] = {
             "id": coupon.id,
             "code": coupon.code,
@@ -554,95 +553,210 @@ def create_wallet(sender, instance, created, **kwargs):
     if created:
         Wallet.objects.create(user=instance)
 
+##### Razorpay Starts ####
+import json
+import logging
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
+import razorpay
+from .models import Order, Payment, Address
 
+logger = logging.getLogger(__name__)
 
-
-@block_superuser_navigation
-@never_cache
 @login_required
 def create_razorpay_order(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-        amount = data.get("amount", 0)
-
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        razorpay_order = client.order.create({
-            "amount": amount,
-            "currency": "INR",
-            "payment_capture": "1"
-        })
-
-        order = Order.objects.create(
-            user=request.user,
-            total_amount=amount / 100,
-            razorpay_order_id=razorpay_order["id"],
-        )
-
-        return JsonResponse({
-            "id": razorpay_order["id"],  
-            "amount": razorpay_order["amount"],
-        })
-
-
-
-@block_superuser_navigation
-@never_cache
-@login_required
-def verify_razorpay_payment(request):
-    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            order_id = data.get("razorpay_order_id")
-            payment_id = data.get("payment_id")
-            signature = data.get("signature")
+            amount = data.get("amount")  # Amount in paise
+            address_id = data.get("address_id")
+            order_notes = data.get("order_notes", "")
+            variant_id = data.get("variant_id")
+            original_total_price = data.get("original_total_price", 0)
+            discounted_total_price = data.get("discounted_total_price", 0)
+            shipping_charge = data.get("shipping_charge", 0)
 
-            # Fetch order details
-            order = Order.objects.get(razorpay_order_id=order_id)
-            payment = Payment.objects.get(order=order)
-
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            params_dict = {
-                "razorpay_order_id": order_id,
-                "razorpay_payment_id": payment_id,
-                "razorpay_signature": signature,
-            }
-
+            # Validate amount
             try:
-                client.utility.verify_payment_signature(params_dict)
-                payment_successful = True
-            except razorpay.errors.SignatureVerificationError:
-                payment_successful = False
+                amount = int(amount)
+            except (TypeError, ValueError):
+                logger.error("Invalid amount received: %s", amount)
+                return JsonResponse({"success": False, "error": "Invalid amount format"}, status=400)
 
-            with transaction.atomic():
-                # Update payment status
-                if payment_successful:
-                    payment.status = "completed"
-                    payment.transaction_id = payment_id
-                    OrderItem.objects.filter(order=order).update(status="processing")
-                    CartItem.objects.filter(cart__user=order.user).delete()
-                else:
-                    payment.status = "payment_not_received"  # Mark as failed but allow retry
-                    order.save()
+            if amount <= 0:
+                logger.error("Amount is zero or negative: %s", amount)
+                return JsonResponse({"success": False, "error": "Amount must be greater than zero"}, status=400)
 
-                payment.save()
+            logger.info("Creating Razorpay order with amount (paise): %s for user: %s", amount, request.user)
 
-            return JsonResponse({"success": True, "order_id": order.id, "payment_success": payment_successful})
+            if not address_id:
+                logger.error("No address selected")
+                return JsonResponse({"success": False, "error": "No address selected"}, status=400)
 
-        except Order.DoesNotExist:
-            return JsonResponse({"success": False, "error": "Order not found"}, status=404)
+            # Check for Razorpay keys
+            if not hasattr(settings, 'RAZORPAY_KEY_ID') or not hasattr(settings, 'RAZORPAY_KEY_SECRET'):
+                logger.error("Razorpay authentication keys are not configured")
+                return JsonResponse({"success": False, "error": "Authentication keys missing"}, status=500)
+
+            # Initialize Razorpay client
+            try:
+                razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            except Exception as e:
+                logger.error("Failed to initialize Razorpay client: %s", str(e))
+                return JsonResponse({"success": False, "error": "Payment gateway initialization failed"}, status=500)
+
+            # Create Razorpay order
+            razorpay_order = razorpay_client.order.create({
+                "amount": amount,  # Already in paise
+                "currency": "INR",
+                "payment_capture": "1"
+            })
+
+            logger.info("Razorpay order created: %s", razorpay_order)
+
+            order = Order.objects.create(
+                user=request.user,
+                total_amount=amount / 100,  # Convert to rupees
+                razorpay_order_id=razorpay_order["id"],
+                shipping_address_id=address_id,
+                notes=order_notes,
+                discount=(original_total_price - discounted_total_price) if original_total_price and discounted_total_price else 0,
+                shipping_charge=shipping_charge
+            )
+
+            payment_amount = amount / 100  # Convert to rupees
+            if payment_amount <= 0:
+                logger.error("Invalid payment amount: %s", payment_amount)
+                return JsonResponse({"success": False, "error": "Invalid payment amount"}, status=400)
+
+            Payment.objects.create(
+                order=order,
+                amount=payment_amount,
+                status="pending"
+            )
+
+            return JsonResponse({
+                "success": True,
+                "razorpay_order_id": razorpay_order["id"],
+                "amount": razorpay_order["amount"],
+                "order_id": order.id
+            })
+
+        except razorpay.errors.BadRequestError as e:
+            logger.error("Razorpay API error: %s", str(e))
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
         except Exception as e:
+            logger.error("Razorpay order creation failed: %s", str(e))
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
 
+
+import json
+import logging
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
+from django.db import transaction
+import razorpay
+from .models import Order, Payment, OrderItem, CartItem
+
+logger = logging.getLogger(__name__)
+
+@login_required
+def verify_razorpay_payment(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        logger.debug("Payment verification data received: %s", data)
+
+        order_id = data.get("order_id")
+        razorpay_order_id = data.get("razorpay_order_id")
+        payment_id = data.get("razorpay_payment_id")
+        signature = data.get("razorpay_signature")
+
+        logger.info("Verifying payment for order_id: %s, razorpay_order_id: %s, user: %s",
+                    order_id, razorpay_order_id, request.user)
+
+        try:
+            order = Order.objects.get(id=order_id, razorpay_order_id=razorpay_order_id)
+        except Order.DoesNotExist:
+            logger.error("Order not found for order_id: %s, razorpay_order_id: %s", order_id, razorpay_order_id)
+            return JsonResponse({"success": False, "error": "Order not found"}, status=404)
+
+        payment, _ = Payment.objects.get_or_create(
+            order=order,
+            defaults={
+                'amount': order.total_amount,
+                'payment_method': 'razorpay',
+                'status': 'initiated',
+            }
+        )
+
+        if not hasattr(settings, 'RAZORPAY_KEY_ID') or not hasattr(settings, 'RAZORPAY_KEY_SECRET'):
+            logger.error("Razorpay authentication keys are not configured")
+            return JsonResponse({"success": False, "error": "Authentication keys missing"}, status=500)
+
+        try:
+            razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        except Exception as e:
+            logger.error("Failed to initialize Razorpay client: %s", str(e))
+            return JsonResponse({"success": False, "error": "Payment gateway initialization failed"}, status=500)
+
+        payment_successful = False
+        if payment_id and signature:
+            params_dict = {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature,
+            }
+            try:
+                razorpay_client.utility.verify_payment_signature(params_dict)
+                payment_successful = True
+                logger.info("Payment signature verified for payment_id: %s", payment_id)
+            except razorpay.errors.SignatureVerificationError as e:
+                logger.error("Signature verification failed: %s", str(e))
+                payment_successful = False
+        else:
+            logger.warning("Payment not completed or cancelled for order_id: %s", order_id)
+
+        with transaction.atomic():
+            if payment_successful:
+                payment.status = "completed"
+                payment.transaction_id = payment_id
+                OrderItem.objects.filter(order=order).update(status="processing")
+                CartItem.objects.filter(cart__user=order.user).delete()
+            else:
+                payment.status = "payment_not_received"
+            payment.save()
+            order.save()
+
+        return JsonResponse({
+            "success": True,
+            "order_id": order.id,
+            "payment_success": payment_successful
+        })
+
+    except Payment.DoesNotExist:
+        logger.error("Payment not found for order_id: %s", order_id)
+        return JsonResponse({"success": False, "error": "Payment not found"}, status=404)
+    except razorpay.errors.BadRequestError as e:
+        logger.error("Razorpay API error: %s", str(e))
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+    except Exception as e:
+        logger.error("Payment verification failed: %s", str(e)) 
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
 @csrf_exempt
-@block_superuser_navigation
-@never_cache
 @login_required
 def pay_later(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    
+
     if order.payment.status == "payment_not_received":
         order.payment.status = "pending"
         order.payment.save()
@@ -650,83 +764,51 @@ def pay_later(request, order_id):
     else:
         return JsonResponse({"success": False, "error": "Payment is already completed or not eligible for pay later."})
 
+
 @csrf_exempt
-@block_superuser_navigation
-@never_cache
 @login_required
 def retry_payment(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    
+
     if order.payment.status == "payment_not_received":
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        razorpay_order = client.order.create({
+        razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        razorpay_order = razorpay_client.order.create({
             "amount": int(order.total_amount * 100),
             "currency": "INR",
             "receipt": f"order_{order.id}",
             "payment_capture": 1
         })
 
-        # Update Razorpay Order ID and Payment
         order.razorpay_order_id = razorpay_order['id']
         order.save()
 
-        # order.payment.transaction_id = razorpay_order['id']
-        # order.payment.status = "pending"
-        # order.payment.save()
+        payment = getattr(order, 'payment', None)
+        if payment:
+            payment.status = "pending"
+            payment.transaction_id = ""
+            payment.save()
+        else:
+            Payment.objects.create(order=order, status="pending")
 
         return JsonResponse({
-            "razorpay_order_id": razorpay_order['id'], 
-            "amount": order.total_amount,
+            "razorpay_order_id": razorpay_order['id'],
+            "amount": order.total_amount * 100,
             "order_id": order.id
         })
     else:
         return JsonResponse({"success": False, "error": "Payment is already completed or not eligible for retry."})
-    
 
-@csrf_exempt
-@block_superuser_navigation
-@never_cache
-@login_required
-def verify_payment(request, order_id):
-    try:
-        order = get_object_or_404(Order, id=order_id, user=request.user)
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        
-        # Parse request body
-        data = json.loads(request.body)
-        razorpay_payment_id = data.get('razorpay_payment_id')
-        razorpay_order_id = data.get('razorpay_order_id')
-        razorpay_signature = data.get('razorpay_signature')
 
-        # Verify payment signature
-        params_dict = {
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        }
-        
-        if client.utility.verify_payment_signature(params_dict):
-            # Fetch payment details
-            payment = client.payment.fetch(razorpay_payment_id)
-            
-            if payment['status'] == 'captured':
-                # Update Order Payment Status
-                order.payment.status = 'completed'
-                order.payment.transaction_id = razorpay_payment_id
-                order.payment.save()
+# 
 
-                return JsonResponse({"success": True, "message": "Payment verified successfully!"})
-            else:
-                return JsonResponse({"success": False, "error": "Payment not captured."})
-
-        return JsonResponse({"success": False, "error": "Invalid payment signature."})
-
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-@block_superuser_navigation
-@never_cache
 @login_required
 def razorpay_payment_success(request):
     return JsonResponse({"message": "Payment Successful"})
 
+
+@csrf_exempt
+def webhook(request):
+    if request.method == "POST":
+        logger.info(f"Webhook received: {request.body}")
+        return JsonResponse({"status": "received"})
+    return JsonResponse({"error": "Invalid request"}, status=405)

@@ -248,7 +248,22 @@
               <div class="cart-item-details">
                 <h3>{{ item.product_variant.product.name }}</h3>
                 <p>{{ item.product_variant.product.description|truncatewords:20 }}</p>
-                <p class="item-price font-semibold mt-2">Price: ₹{{ item.product_variant.variant_price }}</p>
+                <div class="mt-2">
+  {% if item.product_variant.get_discount_percentage %}
+    <p class="text-sm text-gray-500 line-through">
+      ₹{{ item.product_variant.variant_price }}
+    </p>
+    <p class="item-price font-semibold text-red-600">
+      ₹{{ item.product_variant.sales_price }}
+    </p>
+    <span class="text-xs bg-green-100 text-green-700 rounded px-2 py-1">
+      {{ item.product_variant.get_discount_percentage }}% OFF
+    </span>
+  {% else %}
+    <p class="item-price font-semibold">₹{{ item.product_variant.variant_price }}</p>
+  {% endif %}
+</div>
+
                 <p class="text-sm mt-1">Current variant: {{ item.product_variant.weight }}</p>
                 
                 <!-- Variant Selection -->
@@ -290,11 +305,28 @@
       <div class="lg:col-span-1">
         <div class="cart-summary hover-effect">
           <h2 class="text-2xl font-semibold mb-4">Order Summary</h2>
-          <p>Subtotal: <span id="subtotal" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span></p>
-          <p>Shipping: <span class="float-right">₹0.00</span></p>
-          <p>Tax: <span class="float-right">₹0.00</span></p>
-          <hr class="my-4">
-          <p class="font-semibold text-lg">Total: <span id="total_cart_price" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span></p>
+          <p>Original Price: 
+  <span class="float-right line-through text-gray-500">
+    ₹{{ cart_original_total|default:"0.00" }}
+  </span>
+</p>
+<p>Subtotal: 
+  <span id="subtotal" class="float-right font-semibold text-green-700">
+    ₹{{ cart_total_price|default:"0.00" }}
+  </span>
+</p>
+{% if cart_original_total > cart_total_price %}
+  <p class="text-sm text-green-600 mt-1">
+    You saved ₹{{ cart_original_total|floatformat:2|add:"-"|add:cart_total_price|floatformat:2 }}
+  </p>
+{% endif %}
+<p>Shipping: <span class="float-right">₹0.00</span></p>
+<p>Tax: <span class="float-right">₹0.00</span></p>
+<hr class="my-4">
+<p class="font-semibold text-lg">
+  Total: <span id="total_cart_price" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span>
+</p>
+
        <a href="{% url 'cart:checkout' %}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded">
   Proceed to Checkout
 </a>
