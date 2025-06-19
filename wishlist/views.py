@@ -14,17 +14,22 @@ from django.core.paginator import Paginator
 @block_superuser_navigation
 @never_cache
 @login_required_custom
-
 def wishlist_view(request):
-    # Get all wishlist items for the logged-in user
-    wishlist_items = WishlistItem.objects.filter(wishlist__user=request.user).select_related('variant', 'variant__product', 'variant__product__brand')
 
-    # Pagination setup (e.g., 12 items per page)
+    wishlist_items = WishlistItem.objects.filter(
+        wishlist__user=request.user,
+        variant__is_active=True,
+        variant__product__is_active=True,
+        variant__product__is_listed=True,
+        variant__product__deleted_at__isnull=True  
+    ).select_related('variant', 'variant__product', 'variant__product__brand')
+
+
     paginator = Paginator(wishlist_items, 6)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get all variant IDs in wishlist to mark hearts in template
+
     wishlist_ids = wishlist_items.values_list('variant_id', flat=True)
 
     context = {
@@ -32,6 +37,7 @@ def wishlist_view(request):
         'wishlist_ids': list(wishlist_ids),
     }
     return render(request, 'wishlist.html', context)
+
 
 
 

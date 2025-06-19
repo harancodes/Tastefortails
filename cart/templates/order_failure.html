@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="text-center mt-10">
+  <h1 class="text-3xl font-bold text-red-600">Payment Failed</h1>
+  <p class="mt-4 text-gray-700">We couldn’t complete your payment. Please try again.</p>
+  <a href="{% url 'cart:checkout' %}" class="mt-6 inline-block bg-blue-600 text-white px-4 py-2 rounded">Retry Checkout</a>
+</div>
+{% endblock %}

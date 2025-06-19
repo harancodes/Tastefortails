@@ -175,8 +175,9 @@ class Variant(models.Model):
     
 
     def save(self, *args, **kwargs):
-        if self.apply_offer():
-            super().save(*args, **kwargs)
+
+        self.apply_offer()
+        super().save(*args, **kwargs)
     
 
     def get_discount_amount(self):

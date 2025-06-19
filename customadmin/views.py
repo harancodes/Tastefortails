@@ -29,30 +29,26 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from django.http import HttpResponse
 from customadmin.models import Coupon, UsedCoupon
-
-
-
-
-
-
-
-
-
+from functools import wraps
 
 
 
 
 
 def block_superuser_navigation(view_func):
+    @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if request.user.is_authenticated and request.user.is_superuser:
-            return redirect(reverse('customadmin:admin_dashboard'))  
+            return redirect(reverse('customadmin:admin_dashboard'))
         return view_func(request, *args, **kwargs)
     return wrapper
 
 def admin_required(view_func):
-    decorator = user_passes_test(lambda u: u.is_authenticated and u.is_staff)
-    return decorator(view_func)
+    return user_passes_test(
+        lambda u: u.is_authenticated and u.is_staff,
+        login_url='admin_login',  # ensure this matches your URL name
+        redirect_field_name=None  # remove ?next= from URL
+    )(view_func)
 
 
 
@@ -688,9 +684,15 @@ def soft_delete_product(request, product_id):
 #     product.save()
 #     messages.success(request, f"{'Listed' if product.is_listed else 'Unlisted'} banner successfully.")
 #     return redirect('customadmin:banner_list')
-
+@never_cache
 def admin_logout(request):
     logout(request)
+    request.session.flush()
+    response = redirect('admin_login')  # or use render if you don't want redirect
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+
     return render(request, 'admin_login.html')
 
 
@@ -1073,25 +1075,44 @@ def admin_handle_return_request(request, item_id):
         with transaction.atomic():
             if action == 'approve':
                 product_variant = order_item.product_variant
-
-
                 product_variant.quantity_in_stock += order_item.quantity
                 product_variant.save()
 
                 order = order_item.order
 
-
                 total_items = order.items.exclude(status__in=["returned", "cancelled"]).count()
-
                 if total_items > 1:
                     per_item_shipping_charge = order.shipping_charge / total_items
                 else:
                     per_item_shipping_charge = order.shipping_charge
 
-                
                 refund_amount = order_item.total_price + per_item_shipping_charge
 
-                
+               
+                if order.coupon and order.coupon_discount:
+                    coupon = order.coupon
+                    remaining_items = order.items.exclude(id=order_item.id).exclude(status__in=["returned", "cancelled"])
+                    remaining_total = sum(item.total_price for item in remaining_items)
+
+                    if remaining_total < coupon.min_cart_value:
+                     
+                        refund_amount -= order.coupon_discount
+
+                    
+                        order.coupon = None
+                        order.coupon_discount = 0
+                        order.save()
+
+             
+                        UsedCoupon.objects.filter(user=order.user, coupon=coupon).delete()
+
+                        messages.warning(
+                            request,
+                            "Coupon removed due to return. Discount has been adjusted in the refund."
+                        )
+                # === End Coupon Validation ===
+
+                # Process refund
                 payment = getattr(order, "payment", None)
                 if payment and payment.status == "completed":
                     wallet, _ = Wallet.objects.select_for_update().get_or_create(user=order.user)
@@ -1100,7 +1121,7 @@ def admin_handle_return_request(request, item_id):
                 else:
                     messages.warning(request, "Payment not completed. Refund not processed.")
 
-                # Update order item status
+                # Update item status
                 order_item.return_status = "approved"
                 order_item.status = "returned"
                 order_item.save()
@@ -1116,6 +1137,7 @@ def admin_handle_return_request(request, item_id):
         messages.error(request, "An error occurred while processing the return request.")
 
     return redirect('customadmin:admin_return_requests')
+
 
 
 
@@ -1171,8 +1193,6 @@ from reportlab.lib.styles import getSampleStyleSheet
 from openpyxl import Workbook
 from datetime import datetime, timedelta, time
 
-# Assuming your models:
-# Order, OrderItem
 
 @admin_required
 @never_cache
@@ -1276,7 +1296,7 @@ def sales_data(request):
             values.append(hour_revenue)
 
     elif filter_type == 'week':
-        start_date = today - timedelta(days=6)  # last 7 days including today
+        start_date = today - timedelta(days=6)  
         labels = []
         values = []
 
@@ -1370,10 +1390,10 @@ def sales_data(request):
 @admin_required
 @never_cache   
 def coupon_management(request):
-    """Handles adding, updating, and listing coupons"""
+
     coupons = Coupon.objects.all()
     coupons_list = Coupon.objects.all()
-        # Pagination
+
     page = request.GET.get('page', 1)
     paginator = Paginator(coupons_list, 10)  #
 

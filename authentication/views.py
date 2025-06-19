@@ -29,7 +29,7 @@ from authentication.models import CustomUser
 from product.models import Brand, ProductImage,Products,Category
 from django.db.models import Min
 from customadmin.models import Banner
-
+from cart.models import Wallet
 
 
 
@@ -90,16 +90,16 @@ def user_login(request):
 def user_signup(request):
     if request.user.is_authenticated:
         return redirect('home')
-    
+
     if request.method == 'POST':
-    
         full_name = request.POST.get('full_name', '').strip()
         email = request.POST.get('email', '').strip()
         phone_number = request.POST.get('phone_number', '').strip()
         password = request.POST.get('password', '')
         confirm_password = request.POST.get('confirm_password', '')
+        referral_code = request.POST.get('referral_code', '').strip().upper()
 
-    
+        # Validate inputs
         if len(full_name) < 3:
             messages.error(request, "Full name must be at least 3 characters long.")
             return redirect('user_signup')
@@ -128,27 +128,37 @@ def user_signup(request):
             messages.error(request, "An account with this phone number already exists.")
             return redirect('user_signup')
 
+        # Referral code validation
+        referrer = None
+        if referral_code:
+            try:
+                referrer = CustomUser.objects.get(referral_code=referral_code)
+            except CustomUser.DoesNotExist:
+                messages.error(request, "Invalid referral code.")
+                return redirect('user_signup')
+
+        # Flush any previous session
         request.session.flush()
 
-
+        # Send OTP
         otp = send_otp(email)
 
+        # Store user data temporarily in session
         user_data = {
             'full_name': full_name,
             'email': email,
             'phone_number': phone_number,
             'otp': otp,
-            'otp_created_at': timezone.now().isoformat(), 
-            'password': make_password(password), 
+            'otp_created_at': timezone.now().isoformat(),
+            'password': make_password(password),
+            'referrer_id': referrer.id if referrer else None,
         }
+
         request.session['user_data'] = user_data
 
         return redirect('verify_otp')
 
     return render(request, 'user_auth/signup.html')
-
-
-
 
 @never_cache
 def verify_otp(request):
@@ -163,32 +173,55 @@ def verify_otp(request):
         otp = user_data.get('otp')
         otp_created_at = datetime.fromisoformat(user_data.get('otp_created_at'))
 
-    
         if timezone.now() > otp_created_at + timedelta(minutes=1):
             messages.error(request, "OTP has expired. Please request a new one.")
             return redirect('resend_otp')
 
         if entered_otp == otp:
-    
-            user = CustomUser (
-                full_name=user_data['full_name'],
-                email=user_data['email'],
-                phone_number=user_data['phone_number'],
-                password=user_data['password']
-            )
-            user.save()
+            try:
+                with transaction.atomic():
+                
+                    user = CustomUser(
+                        full_name=user_data['full_name'],
+                        email=user_data['email'],
+                        phone_number=user_data['phone_number'],
+                        referred_by_id=user_data.get('referred_by_id'),
+                        referral_code=CustomUser.generate_unique_referral_code(),  
+                    )
+                    user.set_password(user_data['password'])
+                    user.save()
 
-            request.session.flush()
+                    wallet, _ = Wallet.objects.get_or_create(user=user)
+                    wallet.balance += 50
+                    wallet.save()
 
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    # ✅ Credit ₹100 to referrer if applicable
+                    referred_by_id = user_data.get('referred_by_id')
+                    if referred_by_id:
+                        try:
+                            referrer = CustomUser.objects.get(id=referred_by_id)
+                            referrer_wallet, _ = Wallet.objects.get_or_create(user=referrer)
+                            referrer_wallet.balance += 100
+                            referrer_wallet.save()
+                        except CustomUser.DoesNotExist:
+                            pass
 
-            messages.success(request, "Account created successfully! You are now logged in.")
-            return redirect('user_login')  
+                    # ✅ Finalize
+                    request.session.flush()
+                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+                    messages.success(request, "Account created successfully! ₹50 has been added to your wallet.")
+                    return redirect('user_login')
+
+            except Exception as e:
+                messages.error(request, f"Something went wrong: {str(e)}")
+                return redirect('user_signup')
         else:
             messages.error(request, "Invalid OTP. Please try again.")
 
     user_data = request.session.get('user_data')
     return render(request, 'user_auth/verify_otp.html', {'user_data': user_data})
+
 
 
 @never_cache

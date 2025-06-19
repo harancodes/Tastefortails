@@ -2,28 +2,14 @@
 
 {% block user %}
     <div class="container mx-auto px-4 py-8">
-        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 min-w-[320px] max-w-md">
-        </div>
+        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 min-w-[320px] max-w-md"></div>
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 md:mb-0">My Orders</h2>
             <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-            <div class="relative w-full md:w-64">
-    <!-- <input id="order-search"
-           type="text"
-           placeholder="Search orders..."
-           data-search-url="{% url 'user_profile:search_orders' %}"
-           class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
-    
-    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-        <i class="fas fa-search text-gray-400"></i>
-    </div> -->
-
-    <div id="search-results"
-         class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-md hidden max-h-60 overflow-auto">
-    </div>
-</div>
-
+                <div class="relative w-full md:w-64">
+                    <div id="search-results" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-md hidden max-h-60 overflow-auto"></div>
+                </div>
                 <form method="GET" action="{% url 'user_profile:order_list' %}" class="w-full md:w-auto">
                     <select name="status" onchange="this.form.submit()" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <option value="">All Orders</option>
@@ -35,13 +21,11 @@
             </div>
         </div>
 
-        <!-- Orders Grid -->
         <div class="grid gap-6">
             {% if orders %}
                 {% for order in orders %}
                     <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
                         <div class="p-6">
-                            <!-- Order Header -->
                             <div class="flex flex-col md:flex-row justify-between items-start mb-4">
                                 <div>
                                     <h3 class="text-lg font-semibold text-gray-800">#ORD-{{ order.id }}</h3>
@@ -56,25 +40,45 @@
                                     </span>
                                 </div>
                             </div>
-                            
-                            <!-- Order Items -->
+
                             <div class="space-y-4">
-                                {% for item in order.items.all %}
-                                    <div class="flex flex-col md:flex-row items-center justify-between p-4 border border-gray-100 rounded-lg">
-                                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                                              <img src="{{ item.product_variant.product.images.first.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-16 h-16 object-cover rounded-lg" />
+                                {% for product, items in order.grouped_items %}
+                                    <div class="p-4 border border-gray-100 rounded-lg">
+                                        <div class="flex items-center space-x-4 mb-2">
+                                            <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}" class="w-16 h-16 object-cover rounded-lg" />
                                             <div>
-                                                <p class="text-sm font-medium text-gray-800">{{ item.product_variant.product.name }}</p>
-                                                <p class="text-sm text-gray-500">{{ item.quantity }} x ₹{{ item.product_variant.variant_price }}</p>
+                                                <p class="text-sm font-medium text-gray-800">{{ product.name }}</p>
+                                                {% for item in items %}
+                                                    <p class="text-sm text-gray-500">{{ item.quantity }} x ₹{{ item.product_variant.sales_price }} ({{ item.product_variant.variant_name }})</p>
+                                                {% endfor %}
                                             </div>
                                         </div>
-                                        <div class="flex space-x-2">
-                                            <a href="{% url 'user_profile:order_item_detail' item_id=item.id %}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
-                                                Order Details
-                                            </a>
-                                            <a href="{% url 'user_profile:generate_invoice' item.id %}" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium">
-                                                Download Invoice
-                                            </a>
+                                        <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                                            <div class="flex gap-2">
+                                                <a href="{% url 'user_profile:order_item_detail' item_id=items.0.id %}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm">Order Details</a>
+                                                <a href="{% url 'user_profile:generate_invoice' item_id=items.0.id %}" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm">Download Invoice</a>
+                                                {% if items|length > 0 and items.0.can_be_cancelled %}
+                                                    <form method="POST" action="{% url 'user_profile:cancel_product_items' order.id product.id %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="reason" value="Cancelled entire product">
+                                                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">Cancel Entire Product</button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                            <!-- Individual Item Cancel -->
+                                            <div class="flex flex-col gap-2 mt-4">
+                                                {% for item in items %}
+                                                    {% if item.can_be_cancelled %}
+                                                        <form method="POST" action="{% url 'user_profile:cancel_order_item' item.id %}" class="inline">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="reason" value="Cancelled individual variant">
+                                                            <button type="submit" class="bg-red-100 text-red-600 px-4 py-1 rounded text-sm hover:bg-red-200">
+                                                                Cancel {{ item.product_variant.variant_name }}
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -83,7 +87,6 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <!-- Empty State -->
                 <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -93,33 +96,23 @@
             {% endif %}
         </div>
 
-        <!-- Pagination -->
         <div class="flex flex-col md:flex-row justify-between items-center mt-6">
             <p class="text-sm text-gray-600 mb-4 md:mb-0">Showing {{ orders.start_index }}-{{ orders.end_index }} of {{ orders.paginator.count }} orders</p>
             <div class="flex space-x-2">
                 {% if orders.has_previous %}
-                    <a href="?page={{ orders.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                        Previous
-                    </a>
+                    <a href="?page={{ orders.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Previous</a>
                 {% else %}
-                    <button class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Previous
-                    </button>
+                    <button class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
                 {% endif %}
                 {% if orders.has_next %}
-                    <a href="?page={{ orders.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                        Next
-                    </a>
+                    <a href="?page={{ orders.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Next</a>
                 {% else %}
-                    <button class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Next
-                    </button>
+                    <button class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Next</button>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    
     <script>
         function showToast(message, type = 'success') {
             const toastContainer = document.getElementById('toast-container');
@@ -132,70 +125,58 @@
                 </button>
             `;
             toastContainer.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000); 
+            setTimeout(() => toast.remove(), 5000);
         }
-
-       
     </script>
 
     <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("order-search");
-    const resultsBox = document.getElementById("search-results");
-    const searchUrl = searchInput.dataset.searchUrl;
-    let timeout = null;
+        document.addEventListener("DOMContentLoaded", function () {
+            const searchInput = document.getElementById("order-search");
+            const resultsBox = document.getElementById("search-results");
+            const searchUrl = searchInput?.dataset?.searchUrl;
+            let timeout = null;
 
-    searchInput.addEventListener("input", function () {
-        const query = this.value.trim();
-
-        clearTimeout(timeout);
-        if (query.length === 0) {
-            resultsBox.classList.add("hidden");
-            resultsBox.innerHTML = "";
-            return;
-        }
-
-        // Debounce to reduce request rate
-        timeout = setTimeout(() => {
-            fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    if (!response.ok) throw new Error("Network error");
-                    return response.json();
-                })
-                .then(data => {
-                    resultsBox.innerHTML = "";
-                    if (data.results.length > 0) {
-                        data.results.forEach(order => {
-                            const div = document.createElement("div");
-                            div.classList.add("px-4", "py-2", "hover:bg-gray-100", "cursor-pointer");
-                            div.textContent = order.label;
-                            div.addEventListener("click", () => {
-                                
-                                window.location.href = `/orders/${order.id}/`; 
-                            });
-                            resultsBox.appendChild(div);
-                        });
-                        resultsBox.classList.remove("hidden");
-                    } else {
-                        resultsBox.innerHTML = '<div class="px-4 py-2 text-gray-500">No orders found</div>';
-                        resultsBox.classList.remove("hidden");
+            if (searchInput && searchUrl) {
+                searchInput.addEventListener("input", function () {
+                    const query = this.value.trim();
+                    clearTimeout(timeout);
+                    if (query.length === 0) {
+                        resultsBox.classList.add("hidden");
+                        resultsBox.innerHTML = "";
+                        return;
                     }
-                })
-                .catch(error => {
-                    console.error("Search failed:", error);
-                    resultsBox.innerHTML = '<div class="px-4 py-2 text-red-500">Error fetching results</div>';
-                    resultsBox.classList.remove("hidden");
+                    timeout = setTimeout(() => {
+                        fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
+                            .then(response => response.ok ? response.json() : Promise.reject("Network error"))
+                            .then(data => {
+                                resultsBox.innerHTML = "";
+                                if (data.results.length > 0) {
+                                    data.results.forEach(order => {
+                                        const div = document.createElement("div");
+                                        div.classList.add("px-4", "py-2", "hover:bg-gray-100", "cursor-pointer");
+                                        div.textContent = order.label;
+                                        div.addEventListener("click", () => window.location.href = `/orders/${order.id}/`);
+                                        resultsBox.appendChild(div);
+                                    });
+                                } else {
+                                    resultsBox.innerHTML = '<div class="px-4 py-2 text-gray-500">No orders found</div>';
+                                }
+                                resultsBox.classList.remove("hidden");
+                            })
+                            .catch(error => {
+                                console.error("Search failed:", error);
+                                resultsBox.innerHTML = '<div class="px-4 py-2 text-red-500">Error fetching results</div>';
+                                resultsBox.classList.remove("hidden");
+                            });
+                    }, 300);
                 });
-        }, 300); 
-    });
 
-    
-    document.addEventListener("click", function (e) {
-        if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
-            resultsBox.classList.add("hidden");
-        }
-    });
-});
-</script>
-
+                document.addEventListener("click", function (e) {
+                    if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
+                        resultsBox.classList.add("hidden");
+                    }
+                });
+            }
+        });
+    </script>
 {% endblock user %}

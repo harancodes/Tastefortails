@@ -36,57 +36,49 @@ from product.models import Variant
 
 @block_superuser_navigation
 @never_cache
-@login_required  
+@login_required_custom
 @require_POST
 def add_to_cart(request, variant_id):
-
     try:
         variant = Variant.objects.get(pk=variant_id)
     except Variant.DoesNotExist:
-        return JsonResponse({'success': False,
-                             'error': 'Product variant not found'}, status=404)
+        return JsonResponse({'success': False, 'error': 'Product variant not found'}, status=404)
 
     try:
         data = json.loads(request.body or "{}")
         qty = int(data.get("quantity", 1))
     except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({'success': False,
-                             'error': 'Invalid quantity'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid quantity'}, status=400)
 
     if not 1 <= qty <= 10:
-        return JsonResponse({'success': False,
-                             'error': 'Quantity must be between 1 and 10'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Quantity must be between 1 and 10'}, status=400)
 
     if qty > variant.quantity_in_stock:
-        return JsonResponse({'success': False,
-                             'error': 'Insufficient stock available'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
+
 
     cart, _ = Cart.objects.get_or_create(user=request.user)
 
-    item, created = CartItem.objects.get_or_create(
-        cart=cart, product_variant=variant)
+    item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
 
     new_qty = qty if created else item.quantity + qty
     if new_qty > 10 or new_qty > variant.quantity_in_stock:
-        return JsonResponse({'success': False,
-                             'error': 'Quantity exceeds allowed limit or stock'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Quantity exceeds allowed limit or stock'}, status=400)
 
     item.quantity = new_qty
     item.save()
 
-    
-    WishlistItem.objects.filter(
-        wishlist__user=request.user,
-        variant_id=variant_id
-    ).delete()
+    try:
+        wishlist = Wishlist.objects.get(user=request.user)
+        WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
+    except Wishlist.DoesNotExist:
+        pass 
 
     return JsonResponse({
         'success': True,
         'cart_item_count': cart.items.count(),
-        'total_price': cart.total_price,   
+        'total_price': cart.total_price,
     })
-
-
 
 @block_superuser_navigation
 @never_cache
@@ -113,11 +105,18 @@ def update_quantity(request):
         cart_item.quantity = new_quantity
         cart_item.save()
 
-        return JsonResponse({'success': True})
+        
+        item_total_price = cart_item.total_price  
+        cart_items = cart_item.cart.items.select_related('product_variant')
+        cart_total_price = sum(item.total_price for item in cart_items)
+
+        return JsonResponse({
+            'item_total_price': item_total_price,
+            'cart_total_price': cart_total_price
+        })
 
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'error': 'Invalid data'}, status=400)
-
 
 
 @block_superuser_navigation
@@ -152,23 +151,39 @@ def remove_cart_item(request, item_id):
 @login_required_custom
 def view_cart(request):
     cart = Cart.objects.filter(user=request.user).first()
+    shipping_charge = 100
     if cart:
-        items = cart.items.select_related("product_variant", "product_variant__product")  
-        cart_total_price = sum(item.total_price for item in items)  # after offers
-        cart_original_total = sum(item.product_variant.variant_price * item.quantity for item in items)  # before offers
+        items = cart.items.select_related("product_variant", "product_variant__product") \
+            .filter(
+                product_variant__is_active=True,
+                product_variant__product__is_active=True,
+                product_variant__product__is_listed=True,
+                product_variant__product__deleted_at__isnull=True
+            )
+
+        cart_total_price = sum(item.total_price for item in items)  
+        cart_original_total = sum(
+            item.product_variant.variant_price * item.quantity for item in items
+        ) 
+        cart_grand_total = cart_total_price + shipping_charge
 
         return render(request, 'cart.html', {
             'cart': cart,
             'items': items,
             'cart_total_price': cart_total_price,
             'cart_original_total': cart_original_total,
+            'shipping_charge': shipping_charge,
+            'cart_grand_total': cart_grand_total,
         })
-    else:
-        return render(request, 'cart.html', {
-            'message': 'Your cart is empty.',
-            'cart_total_price': 0,
-            'cart_original_total': 0,
-        })
+
+    return render(request, 'cart.html', {
+        'message': 'Your cart is empty.',
+        'cart_total_price': 0,
+        'cart_original_total': 0,
+        'shipping_charge': shipping_charge,
+            'cart_grand_total': cart_grand_total,
+    })
+
 
 
 
@@ -315,7 +330,7 @@ def checkout(request):
                         )
                 
 
-                # Wallet Payment Logic
+                
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
                     total_price_decimal = Decimal(total_price)
@@ -341,6 +356,11 @@ def checkout(request):
                         return redirect("cart:checkout")
 
                 elif payment_method == "cod":
+
+                    if total_price > 1000:
+                        messages.error(request, "Cash on Delivery is not available for orders above ₹1000.")
+                        order.delete()
+                        return redirect("cart:checkout")
                     Payment.objects.create(
                         order=order,
                         amount=total_price,
@@ -488,6 +508,13 @@ def order_success(request, order_id):
             "order": order,
             "order_items": order_items,
         })
+
+
+@login_required
+@block_superuser_navigation
+@never_cache
+def order_failure(request):
+    return render(request, 'order_failure.html')
     
 @require_POST
 @block_superuser_navigation
@@ -653,7 +680,6 @@ def create_razorpay_order(request):
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
 
-
 import json
 import logging
 from django.http import JsonResponse
@@ -661,6 +687,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import transaction
 import razorpay
+
 from .models import Order, Payment, OrderItem, CartItem
 
 logger = logging.getLogger(__name__)
@@ -726,12 +753,32 @@ def verify_razorpay_payment(request):
 
         with transaction.atomic():
             if payment_successful:
+
                 payment.status = "completed"
                 payment.transaction_id = payment_id
-                OrderItem.objects.filter(order=order).update(status="processing")
-                CartItem.objects.filter(cart__user=order.user).delete()
+
+                
+                cart_items = CartItem.objects.filter(cart__user=order.user)
+                if not cart_items.exists():
+                    logger.warning("No cart items found for user: %s", order.user)
+                    return JsonResponse({"success": False, "error": "Cart is empty"}, status=400)
+
+                for cart_item in cart_items:
+                    OrderItem.objects.create(
+                        order=order,
+                        product_variant=cart_item.product_variant,
+                        quantity=cart_item.quantity,
+                        status="processing"
+                    )
+
+                    cart_item.product_variant.quantity_in_stock -= cart_item.quantity
+                    cart_item.product_variant.save()
+
+                
+                cart_items.delete()
             else:
                 payment.status = "payment_not_received"
+
             payment.save()
             order.save()
 
@@ -750,6 +797,7 @@ def verify_razorpay_payment(request):
     except Exception as e:
         logger.error("Payment verification failed: %s", str(e)) 
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 
 @csrf_exempt

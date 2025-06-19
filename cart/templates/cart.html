@@ -320,11 +320,11 @@
     You saved ₹{{ cart_original_total|floatformat:2|add:"-"|add:cart_total_price|floatformat:2 }}
   </p>
 {% endif %}
-<p>Shipping: <span class="float-right">₹0.00</span></p>
+<p>Shipping: <span class="float-right">₹100</span></p>
 <p>Tax: <span class="float-right">₹0.00</span></p>
 <hr class="my-4">
 <p class="font-semibold text-lg">
-  Total: <span id="total_cart_price" class="float-right">₹{{ cart_total_price|default:"0.00" }}</span>
+  Total: <span id="total_cart_price" class="float-right">₹{{ cart_grand_total|default:"0.00" }}</span>
 </p>
 
        <a href="{% url 'cart:checkout' %}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded">
@@ -338,7 +338,7 @@
 
   <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
 
-  <!-- Toastify for Notifications -->
+
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
@@ -489,7 +489,6 @@
       });
     });
 
-    // Quantity - Decrement
     document.querySelectorAll('.decrement-quantity').forEach(button => {
       button.addEventListener('click', function () {
         const itemId = this.getAttribute('data-item-id');
@@ -507,7 +506,6 @@
       });
     });
 
-    // Variant selection
     document.addEventListener('click', function (e) {
       const option = e.target.closest('.variant-option:not(.unavailable)');
       if (option) {
@@ -555,7 +553,6 @@
       });
     });
 
-    // Disable increment buttons on load if quantity matches stock
     document.querySelectorAll('.cart-item').forEach(item => {
       const itemId = item.getAttribute('data-item-id');
       const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);

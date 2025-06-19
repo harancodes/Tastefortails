@@ -129,7 +129,11 @@
     <input type="hidden" id="total_price_with_shipping" value="{{ total_price_with_shipping|floatformat:2 }}">
     <input type="hidden" id="razorpay_key" value="{{ RAZORPAY_KEY_ID }}" >
     <input type="hidden" id="verify_payment_url" value="{% url 'cart:verify_razorpay_payment' %}">
-   <input type="hidden" id="order_success_url" value="/order/success/{order_id}/">
+   {% comment %} <input type="hidden" id="order_success_url" value="/order/success/{order_id}/"> {% endcomment %}
+   <input type="hidden" id="order_success_url" value="{% url 'cart:order_success' 0 %}">
+   <input type="hidden" id="order_failure_url" value="{% url 'cart:order_failure' %}">
+
+
  
 
     <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
@@ -637,7 +641,9 @@ console.log("🧮 amountPaise:", amountPaise);
 
 
           if (result.success && result.payment_success) {
-            const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
+const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
+location.href = redirectUrl + '?payment_status=success';
+
             location.href = redirectUrl + '?payment_status=success';
           } else {
             throw new Error(result.error || 'Payment verification failed');
@@ -645,7 +651,8 @@ console.log("🧮 amountPaise:", amountPaise);
         } catch (err) {
           console.error("❌ Verification Error:", err);
           displayNotification(err.message, 'error');
-          location.href = document.getElementById('cart_url').value + '?payment_status=failed';
+          location.href = document.getElementById('order_failure_url').value + '?payment_status=failed';
+
         }
       },
       modal: {

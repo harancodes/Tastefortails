@@ -187,8 +187,8 @@
         <span id="originalPrice" class="text-lg text-gray-400 line-through">
           ₹{{ variant.variant_price }}
         </span>
-        <span class="px-2 py-1 text-sm font-semibold text-white bg-red-500 rounded">
-          Save ₹{{ variant.get_discount_amount }} ({{ variant.get_discount_percentage }}% OFF)
+        {% comment %} <span class="px-2 py-1 text-sm font-semibold text-white bg-red-500 rounded"> {% endcomment %}
+          {% comment %} Save ₹{{ variant.get_discount_amount }} ({{ variant.get_discount_percentage }}% OFF) {% endcomment %}
         </span>
       {% else %}
         <span id="variantPrice" class="text-3xl font-bold text-gray-900">
@@ -277,8 +277,6 @@
 </div>
 
 
-
-
 <!-- BUY NOW BUTTON -->
 <!--            
              <button id="addToCartBtn"
@@ -305,71 +303,75 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {% for product in similar_products %}
-      {% if product.is_active and product.is_listed %}
-      <a href="{% url 'product:detail' product.slug %}" class="group block">
-        <div class="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-[1.02]">
-          <div class="relative">
-            {% if product.thumbnail %}
-            <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-60 object-cover">
-            {% else %}
-            <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-60 object-cover">
-            {% endif %}
+      {% for sp in similar_products %}
+        {% if sp.is_active and sp.is_listed %}
+        <a href="{% url 'product:detail' sp.slug %}" class="group block">
+          <div class="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-[1.02]">
+            <div class="relative">
+              {% if sp.thumbnail %}
+              <img src="{{ sp.thumbnail }}" alt="{{ sp.name }}" class="w-full h-60 object-cover">
+              {% else %}
+              <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-60 object-cover">
+              {% endif %}
 
-            {% if product.offer_percentage > 0 %}
-            <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-              <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
-            </div>
-            {% endif %}
+              {% if sp.offer_percentage > 0 %}
+              <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">{{ sp.offer_percentage }}% OFF</span>
+              </div>
+              {% endif %}
 
-            
               <div class="absolute top-3 right-3 z-10">
-            <button 
-                        class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
-                        onclick="event.stopPropagation(); event.preventDefault(); toggleWishlist({{ product.variants.first.id }})"
-                        data-variant-id="{{ product.variants.first.id }}"
-                        data-in-wishlist="false"
-                    >
-                        <i class="far fa-heart text-red-500 text-lg"></i>
-                    </button> 
+                <button 
+                  class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
+                  onclick="event.stopPropagation(); event.preventDefault(); toggleWishlist({{ sp.variants.first.id }})"
+                  data-variant-id="{{ sp.variants.first.id }}"
+                  data-in-wishlist="false"
+                >
+                  <i class="far fa-heart text-red-500 text-lg"></i>
+                </button> 
+              </div>
+
+              <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                <div class="bg-white bg-opacity-90 px-4 py-2 rounded-md text-sm text-gray-800 font-medium">
+                  View Details
                 </div>
+              </div>
+            </div>
 
+            <div class="p-4 space-y-2">
+              {% if sp.brand %}
+              <p class="text-blue-600 text-xs uppercase font-semibold">{{ sp.brand.name }}</p>
+              {% endif %}
+              <h3 class="text-base font-semibold text-gray-800 group-hover:text-blue-700 truncate">{{ sp.name }}</h3>
 
-            
-            <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-              <div class="bg-white bg-opacity-90 px-4 py-2 rounded-md text-sm text-gray-800 font-medium">
-                View Details
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                <span class="ml-2 text-gray-500 text-xs">(24)</span>
+              </div>
+
+              <div class="flex justify-between items-center pt-2">
+                {% with variant=sp.variants.first %}
+                  {% if variant %}
+                    {% if variant.sales_price < variant.variant_price %}
+                      <div class="flex flex-col gap-0.5">
+                        <p class="text-lg font-bold text-gray-900">₹{{ variant.sales_price }}</p>
+                        <p class="text-sm line-through text-gray-500">₹{{ variant.variant_price }}</p>
+                        <p class="text-xs text-green-600 font-medium">
+                          {% comment %} You save ₹{{ variant.variant_price|floatformat:0|add:"-"|add:variant.sales_price|floatformat:0 }} {% endcomment %}
+                        </p>
+                      </div>
+                    {% else %}
+                      <p class="text-lg font-bold text-gray-900">₹{{ variant.sales_price }}</p>
+                    {% endif %}
+                  {% else %}
+                    <span class="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full">Out of Stock</span>
+                  {% endif %}
+                {% endwith %}
               </div>
             </div>
           </div>
-
-          <div class="p-4 space-y-2">
-            {% if product.brand %}
-            <p class="text-blue-600 text-xs uppercase font-semibold">{{ product.brand.name }}</p>
-            {% endif %}
-            <h3 class="text-base font-semibold text-gray-800 group-hover:text-blue-700 truncate">{{ product.name }}</h3>
-
-            <!-- Ratings -->
-            <div class="flex items-center text-yellow-400 text-sm">
-              <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-              <span class="ml-2 text-gray-500 text-xs">(24)</span>
-            </div>
-
-            <div class="flex justify-between items-center pt-2">
-              <p class="text-lg font-bold text-gray-900">₹{{ min_price }}</p>
-              {% if product.variants.all %}
-              <!-- <button onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})"
-                class="flex items-center gap-2 bg-blue-700 text-white px-3 py-1.5 rounded-full text-sm hover:bg-blue-800 transition">
-                <i class="fas fa-shopping-cart"></i> Add
-              </button> -->
-              {% else %}
-              <span class="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full">Out of Stock</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </a>
-      {% endif %}
+        </a>
+        {% endif %}
       {% endfor %}
     </div>
   </div>
@@ -941,15 +943,14 @@
 });
 
 </script>
-
 <script>
-    
     function selectVariant(element) {
         const variantId = element.dataset.variantId;
         const stock = parseInt(element.dataset.stock);
 
         document.getElementById('selectedVariantId').value = variantId;
 
+        // Update visual selection
         document.querySelectorAll('.variant-option').forEach(el => {
             el.classList.remove('bg-blue-100', 'border-blue-500');
             el.classList.add('border-gray-300');
@@ -976,6 +977,31 @@
             stockText.className = "text-sm font-medium text-red-600";
             stockIndicator.style.width = "0%";
             stockIndicator.className = "bg-red-500 h-2 rounded-full";
+        }
+
+        // 🔄 Update price display
+        const price = parseFloat(element.dataset.price);
+        const originalPrice = parseFloat(element.dataset.originalPrice);
+        const discountAmount = parseFloat(element.dataset.discountAmount);
+        const discountPercent = parseFloat(element.dataset.discountPercentage);
+
+        const variantPriceEl = document.getElementById('variantPrice');
+        const originalPriceEl = document.getElementById('originalPrice');
+        const discountBadgeEl = document.getElementById('discountBadge');
+
+        if (price < originalPrice) {
+            variantPriceEl.textContent = `₹${price}`;
+            originalPriceEl.textContent = `₹${originalPrice}`;
+            originalPriceEl.classList.remove('hidden');
+
+            if (discountBadgeEl) {
+                discountBadgeEl.textContent = `Save ₹${discountAmount} (${discountPercent}% OFF)`;
+                discountBadgeEl.classList.remove('hidden');
+            }
+        } else {
+            variantPriceEl.textContent = `₹${originalPrice}`;
+            originalPriceEl.classList.add('hidden');
+            if (discountBadgeEl) discountBadgeEl.classList.add('hidden');
         }
     }
 
@@ -1011,23 +1037,19 @@
                 showToast(data.error || "Failed to add to cart", "error");
             }
         })
-        .catch(err => {from 
+        .catch(err => {
             console.error("Add to cart failed", err);
             showToast("Something went wrong", "error");
         });
     }
 
-    // Auto-select first variant on load
+    
     document.addEventListener("DOMContentLoaded", () => {
         const firstVariant = document.querySelector('.variant-option');
         if (firstVariant) {
             selectVariant(firstVariant);
         }
     });
-
-    
-
-    
 </script>
 
 <script>

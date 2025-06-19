@@ -4,7 +4,7 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <div class="animate-fade-in">
-    <!-- Breadcrumbs -->
+
     <div class="flex items-center space-x-2 text-sm text-gray-500 mb-6">
         <a href="{% url 'user_profile:order_list' %}" class="hover:text-blue-600 transition-colors">My Orders</a>
         <span>/</span>
@@ -64,7 +64,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Unit Price</p>
-                            <p class="font-medium">₹ {{ order_item.product_variant.variant_price }}</p>
+                            <p class="font-medium">₹ {{ order_item.product_variant.sales_price }}</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Quantity</p>

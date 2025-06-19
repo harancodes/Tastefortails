@@ -17,8 +17,8 @@ db.sqlite3
 /media/
 
 # Migrations (optional)
-/**/migrations/*.py
-!**/migrations/__init__.py
+# /**/migrations/*.py
+# !**/migrations/__init__.py
 
 # Virtual environments
 venv/

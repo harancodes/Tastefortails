@@ -189,21 +189,30 @@ def delete_address(request, address_id):
 
 ##### order starts ####
 
+from collections import defaultdict
+
 @block_superuser_navigation
 @never_cache
 @login_required
 def order_list_view(request):
     orders_list = Order.objects.filter(user=request.user).order_by('-created_at')
-    
+
     status = request.GET.get('status')
     if status:
         orders_list = orders_list.filter(items__status=status).distinct()
 
-    paginator = Paginator(orders_list, 5)  
+    paginator = Paginator(orders_list, 5)
     page_number = request.GET.get('page')
     orders = paginator.get_page(page_number)
-    
+
+    for order in orders:
+        grouped_items = defaultdict(list)
+        for item in order.items.all():
+            grouped_items[item.product_variant.product].append(item)
+        order.grouped_items = grouped_items.items()  # list of (Product, [OrderItem])
+
     return render(request, 'order_list.html', {'orders': orders})
+
 
 
 @block_superuser_navigation
@@ -269,7 +278,7 @@ def generate_invoice(request, item_id):
         ["Order ID", item.order.id],
         ["Product", Paragraph(item.product_variant.product.name, normal_style)],  
         ["Quantity", item.quantity],
-        ["Price per unit", f"Rs {item.product_variant.variant_price}"],
+        ["Price per unit", f"Rs {item.product_variant.sales_price}"],
 
         ["Total Price", f"Rs {item.total_price}"]
     ]
@@ -325,60 +334,95 @@ def order_item_detail(request, item_id):
     return render(request, 'order_item_detail.html', context)
 
 
+
 @block_superuser_navigation
 @never_cache
 @login_required
 def cancel_order_item(request, item_id):
-    """
-    View for cancelling a specific order item and processing a wallet refund if payment was completed.
-    """
     if request.method != 'POST':
         messages.error(request, "Invalid request method.")
         return redirect('order_list')
 
-    order_item = get_object_or_404(OrderItem, id=item_id)
+    order_item = get_object_or_404(OrderItem, id=item_id, order__user=request.user)
+    order = order_item.order
 
     try:
         if not order_item.can_be_cancelled:
             messages.error(request, "This item can no longer be cancelled.")
-            return redirect('user:profile:order_item_detail', item_id=item_id)
+            return redirect('user_profile:order_item_detail', item_id=item_id)
 
         with transaction.atomic():
             reason = request.POST.get('reason', '')
 
-            ### restock
+            # Restock the product variant
             product_variant = order_item.product_variant
             product_variant.quantity_in_stock += order_item.quantity
             product_variant.save()
 
-
-            order = order_item.order
-            total_items = order.items.count()  
-
-            if total_items > 1:
-                shipping_share = order.shipping_charge / Decimal(total_items) 
-            else:
-                shipping_share = order.shipping_charge 
-    
-
-            refund_amount = order_item.total_price + shipping_share
-
-
-            payment = order.payment
-            if payment.status == 'completed':
-                wallet, _ = Wallet.objects.get_or_create(user=order.user) 
-                wallet.add_amount(refund_amount, reason="Order Cancellation Refund")
-
-
+            # Cancel the item
             order_item.cancel_item(reason=reason)
 
-            messages.success(request, "Item has been successfully cancelled, and the refund has been processed.")
+            # Refund if payment was completed
+            if order.payment.status == 'completed':
+                total_items = order.items.exclude(status='cancelled').count() + 1  # +1 to include the item just cancelled
+                shipping_share = order.shipping_charge / total_items
+                refund_amount = order_item.total_price + shipping_share
 
+                wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                wallet.add_amount(refund_amount, reason="Order item cancellation refund")
+
+            # Recalculate order totals and discounts
+            order.calculate_final_total()
+
+            messages.success(request, "Item has been successfully cancelled and refund processed.")
     except Exception as e:
         messages.error(request, f"An error occurred: {str(e)}")
 
     return redirect('user_profile:order_item_detail', item_id=item_id)
 
+
+
+from django.views.decorators.http import require_POST
+@require_POST
+@login_required
+def cancel_product_items(request, order_id, product_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    order_items = OrderItem.objects.filter(order=order, product_variant__product_id=product_id).exclude(status='cancelled')
+
+    if not order_items.exists():
+        messages.error(request, "No active items found for this product in the order.")
+        return redirect('user_profile:order_list')
+
+    try:
+        with transaction.atomic():
+            total_items_before = order.items.exclude(status='cancelled').count()
+
+            for item in order_items:
+                if item.can_be_cancelled:
+                    # Restock the variant
+                    variant = item.product_variant
+                    variant.quantity_in_stock += item.quantity
+                    variant.save()
+
+                    # Cancel the item
+                    item.cancel_item(reason="Cancelled entire product")
+
+                    # Refund logic
+                    if order.payment.status == 'completed':
+                        shipping_share = order.shipping_charge / total_items_before
+                        refund_amount = item.total_price + shipping_share
+
+                        wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                        wallet.add_amount(refund_amount, reason="Cancelled all items of a product.")
+
+            # Recalculate totals and discounts
+            order.calculate_final_total()
+
+            messages.success(request, "All product items cancelled successfully.")
+    except Exception as e:
+        messages.error(request, f"Error cancelling product items: {e}")
+
+    return redirect('user_profile:order_list')
 
 
 @block_superuser_navigation
@@ -408,7 +452,7 @@ def return_order_item(request, item_id):
         messages.success(request, "Return request submitted successfully. Waiting for admin approval.")
     
     except Exception as e:
-        print(f"Exception: {e}")  # Debugging
+        print(f"Exception: {e}")  
         messages.error(request, "An error occurred while processing your return request.")
 
     return redirect('user_profile:order_item_detail', item_id=item_id)
@@ -710,3 +754,13 @@ def verify_email(request):
 def manage_address(request):
     addresses = Address.objects.filter(user=request.user)  
     return render(request, 'manage_address.html', {'addresses': addresses})
+
+
+
+
+@login_required
+def referral_profile_view(request):
+    referral_code = request.user.referral_code
+    return render(request, 'refferal_code.html', {
+        'referral_code': referral_code
+    }) 

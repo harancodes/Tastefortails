@@ -19,7 +19,7 @@ from django.urls import path, include
 from customadmin.views import admin_login  
 
 urlpatterns = [
-    path('admin/', admin.site.urls), 
+    # path('admin/', admin.site.urls), 
     path('', include('authentication.urls')),
     # path('auth/', include('social_django.urls', namespace='social')), 
     path('customadmin/', include('customadmin.urls')),

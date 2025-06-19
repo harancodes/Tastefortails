@@ -60,7 +60,11 @@ class CustomUser(AbstractUser):
     # profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     profile_image = CloudinaryField('image', blank=True, null=True)
 
-    referral_code = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
+    # referral_code = models.UUIDField(default=None, unique=True, null=True, blank=True, max_length=6)
+    referral_code = models.CharField(max_length=6, unique=True, null=True, blank=True)
+
+
+
 
     referred_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='referrals')
 
@@ -69,10 +73,19 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    @staticmethod
+    def generate_unique_referral_code():
+        from django.utils.crypto import get_random_string
+        while True:
+            code = get_random_string(6).upper()
+            if not CustomUser.objects.filter(referral_code=code).exists():
+                return code
+
+
     def save(self, *args, **kwargs):
         if not self.referral_code:
             # You can use uuid or generate a friendly code
-            self.referral_code = get_random_string(10).upper()
+            self.referral_code = get_random_string(6).upper()
         super().save(*args, **kwargs)
 
 

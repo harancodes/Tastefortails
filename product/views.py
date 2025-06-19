@@ -51,9 +51,11 @@ def product_list_view(request):
         category__is_listed=True,
     ).select_related('brand', 'category') \
      .prefetch_related(Prefetch('variants', queryset=variant_qs), 'images') \
-     .annotate(min_price=Min('variants__sales_price'))
+     .annotate(
+    min_price=Min('variants__sales_price'),
+    original_min_price=Min('variants__variant_price'))
 
-    # Filters
+
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
@@ -138,7 +140,6 @@ def product_detail_view(request, slug):
         else:
             logger.warning("No primary image found")
 
-        # Variants
         variants = product.variants.all()
         if not variants:
             logger.warning("No variants found")
@@ -162,11 +163,20 @@ def product_detail_view(request, slug):
                 })
 
         similar_products = (
-            Products.objects.filter(category=product.category, is_active=True)
-            .exclude(id=product.id)
-            .select_related('brand')
-            .prefetch_related('variants', 'images')[:4]
-        )
+    Products.objects.filter(category=product.category, is_active=True, is_listed=True)
+    .exclude(id=product.id)
+    .select_related('brand')
+    .prefetch_related(
+        Prefetch('variants', queryset=Variant.objects.filter(is_active=True).order_by('id')),
+        'images'
+    )
+    .annotate(
+        min_price=Min('variants__sales_price'),
+        original_min_price=Min('variants__variant_price')
+    )[:4])
+        
+        
+        
 
         for sim_product in similar_products:
             if not sim_product.images.exists():

@@ -12,7 +12,7 @@
     </div>
 
     <section class="mb-12">
-    {% if page_obj %}
+    {% if page_obj.object_list %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {% for item in page_obj %}
           <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
@@ -42,23 +42,22 @@
                   {{ item.variant.product.brand.name }}
                 </p>
               {% endif %}
-             <h3 class="text-lg font-medium text-gray-800">
-  {{ item.variant.product.name }}
-  {% if item.variant.weight %} – {{ item.variant.weight }}{% endif %}
-</h3>
+              <h3 class="text-lg font-medium text-gray-800">
+                {{ item.variant.product.name }} {% if item.variant.weight %} – {{ item.variant.weight }}{% endif %}
+              </h3>
 
-{% if item.variant.sales_price < item.variant.variant_price %}
-  <p class="text-2xl text-gray-400 font-bold mt-2 line-through">
-    ₹{{ item.variant.variant_price|floatformat:2 }}
-  </p>
-  <p class="text-2xl text-green-700 font-bold mt-2">
-    Offer Price: ₹{{ item.variant.sales_price|floatformat:2 }}
-  </p>
-{% else %}
-  <p class="text-2xl text-gray-800 font-bold mt-2">
-    ₹{{ item.variant.variant_price|floatformat:2 }}
-  </p>
-{% endif %}
+              {% if item.variant.sales_price < item.variant.variant_price %}
+                <p class="text-2xl text-gray-400 font-bold mt-2 line-through">
+                  ₹{{ item.variant.variant_price|floatformat:2 }}
+                </p>
+                <p class="text-2xl text-green-700 font-bold mt-2">
+                  Offer Price: ₹{{ item.variant.sales_price|floatformat:2 }}
+                </p>
+              {% else %}
+                <p class="text-2xl text-gray-800 font-bold mt-2">
+                  ₹{{ item.variant.variant_price|floatformat:2 }}
+                </p>
+              {% endif %}
 
               <div class="mt-4 flex justify-between items-center">
                 <a href="{% url 'product:detail' item.variant.product.slug %}"
@@ -74,7 +73,6 @@
         {% endfor %}
       </div>
 
-      <!-- paginator -->
       <div class="flex justify-center mt-8 space-x-4">
         {% if page_obj.has_previous %}
           <a href="?page={{ page_obj.previous_page_number }}"
@@ -102,7 +100,6 @@
   </div>
 </div>
 
-<!-- Helpers -->
 <script>
 function getCookie(name) {
   let result = null;
@@ -114,10 +111,15 @@ function getCookie(name) {
   });
   return result;
 }
-</script>
 
-<!-- Wishlist toggle -->
-<script>
+function showToast(message, type = 'success') {
+  const toast = document.createElement("div");
+  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded shadow text-white bg-${type === 'success' ? 'green' : 'red'}-600`;
+  toast.innerText = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
 function toggleWishlist(variantId) {
   const heart = document.getElementById('heart-' + variantId);
   const isFav  = heart.classList.contains('fas');
@@ -133,28 +135,23 @@ function toggleWishlist(variantId) {
   .then(d => {
       if (!d.success) throw new Error(d.error || 'Server error');
 
-      // update icon
       heart.classList.toggle('fas');
       heart.classList.toggle('far');
       heart.classList.toggle('text-red-500');
       heart.classList.toggle('text-gray-400');
 
-      // If we’re on /wishlist and user just unfavourited => remove card
       if (isFav && window.location.pathname.includes('/wishlist')) {
           document.querySelector(`[data-variant="${variantId}"]`).remove();
       }
   })
   .catch(e => {
       console.error(e);
-      alert('Could not update wishlist: ' + e.message);
+      showToast('Could not update wishlist: ' + e.message, 'error');
   });
 }
-</script>
 
-<!-- Add to cart -->
-<script>
 function addCartItem(variantId, qty = 1) {
-  fetch(`cart/add_to_cart/${variantId}/`, {
+  fetch(`/cart/add_to_cart/${variantId}/`, {
       method: 'POST',
       headers: {
           'X-CSRFToken': getCookie('csrftoken'),
@@ -166,24 +163,23 @@ function addCartItem(variantId, qty = 1) {
   .then(d => {
       if (!d.success) throw new Error(d.error || 'Server error');
 
-      
       const badge = document.getElementById('cart-count');
       if (badge) badge.textContent = d.cart_item_count;
 
-
       const card = document.querySelector(`[data-variant="${variantId}"]`);
       if (card) card.remove();
-
 
       const heart = document.getElementById('heart-' + variantId);
       if (heart) {
           heart.classList.remove('fas', 'text-red-500');
           heart.classList.add('far', 'text-gray-400');
       }
+
+      showToast('Added to cart successfully!');
   })
   .catch(e => {
       console.error(e);
-      showToast('Could not add to cart: ' + e.message);
+      showToast('Could not add to cart: ' + e.message, 'error');
   });
 }
 </script>

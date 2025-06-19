@@ -41,8 +41,12 @@ urlpatterns = [
     path("wallet/", views.wallet_view, name="wallet_page"),
     path('submit-review/<int:order_item_id>/', views.submit_review, name='submit_review'),
     # path('api/products/', ProductAPI.as_view(), name='product_api')
-    # urls.py
-path('orders/search/', views.search_products, name='search_orders')
+
+path('orders/search/', views.search_products, name='search_orders'),
+  path('referral/', views.referral_profile_view, name='referral_profile'),
+  # urls.py
+path('cancel-product/<int:order_id>/<int:product_id>/', views.cancel_product_items, name='cancel_product_items'),
+
 
 
 

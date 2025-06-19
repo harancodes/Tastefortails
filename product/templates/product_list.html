@@ -139,25 +139,26 @@
                   <span class="ml-1 text-gray-500">(24)</span>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                  {% if product.offer_percentage > 0 %}
-                    <p class="text-lg text-gray-800 font-bold">₹{{ product.min_price }}</p>
-                    <p class="text-sm line-through text-gray-500">₹{{ product.original_price }}</p>
-                    <p class="text-sm text-green-600 font-medium">
-                      You save ₹{{ product.original_price|floatformat:0|add:"-"|add:product.min_price|floatformat:0 }}
-                    </p>
-                  {% else %}
-                    <p class="text-lg text-gray-800 font-bold">₹{{ product.min_price }}</p>
-                  {% endif %}
-                </div>
+               <div class="flex flex-col gap-1">
+  {% if product.original_min_price > product.min_price %}
+    <p class="text-lg text-gray-800 font-bold">₹{{ product.min_price }}</p>
+    <p class="text-sm line-through text-gray-500">₹{{ product.original_min_price }}</p>
+    <p class="text-sm text-green-600 font-medium">
+      {% comment %} You save ₹{{ product.original_min_price|floatformat:0|add:"-"|add:product.min_price|floatformat:0 }} {% endcomment %}
+    </p>
+  {% else %}
+    <p class="text-lg text-gray-800 font-bold">₹{{ product.original_min_price }}</p>
+  {% endif %}
+</div>
+
 
                 {% if product.variants.all %}
-                  <button
+                  {% comment %} <button
                     onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})"
                     class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2"
                     aria-label="Add {{ product.name }} to cart">
                     <i class="fas fa-shopping-cart"></i> Add
-                  </button>
+                  </button> {% endcomment %}
                 {% else %}
                   <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
                 {% endif %}

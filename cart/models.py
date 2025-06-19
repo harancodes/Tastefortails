@@ -87,6 +87,7 @@ class Order(models.Model):
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
     shipping_charge = models.DecimalField(max_digits=10, decimal_places=2, default=100)
     notes = models.TextField(blank=True, null=True) 
+    is_paid = models.BooleanField(default=False)
 
 
 
@@ -98,6 +99,17 @@ class Order(models.Model):
     def __str__(self):
         return f"Order {self.id} - {self.user.email}"
     
+
+    def calculate_final_total(self):
+        subtotal = sum(item.total_price for item in self.items.exclude(status='cancelled'))
+        self.total_amount = subtotal + self.shipping_charge
+        if self.applied_coupon and subtotal >= self.applied_coupon.min_cart_value:
+            self.discount = self.applied_coupon.calculate_discount(subtotal)
+        else:
+            self.discount = 0
+            self.applied_coupon = None
+        self.total_amount -= self.discount
+        self.save()
 
 
 class OrderItem(models.Model):
@@ -119,6 +131,16 @@ class OrderItem(models.Model):
         ("approved", "Return Approved"),
         ("rejected", "Return Rejected"),
     ]
+
+    ALLOWED_STATUS_TRANSITIONS = {
+    'pending': ['processing', 'cancelled'],
+    'processing': ['shipped', 'cancelled'],
+    'shipped': ['delivered'],
+    'delivered': [],
+    'cancelled': [],
+    'returned': []
+}
+
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     # order_item_id = models.CharField(max_length=36, unique=True, editable=False, default=uuid.uuid4)
@@ -183,7 +205,7 @@ class OrderItem(models.Model):
 
     @property
     def total_price(self):
-        return self.product_variant.variant_price * self.quantity
+        return self.product_variant.sales_price* self.quantity
 
     def __str__(self):
         return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"
