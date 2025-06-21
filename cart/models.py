@@ -7,7 +7,10 @@ from django.db import transaction
 from customadmin.models import Coupon
 from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
-import uuid
+from customadmin.models import UsedCoupon
+
+from decimal import Decimal, ROUND_HALF_UP
+
 
 class Cart(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="cart")
@@ -19,8 +22,7 @@ class Cart(models.Model):
     
     @property
     def total_price(self):
-        # total = sum(item.product_variant.variant_price for item in self.items.all())
-        # return total
+    
         total = sum(item.total_price for item in self.items.all())  
         return total
 
@@ -133,14 +135,13 @@ class OrderItem(models.Model):
     ]
 
     ALLOWED_STATUS_TRANSITIONS = {
-    'pending': ['processing', 'cancelled'],
-    'processing': ['shipped', 'cancelled'],
+    'pending': ['processing'],
+    'processing': ['shipped'],
     'shipped': ['delivered'],
     'delivered': [],
     'cancelled': [],
     'returned': []
 }
-
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     # order_item_id = models.CharField(max_length=36, unique=True, editable=False, default=uuid.uuid4)
@@ -166,41 +167,114 @@ class OrderItem(models.Model):
             return False
         time_elapsed = timezone.now() - self.updated_at  
         return time_elapsed.total_seconds() <= (self.RETURN_WINDOW_DAYS * 86400)  
+    
 
+
+    def get_estimated_amount(self):
+      
+        order = self.order
+        active_items = order.items.exclude(status__in=['cancelled', 'returned'])
+
+        total_active_price = sum(item.total_price for item in active_items)
+        total_items = active_items.count()
+
+        if total_items <= 0 or total_active_price <= 0:
+            return Decimal('0.00')
+
+        # Share of shipping
+        shipping_share = order.shipping_charge / total_items
+
+        # Proportional discount share
+        discount_share = Decimal('0.00')
+        if order.applied_coupon and order.discount > 0:
+            item_share_ratio = self.total_price / total_active_price
+            discount_share = (order.discount * item_share_ratio).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        refund = (self.total_price + shipping_share - discount_share).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return refund
+
+
+        
     def cancel_item(self, reason=""):
-        """Cancels this specific order item"""
         if not self.can_be_cancelled:
             raise ValidationError("This item cannot be cancelled.")
 
         with transaction.atomic():
-            
-            self.product_variant.quantity_in_stock += self.quantity
-            self.product_variant.save()
+            order = self.order
 
             
+            old_paid_amount = order.total_amount
+            active_items_count = order.items.exclude(status__in=["cancelled", "returned"]).count()
+
+            if active_items_count <= 0:
+                raise ValidationError("No active items in order.")
+
+            per_item_shipping = order.shipping_charge / active_items_count
+
+            self.product_variant.quantity_in_stock += self.quantity
+            self.product_variant.save()
             self.status = "cancelled"
             self.save()
 
+            order.calculate_final_total()
+            new_paid_amount = order.total_amount
+
+            if hasattr(order, 'payment') and order.payment.status == 'completed':
+                wallet, _ = Wallet.objects.get_or_create(user=order.user)
+
+           
+                refund = (old_paid_amount - new_paid_amount + per_item_shipping).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+                if refund > 0:
+                    wallet.add_amount(refund, reason="Order item cancelled - refund incl. shipping share")
+
     def return_item(self, reason=""):
-        """Handles return process for this specific order item and calculates refund"""
+        if self.status == "returned":
+            raise ValidationError("Item already returned.")
         if not self.can_be_returned:
             raise ValidationError("This item cannot be returned.")
 
         with transaction.atomic():
-            
+            order = self.order
+            old_paid_amount = order.total_amount
+
+            self.status = "returned"
+            self.return_status = "approved"
+            self.save()
+
+        
+            order.calculate_final_total()
+            new_paid_amount = order.total_amount
+
+            refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
+                wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
+
             self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
 
-            
-            self.status = "returned"
-            self.save()
 
-            
-            total_items = self.order.items.exclude(status="returned").count()
-            per_item_shipping_charge = self.order.shipping_charge / total_items if total_items > 0 else 0
-            refund_amount = self.total_price + per_item_shipping_charge
 
-            return refund_amount  
+    def change_status(self, new_status):
+        allowed = self.ALLOWED_STATUS_TRANSITIONS.get(self.status, [])
+        if new_status not in allowed:
+            raise ValidationError(f"Invalid status transition from {self.status} to {new_status}")
+
+        self.status = new_status
+        self.save()
+
+
+    @property
+    def status_choices(self):
+
+        return self.STATUS_CHOICES
+    
+    @property
+    def allowed_transitions(self):
+        return self.ALLOWED_STATUS_TRANSITIONS.get(self.status, [])
+
 
 
     @property

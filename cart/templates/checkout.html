@@ -241,7 +241,7 @@
   </td>
   <td class="py-3 text-gray-700 text-sm px-4">{{ item.quantity }}</td>
   <td class="py-3 text-gray-700 text-sm px-4">
-    ₹{{ cart_total|floatformat:2 }}
+    ₹{{ item.variant_total_price|floatformat:2 }}
   </td>
 </tr>
  
@@ -434,9 +434,7 @@
   </div>
 
 <script>
-/* ──────────────────────────────────────────────────────────────
-   1.  Helpers: notifications & modals
-   ────────────────────────────────────────────────────────────── */
+
 function displayNotification(msg, type) {
   const note = document.createElement('div');
   note.classList.add(
@@ -676,6 +674,74 @@ location.href = redirectUrl + '?payment_status=success';
     btn.disabled = false;
   }
 });
+</script>
+<script>
+  // Handle Add Address
+  document.getElementById('addAddressForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        displayNotification("Address added successfully", "success");
+        closeModal();
+
+        // Optional: dynamically add to the checkout address list
+        // Example: updateAddressList(result.address);
+
+      } else {
+        const error = result.error || 'Something went wrong';
+        displayNotification(error, "error");
+      }
+    } catch (err) {
+      console.error(err);
+      displayNotification("Network error while adding address", "error");
+    }
+  });
+
+  // Handle Edit Address
+  document.getElementById('editAddressForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        displayNotification("Address updated successfully", "success");
+        closeEditModal();
+
+      
+
+      } else {
+        const error = result.error || 'Failed to update address';
+        displayNotification(error, "error");
+      }
+    } catch (err) {
+      console.error(err);
+      displayNotification("Network error while updating address", "error");
+    }
+  });
 </script>
 
 

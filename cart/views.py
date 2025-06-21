@@ -29,6 +29,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 import json
+from django.core.exceptions import ValidationError
 
 from cart.models import Cart, CartItem
 from wishlist.models import WishlistItem
@@ -119,31 +120,30 @@ def update_quantity(request):
         return JsonResponse({'error': 'Invalid data'}, status=400)
 
 
+
 @block_superuser_navigation
 @never_cache
 @login_required_custom
 def remove_cart_item(request, item_id):
     if request.method == 'POST':
-        
         cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
-        
-        
+        cart = cart_item.cart
+
         cart_item.delete()
 
-
+       
         cart_total_price = sum(
-    item.quantity * item.product_variant.product.sales_price
-    for item in cart_item.cart.items.all()
-)
+            item.quantity * item.product_variant.product.sales_price
+            for item in cart.items.all()
+        )
 
-
-        
         return JsonResponse({
             'message': 'Item removed from cart.',
             'cart_total_price': cart_total_price
         }, status=200)
 
     return JsonResponse({'error': 'Invalid request method.'}, status=400)
+
 
 
 @block_superuser_navigation
@@ -188,7 +188,6 @@ def view_cart(request):
 
 
 
-
 @block_superuser_navigation
 @never_cache
 @login_required_custom
@@ -216,6 +215,9 @@ def checkout(request):
         discount = 0
         total_price = cart_total
         applied_coupon = None
+
+        for item in cart_items:
+             item.variant_total_price = item.product_variant.sales_price * item.quantity
 
         applied_coupon_data = request.session.get("applied_coupon")
         if applied_coupon_data and 'id' in applied_coupon_data:
@@ -278,6 +280,11 @@ def checkout(request):
                 messages.error(request, "Invalid address selection.")
                 return redirect("cart:checkout")
 
+            if payment_method == "cod" and total_price > 1000:
+                request.session.pop("applied_coupon", None)
+                messages.error(request, "COD is not allowed for orders above ₹1000. Coupon removed.")
+                return redirect("cart:checkout")
+
             with transaction.atomic():
                 order = Order.objects.create(
                     user=request.user,
@@ -328,9 +335,7 @@ def checkout(request):
                             quantity=cart_item.quantity,
                             status="processing",
                         )
-                
 
-                
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
                     total_price_decimal = Decimal(total_price)
@@ -356,11 +361,6 @@ def checkout(request):
                         return redirect("cart:checkout")
 
                 elif payment_method == "cod":
-
-                    if total_price > 1000:
-                        messages.error(request, "Cash on Delivery is not available for orders above ₹1000.")
-                        order.delete()
-                        return redirect("cart:checkout")
                     Payment.objects.create(
                         order=order,
                         amount=total_price,
@@ -372,7 +372,7 @@ def checkout(request):
                     if not is_buy_now:
                         cart_items.delete()
                     return redirect("cart:order_success", order_id=order.id)
-                
+
         total_price_with_shipping = total_price + shipping_charge
 
         return render(
@@ -409,7 +409,6 @@ def checkout(request):
                 "buy_now_item": single_variant if variant_id else None,
                 "error": str(e),
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
-
             },
         )
 

@@ -141,7 +141,7 @@ def edit_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     
     if request.method == "POST":
-        # Update the address fields
+        
         address.name = request.POST.get("name")
         address.phone = request.POST.get("phone")
         address.address_line = request.POST.get("address_line")
@@ -156,7 +156,7 @@ def edit_address(request, address_id):
             address.save() 
             return JsonResponse({"success": True}, status=200) 
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)  # Bad Request
+            return JsonResponse({"error": str(e)}, status=400)  
 
     return JsonResponse({"error": "Invalid request method."}, status=400)
 
@@ -333,8 +333,6 @@ def order_item_detail(request, item_id):
     
     return render(request, 'order_item_detail.html', context)
 
-
-
 @block_superuser_navigation
 @never_cache
 @login_required
@@ -344,37 +342,17 @@ def cancel_order_item(request, item_id):
         return redirect('order_list')
 
     order_item = get_object_or_404(OrderItem, id=item_id, order__user=request.user)
-    order = order_item.order
 
     try:
         if not order_item.can_be_cancelled:
             messages.error(request, "This item can no longer be cancelled.")
             return redirect('user_profile:order_item_detail', item_id=item_id)
 
-        with transaction.atomic():
-            reason = request.POST.get('reason', '')
+        reason = request.POST.get('reason', '')
+        order_item.cancel_item(reason=reason)
 
-            # Restock the product variant
-            product_variant = order_item.product_variant
-            product_variant.quantity_in_stock += order_item.quantity
-            product_variant.save()
+        messages.success(request, "Item has been successfully cancelled and refund processed.")
 
-            # Cancel the item
-            order_item.cancel_item(reason=reason)
-
-            # Refund if payment was completed
-            if order.payment.status == 'completed':
-                total_items = order.items.exclude(status='cancelled').count() + 1  # +1 to include the item just cancelled
-                shipping_share = order.shipping_charge / total_items
-                refund_amount = order_item.total_price + shipping_share
-
-                wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                wallet.add_amount(refund_amount, reason="Order item cancellation refund")
-
-            # Recalculate order totals and discounts
-            order.calculate_final_total()
-
-            messages.success(request, "Item has been successfully cancelled and refund processed.")
     except Exception as e:
         messages.error(request, f"An error occurred: {str(e)}")
 

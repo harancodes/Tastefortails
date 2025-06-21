@@ -23,6 +23,8 @@ from datetime import timedelta, time, datetime
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
+from django.core.exceptions import ValidationError
+
 # from reportlab.lib.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 
 from reportlab.lib.pagesizes import letter
@@ -998,9 +1000,8 @@ def admin_order_list_view(request):
 
 
 
-
 @admin_required
-@never_cache   
+@never_cache
 def admin_change_order_item_status_view(request, order_item_id):
     try:
         order_item = get_object_or_404(OrderItem, id=order_item_id)
@@ -1019,28 +1020,28 @@ def admin_change_order_item_status_view(request, order_item_id):
 
             try:
                 with transaction.atomic():
-                    order_item.status = new_status
-                    order_item.save()
+                    # ✅ VALIDATED transition
+                    order_item.change_status(new_status)
 
+                    # ✅ COD auto-complete payment
                     try:
                         payment = order.payment
-                        
-                        if payment.payment_method == 'cod':
-                            if new_status in ['shipped', 'delivered']:
-                                payment.status = 'completed'
+                        if payment.payment_method == 'cod' and new_status in ['shipped', 'delivered']:
+                            payment.status = 'completed'
                             payment.save()
-
                     except Payment.DoesNotExist:
                         messages.warning(request, "No payment record found for this order.")
 
-                    order_statuses = order.items.values_list('status', flat=True).distinct()
-                    if len(order_statuses) == 1:
-                        if new_status == 'delivered':
-                            order.status = 'completed'
-                            order.save()
+                    # ✅ Optional: update full order status if all items are delivered
+                    all_statuses = order.items.values_list('status', flat=True).distinct()
+                    if len(all_statuses) == 1 and new_status == 'delivered':
+                        order.status = 'completed'
+                        order.save()
 
                 messages.success(request, f"Order item status updated to {new_status}.")
-            
+
+            except ValidationError as ve:
+                messages.error(request, str(ve))
             except Exception as e:
                 messages.error(request, f"An error occurred: {str(e)}")
 
@@ -1049,7 +1050,7 @@ def admin_change_order_item_status_view(request, order_item_id):
     except Exception as e:
         messages.error(request, f"An unexpected error occurred: {str(e)}")
         return redirect('customadmin:admin_order_list_view')
-    
+
 
 @admin_required
 @never_cache   
@@ -1067,76 +1068,23 @@ def admin_handle_return_request(request, item_id):
     order_item = get_object_or_404(OrderItem, id=item_id)
     action = request.POST.get('action')
 
-    if action not in ['approve', 'reject']:
-        messages.error(request, "Invalid action.")
-        return redirect('customadmin:admin_return_requests')
-
     try:
-        with transaction.atomic():
-            if action == 'approve':
-                product_variant = order_item.product_variant
-                product_variant.quantity_in_stock += order_item.quantity
-                product_variant.save()
-
-                order = order_item.order
-
-                total_items = order.items.exclude(status__in=["returned", "cancelled"]).count()
-                if total_items > 1:
-                    per_item_shipping_charge = order.shipping_charge / total_items
-                else:
-                    per_item_shipping_charge = order.shipping_charge
-
-                refund_amount = order_item.total_price + per_item_shipping_charge
-
-               
-                if order.coupon and order.coupon_discount:
-                    coupon = order.coupon
-                    remaining_items = order.items.exclude(id=order_item.id).exclude(status__in=["returned", "cancelled"])
-                    remaining_total = sum(item.total_price for item in remaining_items)
-
-                    if remaining_total < coupon.min_cart_value:
-                     
-                        refund_amount -= order.coupon_discount
-
-                    
-                        order.coupon = None
-                        order.coupon_discount = 0
-                        order.save()
-
-             
-                        UsedCoupon.objects.filter(user=order.user, coupon=coupon).delete()
-
-                        messages.warning(
-                            request,
-                            "Coupon removed due to return. Discount has been adjusted in the refund."
-                        )
-                # === End Coupon Validation ===
-
-                # Process refund
-                payment = getattr(order, "payment", None)
-                if payment and payment.status == "completed":
-                    wallet, _ = Wallet.objects.select_for_update().get_or_create(user=order.user)
-                    wallet.add_amount(refund_amount, reason="Order Return Refund")
-                    messages.success(request, f"Refund of ₹{refund_amount} added to wallet.")
-                else:
-                    messages.warning(request, "Payment not completed. Refund not processed.")
-
-                # Update item status
-                order_item.return_status = "approved"
-                order_item.status = "returned"
-                order_item.save()
-
-                messages.success(request, "Return request approved successfully.")
-            else:
-                order_item.return_status = "rejected"
-                order_item.save()
-                messages.success(request, "Return request rejected.")
-
+        if action == 'approve':
+            order_item.return_item(reason="Return approved by admin")
+            messages.success(request, "Return request approved and refund processed.")
+        elif action == 'reject':
+            order_item.return_status = "rejected"
+            order_item.save()
+            messages.success(request, "Return request rejected.")
+        else:
+            messages.error(request, "Invalid action.")
     except Exception as e:
-        print(f"Error in processing return request: {e}")
+        print(f"Return Error: {e}")
         messages.error(request, "An error occurred while processing the return request.")
 
     return redirect('customadmin:admin_return_requests')
+
+
 
 
 
