@@ -336,6 +336,7 @@ def order_item_detail(request, item_id):
 @block_superuser_navigation
 @never_cache
 @login_required
+@never_cache
 def cancel_order_item(request, item_id):
     if request.method != 'POST':
         messages.error(request, "Invalid request method.")
@@ -363,6 +364,8 @@ def cancel_order_item(request, item_id):
 from django.views.decorators.http import require_POST
 @require_POST
 @login_required
+@block_superuser_navigation
+@never_cache
 def cancel_product_items(request, order_id, product_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     order_items = OrderItem.objects.filter(order=order, product_variant__product_id=product_id).exclude(status='cancelled')
@@ -485,13 +488,16 @@ def search_products(request):
     return JsonResponse({'results': []})
 
 
-
-
+@block_superuser_navigation
+@login_required
+@never_cache
 def order_detail(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     return render(request, 'order_detail.html', {'order': order})
 
+@block_superuser_navigation
 @login_required
+@never_cache
 def submit_review(request, order_item_id):
     if request.method == "POST":
         rating = request.POST.get('rating')
@@ -537,8 +543,9 @@ import re
 import random
 import string
 
-
+@block_superuser_navigation
 @login_required
+@never_cache
 def update_profile_image(request):
     if request.method == "POST" and request.FILES.get("profile_image"):
         user = request.user
@@ -737,6 +744,7 @@ def manage_address(request):
 
 
 @login_required
+@never_cache
 def referral_profile_view(request):
     referral_code = request.user.referral_code
     return render(request, 'refferal_code.html', {

@@ -181,7 +181,7 @@ def view_cart(request):
         'cart_total_price': 0,
         'cart_original_total': 0,
         'shipping_charge': shipping_charge,
-            'cart_grand_total': cart_grand_total,
+        'cart_grand_total': cart_grand_total,
     })
 
 

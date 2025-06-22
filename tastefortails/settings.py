@@ -30,7 +30,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', cast=bool)
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 # 10mb 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 
 
 
 ALLOWED_HOSTS = ["localhost", '127.0.0.1']
@@ -95,7 +95,7 @@ AUTHENTICATION_BACKENDS = (
 
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/user_login/' 
-LOGIN_URL = '/user_login/'
+LOGIN_URL = '/login/'
 LOGOUT_URL = '/user_logout/'
 ACCOUNT_LOGIN_REDIRECT_URL = '/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/'

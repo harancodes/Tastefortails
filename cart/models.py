@@ -103,7 +103,8 @@ class Order(models.Model):
     
 
     def calculate_final_total(self):
-        subtotal = sum(item.total_price for item in self.items.exclude(status='cancelled'))
+        subtotal = sum(item.total_price for item in self.items.exclude(status__in=['cancelled', 'returned']))
+
         self.total_amount = subtotal + self.shipping_charge
         if self.applied_coupon and subtotal >= self.applied_coupon.min_cart_value:
             self.discount = self.applied_coupon.calculate_discount(subtotal)
@@ -112,6 +113,7 @@ class Order(models.Model):
             self.applied_coupon = None
         self.total_amount -= self.discount
         self.save()
+
 
 
 class OrderItem(models.Model):
@@ -221,12 +223,13 @@ class OrderItem(models.Model):
 
             if hasattr(order, 'payment') and order.payment.status == 'completed':
                 wallet, _ = Wallet.objects.get_or_create(user=order.user)
-
            
-                refund = (old_paid_amount - new_paid_amount + per_item_shipping).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                refund = (old_paid_amount - new_paid_amount ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
                 if refund > 0:
                     wallet.add_amount(refund, reason="Order item cancelled - refund incl. shipping share")
+
+ ### return item ###
 
     def return_item(self, reason=""):
         if self.status == "returned":
@@ -236,24 +239,30 @@ class OrderItem(models.Model):
 
         with transaction.atomic():
             order = self.order
+
             old_paid_amount = order.total_amount
 
+            # Mark returned
             self.status = "returned"
             self.return_status = "approved"
             self.save()
 
-        
+            # Recalculate coupon + totals
             order.calculate_final_total()
-            new_paid_amount = order.total_amount
 
-            refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            new_paid_amount = order.total_amount
+            refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal('0.01'))
+
+            print(f"Refund: ₹{refund_amount} (Old: {old_paid_amount}, New: {new_paid_amount})")
 
             if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
                 wallet, _ = Wallet.objects.get_or_create(user=order.user)
                 wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
 
+            # Restock inventory
             self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
+
 
 
 

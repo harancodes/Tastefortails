@@ -265,7 +265,7 @@ def forgot_password(request):
             messages.error(request, 'No account found with this email address.')
     return render(request, 'user_auth/password/forgot_password.html')
 
-
+@never_cache
 def verify_reset_otp(request):
     if request.method == 'POST':
         entered_otp = request.POST.get('otp')
@@ -413,7 +413,8 @@ def home(request):
     return render(request, 'user_auth/home.html', context)
 
 
-
+@never_cache
+@block_superuser_navigation
 def user_logout(request):
     logout(request)
     print("User logged out:", request.user.is_authenticated)  
