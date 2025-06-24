@@ -34,7 +34,7 @@ urlpatterns = [
     path("edit-address/<int:address_id>/", views.edit_address, name="edit_address"),
     path("delete-address/<int:address_id>/", views.delete_address, name="delete_address"),
     path('orders/', views.order_list_view, name='order_list'),
-    path('invoice/<int:item_id>/', views.generate_invoice, name='generate_invoice'),
+    # path('invoice/<int:item_id>/', views.generate_invoice, name='generate_invoice'),
     path('orders/item/<int:item_id>/', views.order_item_detail, name='order_item_detail'),
     path('orders/item/<int:item_id>/cancel/', views.cancel_order_item, name='cancel_order_item'),
     path('orders/item/<int:item_id>/return/', views.return_order_item, name='return_order_item'),
@@ -46,6 +46,8 @@ path('orders/search/', views.search_products, name='search_orders'),
   path('referral/', views.referral_profile_view, name='referral_profile'),
   # urls.py
 path('cancel-product/<int:order_id>/<int:product_id>/', views.cancel_product_items, name='cancel_product_items'),
+path('invoice/a/<int:order_id>/', views.generate_order_invoice, name='generate_order_invoice')
+
 
 
 

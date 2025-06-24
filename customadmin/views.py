@@ -1134,60 +1134,76 @@ from io import BytesIO
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.db.models import Sum
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A2
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from openpyxl import Workbook
 from datetime import datetime, timedelta, time
+from django.utils.timezone import localtime
+from reportlab.platypus import Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib import colors
+
+
 
 
 @admin_required
 @never_cache
 def generate_pdf(request):
-    orders = Order.objects.all()
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import colors
+
+    orders = Order.objects.order_by('-created_at')
+
     buffer = BytesIO()
-    pdf = SimpleDocTemplate(buffer, pagesize=letter)
+    pdf = SimpleDocTemplate(buffer, pagesize=A2)
     styles = getSampleStyleSheet()
     elements = []
 
-    title = Paragraph('Sales Report', styles['Title'])
-    elements.append(title)
+    elements.append(Paragraph("Sales Report (with Coupon Breakdown)", styles['Title']))
 
-    data = [['Order ID', 'User Email', 'Total Amount', 'Offer Percentage', 'Created At']]
+    data = [['Order ID', 'User Email', 'Subtotal', 'Coupon Discount', 'Shipping Charge', 'Final Amount', 'Created At']]
 
     for order in orders:
-        offer_percentages = [
-            item.product_variant.product.offer_percentage 
-            for item in order.items.all()
-        ]
-        avg_offer_percentage = round(sum(offer_percentages) / len(offer_percentages), 2) if offer_percentages else 0
+        subtotal = sum(item.total_price for item in order.items.exclude(status__in=["cancelled", "returned"]))
+        discount = order.discount or 0
+        shipping = order.shipping_charge or 0
+        final_amount = order.total_amount
 
         data.append([
             str(order.id),
             order.user.email,
-            f"Rs {order.total_amount}",
-            f"{avg_offer_percentage}%",
+            f"{subtotal:.2f}",
+            f"{discount:.2f}",
+            f"{shipping:.2f}",
+            f"{final_amount:.2f}",
             order.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        ])
+    ])
 
-    table = Table(data)
+    table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
     ]))
     elements.append(table)
 
     pdf.build(elements)
     buffer.seek(0)
+
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
     return response
+
 
 
 @admin_required

@@ -64,6 +64,9 @@ path('sales_data/' ,views.sales_data, name='sales_data'),
 path('download_pdf', views.generate_pdf, name='download_pdf'),
 path('download_excel', views.generate_excel, name='download_excel'),
 
+
+# path('invoice/all/<int:order_id>/', views.generate_order_invoice, name='generate_order_invoice')
+
 ]
 
    

@@ -70,7 +70,7 @@ class CartItem(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        """Ensure model is clean before saving."""
+       
         self.clean()
         super().save(*args, **kwargs)
 
@@ -153,6 +153,7 @@ class OrderItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     return_status = models.CharField(max_length=50, choices=RETURN_STATUS_CHOICES, default="no_request")
     return_reason = models.TextField(blank=True, null=True)
+    
 
     @property
     def can_be_cancelled(self):
@@ -183,10 +184,10 @@ class OrderItem(models.Model):
         if total_items <= 0 or total_active_price <= 0:
             return Decimal('0.00')
 
-        # Share of shipping
+        
         shipping_share = order.shipping_charge / total_items
 
-        # Proportional discount share
+    
         discount_share = Decimal('0.00')
         if order.applied_coupon and order.discount > 0:
             item_share_ratio = self.total_price / total_active_price
@@ -194,7 +195,9 @@ class OrderItem(models.Model):
 
         refund = (self.total_price + shipping_share - discount_share).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         return refund
-
+    @property
+    def total_price(self):
+        return (self.price_after_coupon or self.product_variant.sales_price) * self.quantity
 
         
     def cancel_item(self, reason=""):
@@ -264,6 +267,23 @@ class OrderItem(models.Model):
             self.product_variant.save()
 
 
+###3
+
+
+    @property
+    def price_after_coupon(self):
+        order = self.order
+        active_items = order.items.exclude(status__in=['cancelled', 'returned'])
+        subtotal = sum(item.total_price for item in active_items)
+
+        if not order.applied_coupon or order.discount <= 0 or subtotal <= 0:
+            return self.product_variant.sales_price
+
+        item_share_ratio = self.total_price / subtotal
+        discount_share = (order.discount * item_share_ratio).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        effective_price = (self.total_price - discount_share) / self.quantity
+
+        return effective_price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
     def change_status(self, new_status):

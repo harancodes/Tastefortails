@@ -92,6 +92,23 @@ def wishlist_status(request):
 
 
         
+# from django.http import JsonResponse
+# from .models import Wishlist
+# from cart.models import Cart
+# from django.contrib.auth.decorators import login_required
+
+# @login_required
+# def wishlist_item_count(request):
+#     wishlist = Wishlist.objects.filter(user=request.user).first()
+#     count = wishlist.items.count() if wishlist else 0
+#     return JsonResponse({"count": count})
+
+
+# @login_required
+# def cart_item_count(request):
+#     cart = Cart.objects.filter(user=request.user).first()
+#     count = cart.items.count() if cart else 0
+#     return JsonResponse({"count": count})
 
 
 

@@ -73,7 +73,7 @@
   <label for="offer_percentage">Offer Percentage (%)</label>
   <input type="number" id="offer_percentage" name="offer_percentage"
          class="form-control"
-         min="0" max="100" step="1"
+         min="0" max="99" step="1"
          value="{{ product.offer_percentage|default_if_none:0 }}">
   <small class="form-text text-muted">Enter a discount percentage (0–100). Leave blank for no offer.</small>
 </div>

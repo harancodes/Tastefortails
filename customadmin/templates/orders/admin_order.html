@@ -82,7 +82,7 @@
                                     {{ item.get_status_display }}
                                 </span>
                             {% else %}
-                                <form action="{% url 'customadmin:admin_change_orderitem_status' item.id %}" method="POST" class="inline-flex">
+                                <form action="{% url 'customadmin:admin_change_orderitem_status' item.id %}" method="POST" class="inline-flex order-status-form" data-item-id="{{ item.id }}">
                                     {% csrf_token %}
                                     <select name="status" class="border border-gray-300 rounded-md text-sm">
                                         {% for value, label in item.status_choices %}
@@ -153,4 +153,33 @@
         </nav>
     </div>
 </div>
+
+<!-- ✅ AJAX Script for Order Status Update -->
+<script>
+$(document).ready(function () {
+    $('.order-status-form').on('submit', function (e) {
+        e.preventDefault();
+
+        const form = $(this);
+        const url = form.attr('action');
+        const formData = form.serialize();
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            headers: {
+                'X-CSRFToken': form.find('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function (response) {
+                // Optionally show a success alert or toast
+                alert('Order item status updated successfully.');
+            },
+            error: function (xhr) {
+                alert('Failed to update status. Please try again.');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -6,6 +6,11 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<!-- CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 {% endblock %}
 
 {% block content %}
@@ -213,6 +218,7 @@
 {% endblock %}
 
 {% block extra_js %}
+
 <script>
 function getCookie(name) {
   let cookieValue = null;
@@ -294,26 +300,28 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Product added to cart!', 'success');
   };
 
-  // Toast
-  function showToast(message, type) {
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'toast-container';
-      toastContainer.className = 'fixed bottom-4 right-4 space-y-2 z-50';
-      document.body.appendChild(toastContainer);
-    }
-    const toast = document.createElement('div');
-    toast.className = `toast ${type} p-4 rounded-lg shadow-md text-white flex items-center justify-between`;
-    toast.innerHTML = `
-      <span>${message}</span>
-      <button onclick="this.parentElement.remove()" class="ml-4" aria-label="Close toast">
-        <i class="fas fa-times"></i>
-      </button>
-    `;
-    toastContainer.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+  // Toast using Toastify
+  function showToast(message, type = 'info', position = 'top-left') {
+    Toastify({
+      text: message,
+      duration: 3000,
+      close: true,
+      gravity: position.includes('top') ? 'top' : 'bottom',
+      position: position.includes('left') ? 'left' : position.includes('right') ? 'right' : 'center',
+        offset: {
+      x: 0,
+      y: 100      
+    },
+      backgroundColor: {
+        success: '#16a34a',   
+        error: '#dc2626',     
+        info: '#2563eb',      
+        warning: '#ca8a04'    
+      }[type] || '#6b7280',   
+    }).showToast();
   }
 });
 </script>
+
+
 {% endblock %}

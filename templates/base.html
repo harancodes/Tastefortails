@@ -89,9 +89,15 @@
 
                 <!-- Icons -->
                 <div class="flex items-center space-x-6">
-                    <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition">
-                        <i class="far fa-heart text-xl"></i>
-                    </a>
+                    <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition relative">
+    <i class="far fa-heart text-xl"></i>
+    {% if wishlist_item_count > 0 %}
+        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            {{ wishlist_item_count }}
+        </span>
+    {% endif %}
+</a>
+
                 <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
 
                         <i class="fas fa-shopping-cart text-xl"></i>

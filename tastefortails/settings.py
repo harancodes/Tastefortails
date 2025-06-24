@@ -120,7 +120,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'social_django.context_processors.backends',
                 'social_django.context_processors.login_redirect',
-                'django.template.context_processors.request'
+                'django.template.context_processors.request',
+                'user_profile.context_processors.get_cart_item_count',
+                'user_profile.context_processors.get_wishlist_item_count',
 
 
             ],

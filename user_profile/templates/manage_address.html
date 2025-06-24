@@ -201,7 +201,7 @@
         return cookieValue;
     }
 
-    // Toastify notification function
+    
     function showToast(message, type = 'success') {
         Toastify({
             text: message,
@@ -209,6 +209,10 @@
             close: true,
             gravity: "top",
             position: "right",
+                offset: {
+      x: 0,
+      y: 100      
+    },
             backgroundColor: type === 'success' ? "#10B981" : "#EF4444",
         }).showToast();
     }
@@ -241,7 +245,6 @@
         document.getElementById('editAddressModal').style.display = 'none';
     }
 
-    // Delete Confirmation Modal Functions
     function confirmDelete(addressId) {
         document.getElementById('deleteAddressId').value = addressId;
         document.getElementById('deleteConfirmModal').style.display = 'flex';
@@ -251,8 +254,6 @@
         document.getElementById('deleteConfirmModal').style.display = 'none';
     }
 
-    // Handle Add Address Form Submission (Single, improved handler)
-    // Handle Add Address Form Submission (Single, improved handler)
     document.getElementById('addAddressForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         

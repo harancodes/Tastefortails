@@ -214,79 +214,166 @@ def order_list_view(request):
     return render(request, 'order_list.html', {'orders': orders})
 
 
+from django.http import HttpResponse, HttpResponseForbidden
+
+
+
+@block_superuser_navigation
+@never_cache
+# @login_required
+def generate_order_invoice(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    delivered_items = order.items.filter(status__in=["delivered", "returned"])
+    if not delivered_items.exists():
+        return HttpResponseForbidden("Invoice is only available after items are delivered.")
+
+    user = order.user
+    address = order.shipping_address
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="invoice_order_{order.id}.pdf"'
+
+    pdf = SimpleDocTemplate(response, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=18, spaceAfter=12, alignment=TA_CENTER)
+    header_style = ParagraphStyle('Header', parent=styles['Heading2'], fontSize=12, spaceAfter=6, textColor=colors.darkblue)
+    normal_style = styles['BodyText']
+
+    content = []
+    content.append(Paragraph("Invoice", title_style))
+    content.append(Spacer(1, 12))
+
+    content.append(Paragraph("Taste for Tails", header_style))
+    content.append(Paragraph("Kochi", normal_style))
+    content.append(Spacer(1, 12))
+
+    # Billing Info
+    content.append(Paragraph("Bill To:", header_style))
+    content.append(Paragraph(f"{user.full_name}", normal_style))
+    content.append(Paragraph(f"Email: {user.email}", normal_style))
+    if address:
+        content.append(Paragraph(f"{address.address_line}", normal_style))
+        content.append(Paragraph(f"{address.city}, {address.state} {address.postal_code}", normal_style))
+        content.append(Paragraph(f"{address.country}", normal_style))
+    content.append(Spacer(1, 12))
+
+    # Table Header
+    content.append(Paragraph("Order Items", header_style))
+    item_data = [["Product", "Qty", "Unit Price", "After Discount", "Total Paid"]]
+
+    for item in delivered_items:
+        price_after_coupon = item.price_after_coupon
+        total_paid = (price_after_coupon * item.quantity).quantize(Decimal("0.01"))
+        item_data.append([
+            Paragraph(item.product_variant.product.name, normal_style),
+            str(item.quantity),
+            f"Rs {item.product_variant.sales_price}",
+            f"Rs {price_after_coupon}",
+            f"Rs {total_paid}",
+        ])
+
+    item_table = Table(item_data, colWidths=[2.5 * inch, 0.6 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+    item_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+    ]))
+    content.append(item_table)
+    content.append(Spacer(1, 12))
+
+    # Order Summary
+    content.append(Paragraph("Order Summary", header_style))
+    summary_data = [
+        ["Order ID", str(order.id)],
+        ["Coupon Used", order.applied_coupon.code if order.applied_coupon else "None"],
+        ["Order Discount", f"Rs {order.discount}"],
+        ["Shipping Charge", f"Rs {order.shipping_charge}"],
+        ["Final Order Total", f"Rs {order.total_amount}"],
+    ]
+
+    summary_table = Table(summary_data, colWidths=[2.2 * inch, 4.2 * inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+    ]))
+
+    content.append(summary_table)
+    content.append(Spacer(1, 12))
+    content.append(Paragraph("Thank you for your purchase!", normal_style))
+
+    pdf.build(content)
+    return response
+
+
+
+
 
 @block_superuser_navigation
 @never_cache
 @login_required
 def generate_invoice(request, item_id):
     item = get_object_or_404(OrderItem, id=item_id)
+
+    # if item.status != "delivered":
+    #     return HttpResponseForbidden("Invoice is only available after item is delivered.")
+
     user = item.order.user
-    address = item.order.shipping_address  
+    address = item.order.shipping_address
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="invoice_{item.id}.pdf"'
 
     pdf = SimpleDocTemplate(response, pagesize=letter)
     styles = getSampleStyleSheet()
-    
-    
-    title_style = ParagraphStyle(
-        'Title',
-        parent=styles['Title'],
-        fontSize=18,
-        spaceAfter=12,
-        alignment=TA_CENTER  
-    )
-    
-    header_style = ParagraphStyle(
-        'Header',
-        parent=styles['Heading2'],
-        fontSize=12,
-        spaceAfter=6,
-        textColor=colors.darkblue
-    )
-    
-    normal_style = styles['BodyText']
-    
-    
-    content = []
-    
 
+    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=18, spaceAfter=12, alignment=TA_CENTER)
+    header_style = ParagraphStyle('Header', parent=styles['Heading2'], fontSize=12, spaceAfter=6, textColor=colors.darkblue)
+    normal_style = styles['BodyText']
+
+    content = []
     content.append(Paragraph("Invoice", title_style))
     content.append(Spacer(1, 12))
-    
-    
-    store_name = "Taste for Tails"  
-    store_address = "Kochi"  
-    content.append(Paragraph(store_name, header_style))
-    content.append(Paragraph(store_address, normal_style))
+
+    content.append(Paragraph("Taste for Tails", header_style))
+    content.append(Paragraph("Kochi", normal_style))
     content.append(Spacer(1, 12))
-    
-    # Add customer information
+
+    # Billing details
     content.append(Paragraph("Bill To:", header_style))
     content.append(Paragraph(f"{user.full_name}", normal_style))
-    content.append(Paragraph(f"Email: {user.email}", normal_style))  # Add email
+    content.append(Paragraph(f"Email: {user.email}", normal_style))
     if address:
         content.append(Paragraph(f"{address.address_line}", normal_style))
         content.append(Paragraph(f"{address.city}, {address.state} {address.postal_code}", normal_style))
         content.append(Paragraph(f"{address.country}", normal_style))
     content.append(Spacer(1, 12))
-    
-    
+
+    # Pricing
+    price_after_coupon = item.price_after_coupon
+    total_paid = (price_after_coupon * item.quantity).quantize(Decimal("0.01"))
+
+    # Order details
     content.append(Paragraph("Order Details", header_style))
     order_details = [
         ["Order ID", item.order.id],
-        ["Product", Paragraph(item.product_variant.product.name, normal_style)],  
+        ["Product", Paragraph(item.product_variant.product.name, normal_style)],
         ["Quantity", item.quantity],
-        ["Price per unit", f"Rs {item.product_variant.sales_price}"],
-
-        ["Total Price", f"Rs {item.total_price}"]
+        ["Original Price per unit", f"Rs {item.product_variant.sales_price}"],
+        ["Price per unit (after discount)", f"Rs {price_after_coupon}"],
+        ["Total Paid (incl. discount)", f"Rs {total_paid}"],
+        ["Coupon Used", item.order.applied_coupon.code if item.order.applied_coupon else "None"],
+        ["Order Discount", f"Rs {item.order.discount}"],
+        ["Shipping Charge", f"Rs {item.order.shipping_charge}"],
+        ["Final Order Total", f"Rs {item.order.total_amount}"],
     ]
-    
-    # Define column widths
-    col_widths = [1.5 * inch, 4.5 * inch]  # Adjust column widths to fit content
-    
-    table = Table(order_details, colWidths=col_widths)
+
+    table = Table(order_details, colWidths=[1.8 * inch, 4.2 * inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -295,20 +382,15 @@ def generate_invoice(request, item_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrap
+        ('WORDWRAP', (0, 0), (-1, -1), True),
     ]))
-    
+
     content.append(table)
     content.append(Spacer(1, 12))
-    
-    
     content.append(Paragraph("Thank you for your purchase!", normal_style))
-    
-    
-    pdf.build(content)
-    
-    return response
 
+    pdf.build(content)
+    return response
 
 
 

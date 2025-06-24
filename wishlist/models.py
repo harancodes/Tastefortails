@@ -21,7 +21,7 @@ class WishlistItem(models.Model):
 
 
     class Meta:
-        unique_together = ('wishlist', 'variant')  # Prevents duplicate items in the same wishlist
+        unique_together = ('wishlist', 'variant')  #
 
     def __str__(self):
         return f"{self.variant.product.name} - {self.variant.color} (Wishlist: {self.wishlist.user.username})"

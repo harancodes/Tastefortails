@@ -46,7 +46,7 @@ def add_to_cart(request, variant_id):
         return JsonResponse({'success': False, 'error': 'Product variant not found'}, status=404)
 
     try:
-        data = json.loads(request.body or "{}")
+        data = json.loads(request.body.decode('utf-8') or "{}")
         qty = int(data.get("quantity", 1))
     except (ValueError, TypeError, json.JSONDecodeError):
         return JsonResponse({'success': False, 'error': 'Invalid quantity'}, status=400)
@@ -54,12 +54,7 @@ def add_to_cart(request, variant_id):
     if not 1 <= qty <= 10:
         return JsonResponse({'success': False, 'error': 'Quantity must be between 1 and 10'}, status=400)
 
-    if qty > variant.quantity_in_stock:
-        return JsonResponse({'success': False, 'error': 'Insufficient stock available'}, status=400)
-
-
     cart, _ = Cart.objects.get_or_create(user=request.user)
-
     item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
 
     new_qty = qty if created else item.quantity + qty
@@ -73,13 +68,15 @@ def add_to_cart(request, variant_id):
         wishlist = Wishlist.objects.get(user=request.user)
         WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
     except Wishlist.DoesNotExist:
-        pass 
+        pass
+
 
     return JsonResponse({
         'success': True,
-        'cart_item_count': cart.items.count(),
+        'cart_item_count': cart.items.count(),  # assumes related_name='items'
         'total_price': cart.total_price,
     })
+
 
 @block_superuser_navigation
 @never_cache

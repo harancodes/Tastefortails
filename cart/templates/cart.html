@@ -360,8 +360,12 @@
         text: message,
         duration: 3000,
         close: true,
-        gravity: "bottom",
-        position: "right",
+        gravity: "top",
+        position: "left",
+            offset: {
+      x: 0,      
+      y: 100      
+    },
         backgroundColor: type === 'success' ? '#4CAF50' : '#F44336',
       }).showToast();
     }
