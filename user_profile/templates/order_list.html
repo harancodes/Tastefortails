@@ -1,5 +1,7 @@
 {% extends 'account_overview.html' %}
 
+
+
 {% block user %}
 <div class="container mx-auto px-4 py-8">
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 min-w-[320px] max-w-md"></div>
@@ -41,6 +43,8 @@
                             </div>
                         </div>
 
+                        
+
                         <div class="space-y-4">
                             {% for product, items in order.grouped_items %}
                                 <div class="p-4 border border-gray-100 rounded-lg">
@@ -68,20 +72,28 @@
 
         {% elif item.product_variant.sales_price < item.product_variant.variant_price %}
           <!-- Offer Applied -->
-          <span class="line-through text-gray-400">₹{{ item.product_variant.variant_price }}</span>
+          {% comment %} <span class="line-through text-gray-400">₹{{ item.product_variant.variant_price }}</span> {% endcomment %}
           <span class="text-green-600 font-bold">₹{{ item.product_variant.sales_price|floatformat:2 }}</span>
           {% if item.product_variant.get_discount_percentage %}
             <span class="text-red-500 text-sm">
-              ({{ item.product_variant.get_discount_percentage }}% OFF)
+              {% comment %} ({{ item.product_variant.get_discount_percentage }}% OFF) {% endcomment %}
             </span>
           {% endif %}
-
+<hr>
         {% else %}
           <!-- No Discount -->
           <span class="text-gray-800 font-bold">₹{{ item.product_variant.variant_price|floatformat:2 }}</span>
         {% endif %}
-          <p> Varint Total Before Coupon:  <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p>
-         <p>After  <span class="text-green-600 font-bold">₹{{ item.price_after_coupon|floatformat:2 }}</span> </p>
+          {% comment %} <p> Varint Total Before Coupon:  <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p> {% endcomment %}
+         {% comment %} <p>After  <span class="text-green-600 font-bold">₹{{ item.price_after_coupon|floatformat:2 }}</span> </p> {% endcomment %}
+ 
+          {% comment %} <p> Total Price <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p> {% endcomment %}
+<span class="text-sm text-gray-800 font-semibold">
+  Total After Coupon: ₹{{ item.total_after_coupon|floatformat:2 }}
+  
+</span>
+
+
 
 
         <span class="text-gray-500">({{ item.product_variant.weight}})</span>
@@ -89,7 +101,20 @@
     </p>
   {% endfor %}
 </div>
-  
+  <div class="flex flex-wrap gap-2 mt-2">
+  {% for item in items %}
+    <span class="px-3 py-1 rounded-full text-sm font-medium
+      {% if item.status == 'delivered' %}bg-green-100 text-green-700
+      {% elif item.status == 'processing' %}bg-blue-100 text-blue-700
+      {% elif item.status == 'shipped' %}bg-purple-100 text-purple-700
+      {% elif item.status == 'cancelled' %}bg-red-100 text-red-700
+      {% elif item.status == 'returned' %}bg-yellow-100 text-yellow-700
+      {% else %}bg-gray-100 text-gray-700{% endif %}">
+      {{ item.product_variant.variant_name }} - {{ item.get_status_display }}
+    </span>
+  {% endfor %}
+</div>
+
  <div>
                         </div>
 
@@ -97,21 +122,18 @@
 
                                     <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                                         <div class="flex gap-2">
-                                            <a href="{% url 'user_profile:order_item_detail' item_id=items.0.id %}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm">Order Details</a>
-                                            <a href="{% url 'user_profile:generate_order_invoice' order_id=order.id %}" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm">Download Invoice</a>
-                                            {% if items.0.can_be_cancelled %}
-                                                <form method="POST" action="{% url 'user_profile:cancel_product_items' order.id product.id %}" class="cancel-form">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="reason" value="Cancelled entire product">
-                                                    <button type="button"
-                                                            class="cancel-trigger bg-red-500 text-white px-4 py-2 rounded-lg text-sm"
-                                                            data-type="product"
-                                                            data-item="Cancel entire product '{{ product.name }}'">
-                                                        Cancel Entire Product
-                                                    </button>
-                                                </form>
-                                            {% endif %}
+                                           <a href="{% url 'user_profile:order_item_detail' item_id=items.0.id %}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm">Order Details</a>
+<button class="download-invoice-btn bg-green-500 text-white px-4 py-2 rounded-lg text-sm"
+        data-url="{% url 'user_profile:generate_order_invoice' order_id=order.id %}">
+    Download Invoice
+</button>
+
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed top-4 right-4 z-50"></div>
                                         </div>
+                                        
+                                        
 
                                         <!-- Individual Item Cancel -->
                                         <div class="flex flex-col gap-2 mt-4">
@@ -132,10 +154,27 @@
                                         </div>
                                     </div>
                                 </div>
+                                
                             {% endfor %}
+{% if order.can_be_cancelled %}
+<form method="POST" action="{% url 'user_profile:cancel_product_items' order.id %}" class="cancel-form">
+    {% csrf_token %}
+    <input type="hidden" name="reason" value="Cancelled entire order">
+    <button type="button"
+            class="cancel-trigger bg-red-500 text-white px-4 py-2 rounded-lg text-sm"
+            data-type="order"
+            data-item="Cancel entire order #ORD-{{ order.id }}">
+        Cancel Entire Order
+    </button>
+</form>
+{% endif %}
+
+        
                         </div>
                     </div>
                 </div>
+                
+                
             {% endfor %}
         {% else %}
             <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
@@ -204,4 +243,60 @@
         });
     });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.download-invoice-btn');
+    const toastContainer = document.getElementById('toast-container');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            const url = btn.getAttribute('data-url');
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || "Invoice generation failed.");
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = 'invoice.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(blobUrl);
+            })
+            .catch(error => {
+                showToast(error.message);
+            });
+        });
+    });
+
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'bg-red-500 text-white px-4 py-2 rounded shadow mb-2 animate-fade-in';
+        toast.innerText = message;
+
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+});
+</script>
+
+
 {% endblock user %}

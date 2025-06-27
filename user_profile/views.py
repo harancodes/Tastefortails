@@ -195,7 +195,7 @@ from collections import defaultdict
 @never_cache
 @login_required
 def order_list_view(request):
-    orders_list = Order.objects.filter(user=request.user).order_by('-created_at')
+    orders_list = Order.objects.filter(user=request.user, is_paid=False).order_by('-created_at')
 
     status = request.GET.get('status')
     if status:
@@ -217,16 +217,40 @@ def order_list_view(request):
 from django.http import HttpResponse, HttpResponseForbidden
 
 
-
+from decimal import Decimal
+from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.cache import never_cache
+from django.contrib import messages
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.units import inch
 @block_superuser_navigation
 @never_cache
-# @login_required
+@login_required
 def generate_order_invoice(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+    )
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from decimal import Decimal
 
-    delivered_items = order.items.filter(status__in=["delivered", "returned"])
-    if not delivered_items.exists():
-        return HttpResponseForbidden("Invoice is only available after items are delivered.")
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    valid_items = order.items.filter(status__in=["delivered", "returned"])
+
+    if not valid_items.exists():
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'error': 'Invoice is only available after items are delivered or returned.'}, status=403)
+        messages.error(request, "Invoice is only available after items are delivered or returned.")
+        return redirect('orders:order_detail', order_id=order.id)
 
     user = order.user
     address = order.shipping_address
@@ -241,40 +265,43 @@ def generate_order_invoice(request, order_id):
     header_style = ParagraphStyle('Header', parent=styles['Heading2'], fontSize=12, spaceAfter=6, textColor=colors.darkblue)
     normal_style = styles['BodyText']
 
-    content = []
-    content.append(Paragraph("Invoice", title_style))
-    content.append(Spacer(1, 12))
+    content = [
+        Paragraph("Invoice", title_style),
+        Spacer(1, 12),
+        Paragraph("Taste for Tails", header_style),
+        Paragraph("Kochi", normal_style),
+        Spacer(1, 12),
+        Paragraph("Bill To:", header_style),
+        Paragraph(f"{user.full_name}", normal_style),
+        Paragraph(f"Email: {user.email}", normal_style),
+    ]
 
-    content.append(Paragraph("Taste for Tails", header_style))
-    content.append(Paragraph("Kochi", normal_style))
-    content.append(Spacer(1, 12))
-
-    # Billing Info
-    content.append(Paragraph("Bill To:", header_style))
-    content.append(Paragraph(f"{user.full_name}", normal_style))
-    content.append(Paragraph(f"Email: {user.email}", normal_style))
     if address:
-        content.append(Paragraph(f"{address.address_line}", normal_style))
-        content.append(Paragraph(f"{address.city}, {address.state} {address.postal_code}", normal_style))
-        content.append(Paragraph(f"{address.country}", normal_style))
+        content += [
+            Paragraph(f"{address.address_line}", normal_style),
+            Paragraph(f"{address.city}, {address.state} {address.postal_code}", normal_style),
+            Paragraph(f"{address.country}", normal_style)
+        ]
     content.append(Spacer(1, 12))
 
-    # Table Header
     content.append(Paragraph("Order Items", header_style))
-    item_data = [["Product", "Qty", "Unit Price", "After Discount", "Total Paid"]]
+    item_data = [["Product", "Qty", "Status", "Unit Price", "After Discount", "Total Paid"]]
 
-    for item in delivered_items:
+    for item in valid_items:
+        variant = item.product_variant
         price_after_coupon = item.price_after_coupon
         total_paid = (price_after_coupon * item.quantity).quantize(Decimal("0.01"))
+
         item_data.append([
-            Paragraph(item.product_variant.product.name, normal_style),
+            Paragraph(f"{variant.product.name} ({variant.weight})", normal_style),
             str(item.quantity),
-            f"Rs {item.product_variant.sales_price}",
+            item.status.capitalize(),
+            f"Rs {variant.sales_price}",
             f"Rs {price_after_coupon}",
             f"Rs {total_paid}",
         ])
 
-    item_table = Table(item_data, colWidths=[2.5 * inch, 0.6 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+    item_table = Table(item_data, colWidths=[2.4 * inch, 0.6 * inch, 0.9 * inch, 1.0 * inch, 1.2 * inch, 1.2 * inch])
     item_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -286,7 +313,6 @@ def generate_order_invoice(request, order_id):
     content.append(item_table)
     content.append(Spacer(1, 12))
 
-    # Order Summary
     content.append(Paragraph("Order Summary", header_style))
     summary_data = [
         ["Order ID", str(order.id)],
@@ -302,16 +328,12 @@ def generate_order_invoice(request, order_id):
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
     ]))
-
     content.append(summary_table)
     content.append(Spacer(1, 12))
     content.append(Paragraph("Thank you for your purchase!", normal_style))
 
     pdf.build(content)
     return response
-
-
-
 
 
 @block_superuser_navigation
@@ -444,48 +466,38 @@ def cancel_order_item(request, item_id):
 
 
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.db import transaction
+
+
 @require_POST
 @login_required
 @block_superuser_navigation
 @never_cache
-def cancel_product_items(request, order_id, product_id):
+def cancel_product_items(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    order_items = OrderItem.objects.filter(order=order, product_variant__product_id=product_id).exclude(status='cancelled')
+    order_items = order.items.exclude(status='cancelled')
 
     if not order_items.exists():
-        messages.error(request, "No active items found for this product in the order.")
+        messages.error(request, "No active items found in this order.")
         return redirect('user_profile:order_list')
 
     try:
         with transaction.atomic():
-            total_items_before = order.items.exclude(status='cancelled').count()
-
             for item in order_items:
                 if item.can_be_cancelled:
-                    # Restock the variant
-                    variant = item.product_variant
-                    variant.quantity_in_stock += item.quantity
-                    variant.save()
+                    item.cancel_item(reason="Cancelled as part of full order cancellation.")
 
-                    # Cancel the item
-                    item.cancel_item(reason="Cancelled entire product")
-
-                    # Refund logic
-                    if order.payment.status == 'completed':
-                        shipping_share = order.shipping_charge / total_items_before
-                        refund_amount = item.total_price + shipping_share
-
-                        wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                        wallet.add_amount(refund_amount, reason="Cancelled all items of a product.")
-
-            # Recalculate totals and discounts
             order.calculate_final_total()
+            messages.success(request, "Entire order cancelled successfully.")
 
-            messages.success(request, "All product items cancelled successfully.")
     except Exception as e:
-        messages.error(request, f"Error cancelling product items: {e}")
+        messages.error(request, f"Error cancelling entire order: {e}")
 
     return redirect('user_profile:order_list')
+
 
 
 @block_superuser_navigation
@@ -832,3 +844,26 @@ def referral_profile_view(request):
     return render(request, 'refferal_code.html', {
         'referral_code': referral_code
     }) 
+
+
+
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from cart.models import Cart
+from wishlist.models import Wishlist
+
+@login_required
+def ajax_get_counts(request):
+    user = request.user
+
+    cart = getattr(user, 'cart', None)
+    wishlist = getattr(user, 'wishlist', None)
+
+    cart_count = cart.items.count() if cart else 0
+    wishlist_count = wishlist.items.count() if wishlist else 0
+
+    return JsonResponse({
+        'cart_count': cart_count,
+        'wishlist_count': wishlist_count
+    })

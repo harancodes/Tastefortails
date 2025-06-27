@@ -87,7 +87,7 @@
               <option value="0-100" {% if price_filter == "0-100" %}selected{% endif %}>Under ₹100</option>
               <option value="100-500" {% if price_filter == "100-500" %}selected{% endif %}>₹100 - ₹500</option>
               <option value="500-1000" {% if price_filter == "500-1000" %}selected{% endif %}>₹500 - ₹1000</option>
-              <option value="1000-" {% if price_filter == "1000-" %}selected{% endif %}>Over ₹1000</option>
+              {% comment %} <option value="1000-" {% if price_filter == "1000-" %}selected{% endif %}>Over ₹1000</option> {% endcomment %}
             </select>
           </div>
 
@@ -119,11 +119,14 @@
                 <img src="{{ product.thumbnail|default:'https://via.placeholder.com/256x256.png?text=No+Image' }}"
                      alt="{{ product.name }}" class="w-full h-64 object-cover">
 
-                {% if product.offer_percentage > 0 %}
-                  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-                    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">{{ product.offer_percentage }}% OFF</span>
-                  </div>
-                {% endif %}
+                {% if product_variant.get_discount_percentage > 0 %}
+  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">
+      {{ product_variant.get_discount_percentage }}% OFF
+    </span>
+  </div>
+{% endif %}
+
 
                 <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
                   <div class="bg-white bg-opacity-90 px-3 py-2 rounded-lg">
@@ -294,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Cart
+
   window.addCartItem = function(variantId) {
     console.log(`Add to cart: ${variantId}`);
     showToast('Product added to cart!', 'success');

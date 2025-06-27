@@ -49,7 +49,7 @@
                   
                 </div>
 
-                <!-- Product Details -->
+            
                 <div class="md:w-2/3">
                     <h3 class="text-xl font-bold text-gray-800 mb-2">{{ order_item.product_variant.product.name }}</h3>
                     
@@ -93,7 +93,7 @@
                         <div>
                             <p class="text-sm text-gray-500">Shipping Address</p>
                             <p class="font-medium">
-                                {{ order_item.order.shipping_address.street_address }}, 
+                                {{ order_item.order.shipping_address.address_line }}, 
                                 {{ order_item.order.shipping_address.city }}, 
                                 {{ order_item.order.shipping_address.state }}, 
                                 {{ order_item.order.shipping_address.postal_code }}
@@ -196,17 +196,31 @@
                         {% if order_item.status == 'delivered' %}
                             
                             {% if order_item.can_be_returned %}
-                                <form method="post" action="{% url 'user_profile:return_order_item' order_item.id %}" onsubmit="return confirm('Are you sure you want to return this item?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="px-4 py-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors text-sm">
-                                        Return Item
-                                    </button>
-                                </form>
+                                <form method="POST" action="{% url 'user_profile:return_order_item' order_item.id %}" class="return-form">
+    {% csrf_token %}
+    <button type="button"
+        class="return-trigger px-4 py-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors text-sm"
+        data-item="Return '{{ order_item.product_variant.variant_name }}'">
+        Return Item
+    </button>
+</form>
+<!-- Return Modal -->
+<div id="returnModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 class="text-lg font-semibold mb-4">Confirm Return</h2>
+        <p id="returnModalText" class="mb-6 text-gray-700">Are you sure you want to return this item?</p>
+        <div class="flex justify-end space-x-4">
+            <button id="returnNoBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">No</button>
+            <button id="returnYesBtn" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">Yes, Return</button>
+        </div>
+    </div>
+</div>
+
                             {% endif %}
                         {% endif %}
                         
                         {% if order_item.can_be_cancelled %}
-                           <!-- Trigger Form -->
+                           
 <form method="post" action="{% url 'user_profile:cancel_order_item' order_item.id %}" class="cancel-form">
     {% csrf_token %}
     <button type="button" class="cancel-button px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm">
@@ -478,5 +492,35 @@
         });
     });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const returnButtons = document.querySelectorAll('.return-trigger');
+    const returnModal = document.getElementById('returnModal');
+    const returnText = document.getElementById('returnModalText');
+    const returnYesBtn = document.getElementById('returnYesBtn');
+    const returnNoBtn = document.getElementById('returnNoBtn');
+    let currentReturnForm = null;
+
+    returnButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            currentReturnForm = button.closest('form');
+            const itemName = button.dataset.item;
+            returnText.textContent = `Are you sure you want to ${itemName}?`;
+            returnModal.classList.remove('hidden');
+        });
+    });
+
+    returnNoBtn.addEventListener('click', () => {
+        returnModal.classList.add('hidden');
+        currentReturnForm = null;
+    });
+
+    returnYesBtn.addEventListener('click', () => {
+        if (currentReturnForm) currentReturnForm.submit();
+    });
+});
+</script>
+
 
 {% endblock user %}

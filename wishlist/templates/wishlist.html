@@ -62,11 +62,11 @@
               <div class="mt-4 flex justify-between items-center">
                 <a href="{% url 'product:detail' item.variant.product.slug %}"
                    class="text-blue-600 hover:underline">View&nbsp;Details</a>
-
+{% comment %} 
                 <button onclick="addCartItem({{ item.variant.id }})"
                         class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
                   <i class="fas fa-shopping-cart"></i> Add to Cart
-                </button>
+                </button> {% endcomment %}
               </div>
             </div>
           </div>
@@ -99,8 +99,8 @@
     </section>
   </div>
 </div>
-
 <script>
+// 1. CSRF token fetch
 function getCookie(name) {
   let result = null;
   document.cookie.split(';').forEach(cookie => {
@@ -111,23 +111,39 @@ function getCookie(name) {
   });
   return result;
 }
+const csrftoken = getCookie('csrftoken');
 
+// 2. Toast message display
 function showToast(message, type = 'success') {
   const toast = document.createElement("div");
-  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded shadow text-white bg-${type === 'success' ? 'green' : 'red'}-600`;
+  toast.className = `fixed top-20 left-20 z-50 px-4 py-3 rounded shadow text-white bg-${type === 'success' ? 'green' : 'red'}-600`;
   toast.innerText = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
 
+// 3. Update cart and wishlist badge counts
+function updateCounts() {
+  fetch("/user_profile/ajax/get-counts/")
+    .then(response => response.json())
+    .then(data => {
+        const cartSpan = document.getElementById("cart-count");
+        const wishlistSpan = document.getElementById("wishlist-count");
+        if (cartSpan) cartSpan.textContent = data.cart_count;
+        if (wishlistSpan) wishlistSpan.textContent = data.wishlist_count;
+    })
+    .catch(err => console.error("Count fetch error:", err));
+}
+
+// 4. Toggle wishlist (heart icon + toast + remove on wishlist page)
 function toggleWishlist(variantId) {
   const heart = document.getElementById('heart-' + variantId);
-  const isFav  = heart.classList.contains('fas');
+  const isFav = heart.classList.contains('fas');
 
   fetch(isFav ? `/wishlist/remove/${variantId}/` : `/wishlist/add/${variantId}/`, {
       method: 'POST',
       headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrftoken,
           'Content-Type': 'application/json'
       }
   })
@@ -141,8 +157,12 @@ function toggleWishlist(variantId) {
       heart.classList.toggle('text-gray-400');
 
       if (isFav && window.location.pathname.includes('/wishlist')) {
-          document.querySelector(`[data-variant="${variantId}"]`).remove();
+          const card = document.querySelector(`[data-variant="${variantId}"]`);
+          if (card) card.remove();
       }
+
+      showToast(isFav ? 'Removed from wishlist' : 'Added to wishlist', 'success');
+      updateCounts();
   })
   .catch(e => {
       console.error(e);
@@ -150,11 +170,12 @@ function toggleWishlist(variantId) {
   });
 }
 
+// 5. Add to cart (also remove from wishlist)
 function addCartItem(variantId, qty = 1) {
   fetch(`/cart/add_to_cart/${variantId}/`, {
       method: 'POST',
       headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrftoken,
           'Content-Type': 'application/json'
       },
       body: JSON.stringify({quantity: qty})
@@ -167,7 +188,7 @@ function addCartItem(variantId, qty = 1) {
       if (badge) badge.textContent = d.cart_item_count;
 
       const card = document.querySelector(`[data-variant="${variantId}"]`);
-      if (card) card.remove();
+      if (card) card.remove();  // optional: if you want to remove item from list
 
       const heart = document.getElementById('heart-' + variantId);
       if (heart) {
@@ -176,11 +197,16 @@ function addCartItem(variantId, qty = 1) {
       }
 
       showToast('Added to cart successfully!');
+      updateCounts(); // Refresh badge
   })
   .catch(e => {
       console.error(e);
       showToast('Could not add to cart: ' + e.message, 'error');
   });
 }
+
+// 6. On load, update badge counts
+document.addEventListener('DOMContentLoaded', updateCounts);
 </script>
+
 {% endblock %}

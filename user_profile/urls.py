@@ -45,8 +45,11 @@ urlpatterns = [
 path('orders/search/', views.search_products, name='search_orders'),
   path('referral/', views.referral_profile_view, name='referral_profile'),
   # urls.py
-path('cancel-product/<int:order_id>/<int:product_id>/', views.cancel_product_items, name='cancel_product_items'),
-path('invoice/a/<int:order_id>/', views.generate_order_invoice, name='generate_order_invoice')
+path('cancel-product/<int:order_id>/', views.cancel_product_items, name='cancel_product_items'),
+
+path('invoice/a/<int:order_id>/', views.generate_order_invoice, name='generate_order_invoice'),
+path("ajax/get-counts/", views.ajax_get_counts, name="ajax_get_counts"),
+
 
 
 

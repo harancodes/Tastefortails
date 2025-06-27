@@ -5,51 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Taste for Tails{% endblock %}</title>
 
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-
-   <link rel="icon" type="image/gif" href="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMXpjZ3RsN2lyd3FjaDI0Y2lsemQyZmFudWc4cTRhMjJiamhpd2YxaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/BV8qOukevm7bCTz6vW/giphy.gif">
+    <link rel="icon" type="image/gif" href="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMXpjZ3RsN2lyd3FjaDI0Y2lsemQyZmFudWc4cTRhMjJiamhpd2YxaiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/BV8qOukevm7bCTz6vW/giphy.gif">
 
     <style>
         :root {
             --primary-blue: blue;
             --secondary-blue: #003399;
             --accent-orange: #ff7f27;
-           
-     
-
         }
 
         body {
-  font-family: 'Poppins', sans-serif;
-  scroll-behavior: smooth;
-  font-weight: bolder;
-}
+            font-family: 'Poppins', sans-serif;
+            scroll-behavior: smooth;
+            font-weight: bolder;
+        }
+
         a {
-    text-decoration: none !important;
-}
+            text-decoration: none !important;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         .animate-fadeIn {
             animation: fadeIn 0.5s ease-out forwards;
         }
+
         .line-clamp-1 {
             overflow: hidden;
             display: -webkit-box;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 1;
         }
-      
     </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 <body class="flex flex-col min-h-screen">
@@ -69,43 +63,32 @@
                     <a href="{% url 'home' %}" class="text-2xl font-bold text-white">Tastefortails</a>
                 </div>
 
-
-
-
-
-       <ul class="nav justify-content-center">
- <li class="nav-item">
-    <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'home' %}">Home</a>
-  </li>
-
-  <li class="nav-item">
-    <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'product:list' %}">Products</a>
-  </li>
-
-  <li class="nav-item">
-    <a class="nav-link text-white font-bold" href="{% url 'product:about' %}">About Us</a>
-  </li>
-</ul>
+                <ul class="nav justify-content-center">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'product:list' %}">Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white font-bold" href="{% url 'product:about' %}">About Us</a>
+                    </li>
+                </ul>
 
                 <!-- Icons -->
                 <div class="flex items-center space-x-6">
                     <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition relative">
-    <i class="far fa-heart text-xl"></i>
-    {% if wishlist_item_count > 0 %}
-        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {{ wishlist_item_count }}
-        </span>
-    {% endif %}
-</a>
+                        <i class="far fa-heart text-xl"></i>
+                        {% comment %} <span id="wishlist-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            {{ wishlist_item_count }}
+                        </span> {% endcomment %}
+                    </a>
 
-                <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
-
+                    <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
                         <i class="fas fa-shopping-cart text-xl"></i>
-                        {% if cart_item_count > 0 %}
-                        <span class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {% comment %} <span id="cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
                             {{ cart_item_count }}
-                        </span>
-                        {% endif %}
+                        </span> {% endcomment %}
                     </a>
 
                     {% if user.is_authenticated %}
@@ -113,28 +96,18 @@
                         <a class="dropdown-toggle d-flex align-items-center text-white hover:text-yellow-200 transition" href="#" role="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="far fa-user text-xl"></i>
                             <span class="ms-2 d-none d-md-inline">
-    {% if request.user.first_name and request.user.last_name %}
-        {{ request.user.first_name }} {{ request.user.last_name }}
-    {% elif request.user.first_name %}
-        {{ request.user.first_name }}
-    {% else %}
-        {{ request.user.full_name }}
-    {% endif %}
-</span>
-
+                                {% if request.user.first_name and request.user.last_name %}
+                                    {{ request.user.first_name }} {{ request.user.last_name }}
+                                {% elif request.user.first_name %}
+                                    {{ request.user.first_name }}
+                                {% else %}
+                                    {{ request.user.full_name }}
+                                {% endif %}
+                            </span>
                         </a>
-
                         <ul class="dropdown-menu dropdown-menu-end mt-2 rounded-md shadow-md animate-fadeIn" aria-labelledby="userDropdown">
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:account_overview' %}">
-                                    <i class="fas fa-user-circle me-2 text-primary"></i> Account
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:order_list' %}">
-                                    <i class="fas fa-box me-2 text-success"></i> My Orders
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:account_overview' %}"><i class="fas fa-user-circle me-2 text-primary"></i> Account</a></li>
+                            <li><a class="dropdown-item d-flex align-items-center" href="{% url 'user_profile:order_list' %}"><i class="fas fa-box me-2 text-success"></i> My Orders</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{% url 'user_logout' %}">
@@ -147,22 +120,18 @@
                         </ul>
                     </div>
                     {% else %}
-                 <a href="{% url 'user_login' %}" 
-   class="bg-red-500 hover:bg-red-600 text-white font-lighter py-2 px-4 rounded-md transition duration-200 flex items-center gap-2">
-    <i class="fas fa-user-circle text-white text-lg"></i>
-    LOGIN / SIGNUP
-</a>
-
+                    <a href="{% url 'user_login' %}" class="bg-red-500 hover:bg-red-600 text-white font-lighter py-2 px-4 rounded-md transition duration-200 flex items-center gap-2">
+                        <i class="fas fa-user-circle text-white text-lg"></i>
+                        LOGIN / SIGNUP
+                    </a>
                     {% endif %}
 
-                    
                     <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
                         <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
             </div>
 
-            
             <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2">
                 <a href="{% url 'home' %}" class="block py-2 text-white font-medium">Home</a>
                 <a href="#" class="block py-2 text-gray-200">Brands</a>
@@ -210,18 +179,10 @@
                 <div>
                     <h4 class="font-semibold mb-4">Follow Us</h4>
                     <div class="flex space-x-4">
-                        <a href="#" class="text-gray-300 hover:text-white transition">
-                            <i class="fab fa-facebook-f text-xl"></i>
-                        </a>
-                        <a href="#" class="text-gray-300 hover:text-white transition">
-                            <i class="fab fa-twitter text-xl"></i>
-                        </a>
-                        <a href="https://www.instagram.com/ag_.nel/" target="_blank" class="text-gray-300 hover:text-white transition">
-                            <i class="fab fa-instagram text-xl"></i>
-                        </a>
-                        <a href="#" class="text-gray-300 hover:text-white transition">
-                            <i class="fab fa-pinterest text-xl"></i>
-                        </a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-facebook-f text-xl"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-twitter text-xl"></i></a>
+                        <a href="https://www.instagram.com/ag_.nel/" target="_blank" class="text-gray-300 hover:text-white transition"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-pinterest text-xl"></i></a>
                     </div>
                 </div>
             </div>
@@ -230,24 +191,114 @@
             </div>
         </div>
     </footer>
-
-    <!-- JavaScript for mobile menu toggle -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mobileMenuButton = document.getElementById('mobile-menu-button');
-            const mobileMenu = document.getElementById('mobile-menu');
-
-            if (mobileMenuButton && mobileMenu) {
-                mobileMenuButton.addEventListener('click', function () {
-                    mobileMenu.classList.toggle('hidden');
-                });
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
-        });
-    </script>
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Add to cart and remove from wishlist
+function addToCartAndRemoveFromWishlist(variantId) {
+    fetch(`/cart/add_to_cart/${variantId}/`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken
+        },
+        body: JSON.stringify({ quantity: 1 })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            fetch(`/wishlist/remove/${variantId}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrftoken
+                }
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    // Remove wishlist card if on wishlist page
+                    const card = document.querySelector(`[data-variant="${variantId}"]`);
+                    if (card) card.remove();
+
+                    showToast("Added to cart and removed from wishlist", "success");
+                } else {
+                    showToast("Added to cart, but failed to remove from wishlist", "warning");
+                }
+                updateCounts();
+            });
+        } else {
+            showToast(data.error || "Failed to add item to cart", "error");
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        showToast("Something went wrong", "error");
+    });
+}
+
+// Re-fetch cart and wishlist badge counts
+function updateCounts() {
+    fetch("/user_profile/ajax/get-counts/")
+        .then(response => {
+            if (!response.ok) throw new Error("Network error");
+            return response.json();
+        })
+        .then(data => {
+            const cartSpan = document.getElementById("cart-count");
+            const wishlistSpan = document.getElementById("wishlist-count");
+            if (cartSpan) cartSpan.innerText = data.cart_count;
+            if (wishlistSpan) wishlistSpan.innerText = data.wishlist_count;
+        })
+        .catch(err => console.error("Error fetching counts:", err));
+}
+
+// Toast utility
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    const colorMap = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    toast.className = `${colorMap[type] || 'bg-gray-800'} text-white px-4 py-2 rounded shadow animate-fadeIn`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function createToastContainer() {
+    const div = document.createElement('div');
+    div.id = 'toast-container';
+    div.className = 'fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 space-y-2';
+    document.body.appendChild(div);
+    return div;
+}
+
+// Initial count update on load
+document.addEventListener('DOMContentLoaded', function () {
+    updateCounts();
+});
+</script>
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
     {% block extra_js %}{% endblock %}
 </body>
 </html>

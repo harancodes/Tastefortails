@@ -50,9 +50,8 @@ class CartItem(models.Model):
         ordering = ['-id']
 
     @property
-
     def total_price(self):
-        """Return total price of this item (unit price * quantity). Uses offer/sales price if available."""
+
         price = self.product_variant.sales_price or self.product_variant.variant_price
         return price * self.quantity
 
@@ -61,7 +60,7 @@ class CartItem(models.Model):
         return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.weight})"
 
     def clean(self):
-        """Validates quantity and stock before saving."""
+    
         if self.quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
         if self.product_variant.quantity_in_stock < self.quantity:
@@ -114,6 +113,11 @@ class Order(models.Model):
         self.total_amount -= self.discount
         self.save()
 
+    @property
+    def can_be_cancelled(self):
+        return any(item.can_be_cancelled for item in self.items.all())
+
+
 
 
 class OrderItem(models.Model):
@@ -157,7 +161,7 @@ class OrderItem(models.Model):
 
     @property
     def can_be_cancelled(self):
-        """Check if this order item is eligible for cancellation"""
+        
         if self.status not in ["pending", "processing"]:
             return False
         time_elapsed = timezone.now() - self.order.created_at
@@ -172,7 +176,7 @@ class OrderItem(models.Model):
         return time_elapsed.total_seconds() <= (self.RETURN_WINDOW_DAYS * 86400)  
     
 
-
+    @property
     def get_estimated_amount(self):
       
         order = self.order
@@ -197,7 +201,8 @@ class OrderItem(models.Model):
         return refund
     @property
     def total_price(self):
-        return (self.price_after_coupon or self.product_variant.sales_price) * self.quantity
+        return self.price_after_coupon * self.quantity
+
 
         
     def cancel_item(self, reason=""):
@@ -269,21 +274,48 @@ class OrderItem(models.Model):
 
 ###3
 
-
     @property
     def price_after_coupon(self):
         order = self.order
         active_items = order.items.exclude(status__in=['cancelled', 'returned'])
-        subtotal = sum(item.total_price for item in active_items)
+
+        # Base subtotal (no coupon applied yet)
+        subtotal = sum(item.product_variant.sales_price * item.quantity for item in active_items)
 
         if not order.applied_coupon or order.discount <= 0 or subtotal <= 0:
             return self.product_variant.sales_price
 
-        item_share_ratio = self.total_price / subtotal
-        discount_share = (order.discount * item_share_ratio).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        effective_price = (self.total_price - discount_share) / self.quantity
+        # Total of this item (before coupon)
+        item_total = self.product_variant.sales_price * self.quantity
 
-        return effective_price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        # Share of discount for this item
+        item_share_ratio = item_total / subtotal
+        discount_share = (order.discount * item_share_ratio).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        unit_discount = discount_share / self.quantity
+        discounted_price = self.product_variant.sales_price - unit_discount
+
+        return discounted_price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    
+    @property
+    def total_after_coupon(self):
+        """Returns total paid for this item after applying coupon (if any)."""
+        return (self.price_after_coupon or self.product_variant.sales_price) * self.quantity
+
+    @property
+    def discount_share(self):
+        order = self.order
+        active_items = order.items.exclude(status__in=['cancelled', 'returned'])
+
+        subtotal = sum(item.original_unit_price * item.quantity for item in active_items)
+
+        if not order.applied_coupon or order.discount <= 0 or subtotal <= 0:
+            return Decimal("0.00")
+
+        item_total = self.original_unit_price * self.quantity
+        ratio = item_total / subtotal
+        return (order.discount * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
 
 
     def change_status(self, new_status):
@@ -306,9 +338,9 @@ class OrderItem(models.Model):
 
 
 
-    @property
-    def total_price(self):
-        return self.product_variant.sales_price* self.quantity
+    # @property
+    # def total_price(self):
+    #     return self.product_variant.sales_price* self.quantity
 
     def __str__(self):
         return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"

@@ -1148,83 +1148,126 @@ from reportlab.lib import colors
 
 
 
-
 @admin_required
 @never_cache
 def generate_pdf(request):
     from io import BytesIO
-    from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+    from reportlab.lib.pagesizes import A2
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib import colors
+    from django.http import HttpResponse
 
     orders = Order.objects.order_by('-created_at')
 
     buffer = BytesIO()
-    pdf = SimpleDocTemplate(buffer, pagesize=A2)
+    pdf = SimpleDocTemplate(buffer, pagesize=A2, rightMargin=20, leftMargin=20)
     styles = getSampleStyleSheet()
     elements = []
 
-    elements.append(Paragraph("Sales Report (with Coupon Breakdown)", styles['Title']))
+    elements.append(Paragraph("Sales Report (Delivered & Returned Items)", styles['Title']))
+    elements.append(Spacer(1, 12))
 
-    data = [['Order ID', 'User Email', 'Subtotal', 'Coupon Discount', 'Shipping Charge', 'Final Amount', 'Created At']]
+    # Table headers
+    data = [[
+        'Order ID', 'User Email', 'Date',
+        'Product', 'Qty', 'Status',
+        'Subtotal', 'Discount', 'Shipping', 'Final Amount'
+    ]]
 
     for order in orders:
-        subtotal = sum(item.total_price for item in order.items.exclude(status__in=["cancelled", "returned"]))
+        items = order.items.filter(status__in=["delivered", "returned"])
+        if not items.exists():
+            continue
+
+        subtotal = sum(item.total_price for item in items)
         discount = order.discount or 0
         shipping = order.shipping_charge or 0
-        final_amount = order.total_amount
+        final_amount = subtotal + shipping - discount
 
-        data.append([
-            str(order.id),
-            order.user.email,
-            f"{subtotal:.2f}",
-            f"{discount:.2f}",
-            f"{shipping:.2f}",
-            f"{final_amount:.2f}",
-            order.created_at.strftime('%Y-%m-%d %H:%M:%S')
-    ])
+        for item in items:
+            data.append([
+                str(order.id),
+                order.user.email,
+                order.created_at.strftime('%Y-%m-%d %H:%M'),
+                f"{item.product_variant.product.name} ({item.product_variant.weight})",
+                item.quantity,
+                item.status.capitalize(),
+                f"Rs {subtotal:.2f}",
+                f"- Rs {discount:.2f}",
+                f"+ Rs {shipping:.2f}",
+                f"Rs {final_amount:.2f}",
+            ])
 
     table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
     ]))
+
     elements.append(table)
-
     pdf.build(elements)
+
     buffer.seek(0)
+    return HttpResponse(buffer, content_type='application/pdf', headers={
+        'Content-Disposition': 'attachment; filename="sales_report.pdf"'
+    })
 
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
-    return response
+from openpyxl import Workbook
+from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 
-
+from io import BytesIO
 
 @admin_required
 @never_cache
 def generate_excel(request):
-    orders = Order.objects.all()
+    orders = Order.objects.order_by('-created_at')
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Sales Report"
 
-    ws.append(['Order ID', 'User Email', 'Total Amount', 'Created At'])
+    # Header row
+    ws.append([
+        'Order ID', 'User Email', 'Date',
+        'Product', 'Qty', 'Status',
+        'Subtotal', 'Discount', 'Shipping', 'Final Amount'
+    ])
 
     for order in orders:
-        ws.append([
-            order.id,
-            order.user.email,
-            order.total_amount,
-            order.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        ])
+        items = order.items.filter(status__in=["delivered", "returned"])
+        if not items.exists():
+            continue
 
+        subtotal = sum(item.total_price for item in items)
+        discount = order.discount or 0
+        shipping = order.shipping_charge or 0
+        final_amount = subtotal + shipping - discount
+
+        for item in items:
+            ws.append([
+                order.id,
+                order.user.email,
+                order.created_at.strftime('%Y-%m-%d %H:%M'),
+                f"{item.product_variant.product.name} ({item.product_variant.weight})",
+                item.quantity,
+                item.status.capitalize(),
+                float(subtotal),
+                float(discount),
+                float(shipping),
+                float(final_amount),
+            ])
+
+    # Save to memory
     buffer = BytesIO()
     wb.save(buffer)
     buffer.seek(0)

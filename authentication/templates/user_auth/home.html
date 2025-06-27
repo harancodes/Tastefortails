@@ -183,9 +183,6 @@
 </div>
 
 
-
-
-
     <section class="py-16 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">
@@ -324,17 +321,16 @@
 
 
 
-<!-- Coupons Section -->
 <section class="py-16 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-12">
             <h2 data-aos="fade-up" class="text-3xl font-bold text-gray-800 mb-4">Special Deals & Coupons</h2>
             <p data-aos="fade-up" data-aos-delay="200" class="text-gray-600 max-w-2xl mx-auto">Save more on your furry friend's favorite food with our exclusive offers and limited-time discounts.</p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- Coupon 1 -->
-            <div data-aos="fade-up" data-aos-delay="0" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 shadow-lg border-2 border-dashed border-orange-400 transform transition-all duration-500 hover:-translate-y-2">
+            <div data-aos="fade-up" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 shadow-lg border-2 border-dashed border-orange-400 transform transition-all duration-500 hover:-translate-y-2">
                 <div class="absolute top-0 right-0">
                     <div class="w-16 h-16 bg-orange-500 rotate-45 transform origin-bottom-left"></div>
                     <span class="absolute top-3 right-2 text-white text-xs font-bold">NEW</span>
@@ -342,7 +338,7 @@
                 <div class="p-8">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-orange-600">WELCOME15</h3>
+                            <h3 class="text-2xl font-bold text-orange-600 coupon-code">WELCOME15</h3>
                             <p class="text-sm text-gray-600 mt-1">New Customer Discount</p>
                         </div>
                         <div class="text-orange-600">
@@ -354,20 +350,20 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-xs text-gray-500">Valid until: 31/05/2025</span>
-                        <button class="px-4 py-2 bg-orange-500 text-white rounded-full text-sm hover:bg-orange-600 transition duration-300 flex items-center gap-1">
+                        <button onclick="copyCoupon(this)" class="px-4 py-2 bg-orange-500 text-white rounded-full text-sm hover:bg-orange-600 transition duration-300 flex items-center gap-1">
                             <i class="fas fa-copy"></i> Copy Code
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Coupon 2 -->
             <div data-aos="fade-up" data-aos-delay="100" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 shadow-lg border-2 border-dashed border-blue-400 transform transition-all duration-500 hover:-translate-y-2">
                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500 rounded-full opacity-20"></div>
                 <div class="p-8">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-blue-600">BUY2GET1</h3>
+                            <h3 class="text-2xl font-bold text-blue-600 coupon-code">BUY2GET1</h3>
                             <p class="text-sm text-gray-600 mt-1">Bundle Offer</p>
                         </div>
                         <div class="text-blue-600">
@@ -379,20 +375,20 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-xs text-gray-500">Valid until: 30/06/2025</span>
-                        <button class="px-4 py-2 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 transition duration-300 flex items-center gap-1">
+                        <button onclick="copyCoupon(this)" class="px-4 py-2 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 transition duration-300 flex items-center gap-1">
                             <i class="fas fa-copy"></i> Copy Code
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Coupon 3 -->
             <div data-aos="fade-up" data-aos-delay="200" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-100 to-green-50 shadow-lg border-2 border-dashed border-green-400 transform transition-all duration-500 hover:-translate-y-2">
                 <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-green-500 rounded-full opacity-20"></div>
                 <div class="p-8">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-green-600">FRESH20</h3>
+                            <h3 class="text-2xl font-bold text-green-600 coupon-code">FRESH20</h3>
                             <p class="text-sm text-gray-600 mt-1">Fresh Food Discount</p>
                         </div>
                         <div class="text-green-600">
@@ -404,15 +400,19 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-xs text-gray-500">Valid until: 31/05/2025</span>
-                        <button class="px-4 py-2 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 transition duration-300 flex items-center gap-1">
+                        <button onclick="copyCoupon(this)" class="px-4 py-2 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 transition duration-300 flex items-center gap-1">
                             <i class="fas fa-copy"></i> Copy Code
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-       
+    </div>
 </section>
+
+<!-- Toast container and script -->
+<div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 space-y-2"></div>
+
 <section id="featured" class="py-16 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">
@@ -926,6 +926,36 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<script>
+function copyCoupon(button) {
+    const code = button.closest("div").parentElement.querySelector(".coupon-code").innerText.trim();
+    navigator.clipboard.writeText(code)
+        .then(() => {
+            showToast(`Copied "${code}" to clipboard!`, "success");
+        })
+        .catch(err => {
+            console.error("Copy failed:", err);
+            showToast("Failed to copy!", "error");
+        });
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const colorMap = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    toast.className = `${colorMap[type] || 'bg-gray-800'} text-white px-4 py-2 rounded shadow animate-fadeIn`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
 
 </body>
 </html>

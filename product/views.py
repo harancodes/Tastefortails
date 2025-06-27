@@ -26,6 +26,7 @@ def login_required_custom(view_func):
             return redirect('/login/')  
         return view_func(request, *args, **kwargs)
     return wrapper
+
 from django.db.models import Prefetch, Min, Q
 from django.core.paginator import Paginator
 from django.shortcuts import render
