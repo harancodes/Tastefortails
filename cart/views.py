@@ -35,6 +35,8 @@ from cart.models import Cart, CartItem
 from wishlist.models import WishlistItem
 from product.models import Variant
 
+
+
 @block_superuser_navigation
 @never_cache
 @login_required_custom
@@ -64,16 +66,14 @@ def add_to_cart(request, variant_id):
     item.quantity = new_qty
     item.save()
 
-    try:
-        wishlist = Wishlist.objects.get(user=request.user)
-        WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
-    except Wishlist.DoesNotExist:
-        pass
 
+    wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+    deleted, _ = WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
+    print(f"WishlistItem deleted: {deleted}")
 
     return JsonResponse({
         'success': True,
-        'cart_item_count': cart.items.count(),  # assumes related_name='items'
+        'cart_item_count': cart.items.count(),
         'total_price': cart.total_price,
     })
 
@@ -142,21 +142,30 @@ def remove_cart_item(request, item_id):
     return JsonResponse({'error': 'Invalid request method.'}, status=400)
 
 
-
 @block_superuser_navigation
 @never_cache
 @login_required_custom
 def view_cart(request):
     cart = Cart.objects.filter(user=request.user).first()
     shipping_charge = 100
+
     if cart:
-        items = cart.items.select_related("product_variant", "product_variant__product") \
-            .filter(
-                product_variant__is_active=True,
-                product_variant__product__is_active=True,
-                product_variant__product__is_listed=True,
-                product_variant__product__deleted_at__isnull=True
-            )
+        items = cart.items.select_related(
+            "product_variant",
+            "product_variant__product",
+            "product_variant__product__category",
+            "product_variant__product__brand"
+        ).filter(
+            product_variant__is_active=True,
+            product_variant__product__is_active=True,
+            product_variant__product__is_listed=True,
+            product_variant__product__deleted_at__isnull=True,
+            product_variant__product__category__is_active=True,
+            product_variant__product__category__is_listed=True,
+            product_variant__product__category__deleted_at__isnull=True,
+            product_variant__product__brand__is_active=True,
+            product_variant__product__brand__is_listed=True,
+        )
 
         cart_total_price = sum(item.total_price for item in items)  
         cart_original_total = sum(
@@ -178,9 +187,8 @@ def view_cart(request):
         'cart_total_price': 0,
         'cart_original_total': 0,
         'shipping_charge': shipping_charge,
-        'cart_grand_total': cart_grand_total,
+        'cart_grand_total': shipping_charge,
     })
-
 
 
 
@@ -201,20 +209,17 @@ def checkout(request):
         if is_buy_now:
             single_variant = get_object_or_404(Variant, id=variant_id)
             cart_items = []
-            cart_total = single_variant.product.variant_price
+            cart_total = single_variant.sales_price or single_variant.variant_price
         else:
             cart_items = CartItem.objects.filter(cart=user_cart)
             if not cart_items.exists():
                 messages.error(request, "Your cart is empty!")
-                return redirect("product:list")  
+                return redirect("product:list")
             cart_total = user_cart.total_price
 
         discount = 0
         total_price = cart_total
         applied_coupon = None
-
-        for item in cart_items:
-             item.variant_total_price = item.product_variant.sales_price * item.quantity
 
         applied_coupon_data = request.session.get("applied_coupon")
         if applied_coupon_data and 'id' in applied_coupon_data:
@@ -240,33 +245,6 @@ def checkout(request):
             address_id = request.POST.get("address")
             payment_method = request.POST.get("payment_method")
 
-            original_total_price_str = request.POST.get("original_total_price")
-            discounted_total_price_str = request.POST.get("discounted_total_price")
-
-            if original_total_price_str is None:
-                messages.error(request, "Original total price is missing.")
-                return redirect("cart:checkout")
-
-            try:
-                original_total_price = float(original_total_price_str)
-            except ValueError:
-                messages.error(request, "Invalid original total price.")
-                return redirect("cart:checkout")
-
-            if discounted_total_price_str:
-                try:
-                    discounted_total_price = float(discounted_total_price_str)
-                except ValueError:
-                    messages.error(request, "Invalid discounted total price.")
-                    return redirect("cart:checkout")
-            else:
-                discounted_total_price = original_total_price
-
-            if discounted_total_price:
-                total_price = Decimal(discounted_total_price) + shipping_charge
-            else:
-                total_price = Decimal(original_total_price) + shipping_charge
-
             if not address_id or not payment_method:
                 messages.error(request, "Please select an address and payment method.")
                 return redirect("cart:checkout")
@@ -286,7 +264,7 @@ def checkout(request):
                 order = Order.objects.create(
                     user=request.user,
                     shipping_address=shipping_address,
-                    total_amount=total_price,
+                    total_amount=total_price + shipping_charge,
                     discount=discount,
                     applied_coupon=applied_coupon if applied_coupon else None,
                     shipping_charge=shipping_charge,
@@ -307,40 +285,69 @@ def checkout(request):
                     single_variant.quantity_in_stock -= single_quantity
                     single_variant.save()
 
+                    unit_price = single_variant.sales_price or single_variant.variant_price
+                    item_total = unit_price * single_quantity
+                    price_after_coupon = unit_price
+                    total_after_coupon = item_total
+
+                    if applied_coupon and discount > 0:
+                        item_discount = discount.quantize(Decimal("0.01"))
+                        total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                        price_after_coupon = (total_after_coupon / single_quantity).quantize(Decimal("0.01"))
+
                     OrderItem.objects.create(
                         order=order,
                         product_variant=single_variant,
                         quantity=single_quantity,
                         status="processing",
+                        ordered_unit_price=unit_price,
+                        ordered_price_after_coupon=price_after_coupon,
+                        ordered_total_price=total_after_coupon
                     )
+
                 else:
                     for cart_item in cart_items:
                         variant = cart_item.product_variant
-                        if variant.quantity_in_stock < cart_item.quantity:
+                        quantity = cart_item.quantity
+                        unit_price = variant.sales_price or variant.variant_price
+                        item_total = unit_price * quantity
+                        price_after_coupon = unit_price
+                        total_after_coupon = item_total
+
+                        if variant.quantity_in_stock < quantity:
                             messages.error(
                                 request,
                                 f"Not enough stock for {variant.product.name} ({variant.weight})",
                             )
                             return redirect("view_cart")
 
-                        variant.quantity_in_stock -= cart_item.quantity
+                        if applied_coupon and discount > 0 and cart_total > 0:
+                            item_ratio = item_total / cart_total
+                            item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
+                            total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                            price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
+
+                        variant.quantity_in_stock -= quantity
                         variant.save()
 
                         OrderItem.objects.create(
                             order=order,
                             product_variant=variant,
-                            quantity=cart_item.quantity,
+                            quantity=quantity,
                             status="processing",
+                            ordered_unit_price=unit_price,
+                            ordered_price_after_coupon=price_after_coupon,
+                            ordered_total_price=total_after_coupon
                         )
 
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
-                    total_price_decimal = Decimal(total_price)
+                    total_price_with_shipping = total_price + shipping_charge
 
-                    if wallet.deduct_amount(total_price_decimal, reason=f"Payment for Order {order.id}"):
+                    if wallet.deduct_amount(total_price_with_shipping, reason=f"Payment for Order {order.id}"):
                         Payment.objects.create(
                             order=order,
-                            amount=total_price_decimal,
+                            amount=total_price_with_shipping,
                             transaction_id=f"wallet_{order.id}",
                             payment_method="wallet",
                             status="completed",
@@ -352,15 +359,13 @@ def checkout(request):
                         messages.success(request, "Payment successful! Your order has been placed.")
                         return redirect("cart:order_success", order_id=order.id)
                     else:
-                        messages.error(
-                            request, "Insufficient wallet balance. Please choose another payment method."
-                        )
+                        messages.error(request, "Insufficient wallet balance. Please choose another payment method.")
                         return redirect("cart:checkout")
 
                 elif payment_method == "cod":
                     Payment.objects.create(
                         order=order,
-                        amount=total_price,
+                        amount=total_price + shipping_charge,
                         transaction_id=f"cod_{order.id}",
                         payment_method="cod",
                         status="pending",
@@ -385,7 +390,7 @@ def checkout(request):
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,
                 "total_price_with_shipping": total_price_with_shipping,
-                "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,  
+                "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
             },
         )
     except Exception as e:
@@ -408,6 +413,7 @@ def checkout(request):
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
             },
         )
+
 
 @block_superuser_navigation
 @never_cache
@@ -675,9 +681,9 @@ def create_razorpay_order(request):
 
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
-
 import json
 import logging
+from decimal import Decimal
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -749,28 +755,49 @@ def verify_razorpay_payment(request):
 
         with transaction.atomic():
             if payment_successful:
-
                 payment.status = "completed"
                 payment.transaction_id = payment_id
 
-                
                 cart_items = CartItem.objects.filter(cart__user=order.user)
                 if not cart_items.exists():
                     logger.warning("No cart items found for user: %s", order.user)
                     return JsonResponse({"success": False, "error": "Cart is empty"}, status=400)
 
+                # Calculate total cart price for discount ratio calculation
+                cart_total = sum(
+                    (item.product_variant.sales_price or item.product_variant.variant_price) * item.quantity
+                    for item in cart_items
+                )
+
+                discount = order.discount or Decimal('0.00')
+
                 for cart_item in cart_items:
+                    variant = cart_item.product_variant
+                    quantity = cart_item.quantity
+                    unit_price = variant.sales_price or variant.variant_price
+                    item_total = unit_price * quantity
+                    price_after_coupon = unit_price
+                    total_after_coupon = item_total
+
+                    if discount > 0 and cart_total > 0:
+                        item_ratio = item_total / cart_total
+                        item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
+                        total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                        price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
+
                     OrderItem.objects.create(
                         order=order,
-                        product_variant=cart_item.product_variant,
-                        quantity=cart_item.quantity,
-                        status="processing"
+                        product_variant=variant,
+                        quantity=quantity,
+                        status="processing",
+                        ordered_unit_price=unit_price,
+                        ordered_price_after_coupon=price_after_coupon,
+                        ordered_total_price=total_after_coupon
                     )
 
-                    cart_item.product_variant.quantity_in_stock -= cart_item.quantity
-                    cart_item.product_variant.save()
+                    variant.quantity_in_stock -= quantity
+                    variant.save()
 
-                
                 cart_items.delete()
             else:
                 payment.status = "payment_not_received"

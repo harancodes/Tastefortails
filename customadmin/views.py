@@ -755,11 +755,16 @@ def add_banner(request):
             messages.error(request, "Banner name cannot be empty.")
             return redirect('customadmin:add_banener')
 
+        if Banner.objects.filter(name=name).exists():
+            messages.error(request, "A banner with this name already exists.")
+            return redirect('customadmin:add_banener')
+
         Banner.objects.create(name=name, image=image if image else 'banner/default_image.jpg')
-        messages.success(request, "Category added successfully.")
+        messages.success(request, "Banner added successfully.")
         return redirect('customadmin:banner_list')
 
     return render(request, 'banner/add_banner.html')
+
 
 
 @admin_required
@@ -783,8 +788,12 @@ def edit_banner(request, banner_id):
             messages.error(request, "Banner name cannot be empty.")
             return render(request, 'banner/edit_banner.html', {'banner': banner})
 
-        banner.name = name
+      
+        if Banner.objects.exclude(id=banner.id).filter(name=name).exists():
+            messages.error(request, "Another banner with this name already exists.")
+            return render(request, 'banner/edit_banner.html', {'banner': banner})
 
+        banner.name = name
         if image:
             banner.image = image
 
@@ -793,6 +802,7 @@ def edit_banner(request, banner_id):
         return redirect('customadmin:banner_list')
 
     return render(request, 'banner/edit_banner.html', {'banner': banner})
+
 
 
 
@@ -1147,7 +1157,6 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib import colors
 
 
-
 @admin_required
 @never_cache
 def generate_pdf(request):
@@ -1157,22 +1166,24 @@ def generate_pdf(request):
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib import colors
     from django.http import HttpResponse
+    from decimal import Decimal
 
-    orders = Order.objects.order_by('-created_at')
+    orders = Order.objects.prefetch_related('items__product_variant__product', 'user').order_by('-created_at')
 
     buffer = BytesIO()
     pdf = SimpleDocTemplate(buffer, pagesize=A2, rightMargin=20, leftMargin=20)
     styles = getSampleStyleSheet()
     elements = []
 
-    elements.append(Paragraph("Sales Report (Delivered & Returned Items)", styles['Title']))
+    elements.append(Paragraph("Sales Report (Delivered & Returned Items - Immutable Prices)", styles['Title']))
     elements.append(Spacer(1, 12))
 
     # Table headers
     data = [[
         'Order ID', 'User Email', 'Date',
         'Product', 'Qty', 'Status',
-        'Subtotal', 'Discount', 'Shipping', 'Final Amount'
+        'Unit Price', 'Price After Coupon', 'Total (Item)',
+        'Subtotal (Order)', 'Discount', 'Shipping', 'Final Amount'
     ]]
 
     for order in orders:
@@ -1180,12 +1191,20 @@ def generate_pdf(request):
         if not items.exists():
             continue
 
-        subtotal = sum(item.total_price for item in items)
+        # Use immutable values if available, else fallback
+        subtotal = sum(
+            item.ordered_total_price if item.ordered_total_price else item.product_variant.sales_price * item.quantity
+            for item in items
+        )
         discount = order.discount or 0
         shipping = order.shipping_charge or 0
         final_amount = subtotal + shipping - discount
 
         for item in items:
+            unit_price = item.ordered_unit_price or item.product_variant.sales_price
+            price_after_coupon = item.ordered_price_after_coupon or unit_price
+            total_price = item.ordered_total_price or price_after_coupon * item.quantity
+
             data.append([
                 str(order.id),
                 order.user.email,
@@ -1193,6 +1212,9 @@ def generate_pdf(request):
                 f"{item.product_variant.product.name} ({item.product_variant.weight})",
                 item.quantity,
                 item.status.capitalize(),
+                f"Rs {unit_price:.2f}",
+                f"Rs {price_after_coupon:.2f}",
+                f"Rs {total_price:.2f}",
                 f"Rs {subtotal:.2f}",
                 f"- Rs {discount:.2f}",
                 f"+ Rs {shipping:.2f}",
@@ -1205,7 +1227,7 @@ def generate_pdf(request):
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
@@ -1224,23 +1246,24 @@ from openpyxl import Workbook
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
-
 from io import BytesIO
+from decimal import Decimal
 
 @admin_required
 @never_cache
 def generate_excel(request):
-    orders = Order.objects.order_by('-created_at')
+    orders = Order.objects.prefetch_related("items__product_variant__product", "user").order_by("-created_at")
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Sales Report"
 
-    # Header row
+    # Updated header row
     ws.append([
         'Order ID', 'User Email', 'Date',
         'Product', 'Qty', 'Status',
-        'Subtotal', 'Discount', 'Shipping', 'Final Amount'
+        'Unit Price (Frozen)', 'Price After Coupon', 'Total Paid',
+        'Order Discount', 'Shipping', 'Final Order Total'
     ])
 
     for order in orders:
@@ -1248,12 +1271,11 @@ def generate_excel(request):
         if not items.exists():
             continue
 
-        subtotal = sum(item.total_price for item in items)
-        discount = order.discount or 0
-        shipping = order.shipping_charge or 0
-        final_amount = subtotal + shipping - discount
-
         for item in items:
+            unit_price = item.ordered_unit_price or item.product_variant.sales_price
+            after_coupon = item.ordered_price_after_coupon or unit_price
+            total_paid = item.ordered_total_price or after_coupon * item.quantity
+
             ws.append([
                 order.id,
                 order.user.email,
@@ -1261,10 +1283,12 @@ def generate_excel(request):
                 f"{item.product_variant.product.name} ({item.product_variant.weight})",
                 item.quantity,
                 item.status.capitalize(),
-                float(subtotal),
-                float(discount),
-                float(shipping),
-                float(final_amount),
+                float(unit_price),
+                float(after_coupon),
+                float(total_paid),
+                float(order.discount or 0),
+                float(order.shipping_charge or 0),
+                float(order.total_amount or 0),
             ])
 
     # Save to memory
@@ -1469,14 +1493,14 @@ def get_coupon_details(request, coupon_id):
     }
     return JsonResponse(data)
 
-
 @admin_required
-@never_cache   
+@never_cache
 def delete_coupon(request, coupon_id):
-    
-    coupon = get_object_or_404(Coupon, id=coupon_id)
-    coupon.delete()
-    return JsonResponse({"message": "Coupon deleted successfully"})
+    if request.method == 'POST':
+        coupon = get_object_or_404(Coupon, id=coupon_id)
+        coupon.delete()
+        messages.success(request, "Coupon deleted successfully.")
+    return redirect('customadmin:coupon_management')
 
 @admin_required
 @never_cache

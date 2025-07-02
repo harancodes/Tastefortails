@@ -71,9 +71,16 @@
                     {% for item in order.items.all %}
                     <li class="flex justify-between items-center border-b border-gray-200 pb-2">
                         <div>
-                            <span class="text-sm text-gray-600">{{ item.product_variant.product.name }} ({{ item.product_variant.weight }})</span>
+                            <button type="button"
+                                class="text-sm text-blue-600 hover:underline"
+                                data-bs-toggle="modal"
+                                data-bs-target="#productModal{{ item.id }}">
+                                {{ item.product_variant.product.name }} ({{ item.product_variant.weight }})
+                            </button>
                             <span class="block text-xs text-gray-500">Quantity: {{ item.quantity }}</span>
+                            
                             <span class="block text-xs text-gray-500">Price: ₹{{ item.total_price }}</span>
+                             
                         </div>
                         <div>
                             <span class="block text-xs text-gray-500">Status</span>
@@ -100,17 +107,53 @@
                             {% endif %}
                         </div>
                     </li>
-                    {% endfor %}
-                </ul>
 
-                <div class="mt-4">
+                    <!-- Modal for product details -->
+                    <div class="modal fade" id="productModal{{ item.id }}" tabindex="-1" aria-labelledby="productModalLabel{{ item.id }}" aria-hidden="true">
+                      <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="productModalLabel{{ item.id }}">Product Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                             {% with item.product_variant.product.main_image as main_img %}
+  {% if main_img %}
+    <img src="{{ main_img.image.url }}" alt="{{ item.product_variant.product.name }}" class="w-full rounded shadow">
+  {% else %}
+    <img src="https://via.placeholder.com/300x300?text=No+Image" alt="No image" class="w-full rounded shadow">
+  {% endif %}
+{% endwith %}
+
+                            </div>
+                            <div>
+                              <p><strong>Name:</strong> {{ item.product_variant.product.name }}</p>
+                              <p><strong>Brand:</strong> {{ item.product_variant.product.brand.name }}</p>
+                              <p><strong>Category:</strong> {{ item.product_variant.product.category.name }}</p>
+                              <p><strong>Variant:</strong> {{ item.product_variant.weight }}</p>
+                              {% comment %} <p><strong>MRP:</strong> ₹{{ item.product_variant.variant_price }}</p> {% endcomment %}
+                              <p><strong>Selling Price:</strong> ₹{{ item.product_variant.sales_price }}</p>
+                              {% comment %} <p><strong>Description:</strong> {{ item.product_variant.product.description|linebreaks }}</p> {% endcomment %}
+                                    <div class="mt-4">
                     <h2 class="text-lg font-semibold text-gray-800">Order Summary</h2>
                     <p class="text-sm text-gray-600"><strong>Total Amount:</strong> ₹{{ order.total_amount }}</p>
                     <p class="text-sm text-gray-600"><strong>Discount:</strong> ₹{{ order.discount }}</p>
                     <p class="text-sm text-gray-600"><strong>Shipping Charge:</strong> ₹{{ order.shipping_charge }}</p>
+                      <span class="block text-xs text-gray-500">Quantity: {{ item.quantity }}</span>
+                            <span class="block text-xs text-gray-500">Price: ₹{{ item.total_price }}</span>
                     <p class="text-sm text-gray-600"><strong>Final Amount:</strong> ₹{{ order.total_amount|floatformat:2 }}</p>
                 </div>
 
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                </ul>
+
+          
                 <div class="mt-4">
                     <h2 class="text-lg font-semibold text-gray-800">Payment Status</h2>
                     <p class="text-sm text-gray-600"><strong>Status:</strong> {{ order.payment.status }}</p>
@@ -119,6 +162,7 @@
                     {% elif order.payment.status == 'refund_pending' %}
                         <p class="text-sm text-yellow-600">Refund Pending</p>
                     {% endif %}
+                        <p class="text-sm text-gray-600"><strong>Final Amount:</strong> ₹{{ order.total_amount|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -159,7 +203,6 @@
 $(document).ready(function () {
     $('.order-status-form').on('submit', function (e) {
         e.preventDefault();
-
         const form = $(this);
         const url = form.attr('action');
         const formData = form.serialize();
@@ -172,7 +215,6 @@ $(document).ready(function () {
                 'X-CSRFToken': form.find('[name=csrfmiddlewaretoken]').val()
             },
             success: function (response) {
-                // Optionally show a success alert or toast
                 alert('Order item status updated successfully.');
             },
             error: function (xhr) {
@@ -182,4 +224,6 @@ $(document).ready(function () {
     });
 });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock %}

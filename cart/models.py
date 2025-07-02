@@ -157,6 +157,11 @@ class OrderItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     return_status = models.CharField(max_length=50, choices=RETURN_STATUS_CHOICES, default="no_request")
     return_reason = models.TextField(blank=True, null=True)
+  
+    ordered_unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    ordered_total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    ordered_price_after_coupon = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
     
 
     @property
@@ -204,72 +209,68 @@ class OrderItem(models.Model):
         return self.price_after_coupon * self.quantity
 
 
-        
     def cancel_item(self, reason=""):
         if not self.can_be_cancelled:
             raise ValidationError("This item cannot be cancelled.")
 
         with transaction.atomic():
             order = self.order
+            old_total = order.total_amount
 
-            
-            old_paid_amount = order.total_amount
-            active_items_count = order.items.exclude(status__in=["cancelled", "returned"]).count()
-
-            if active_items_count <= 0:
-                raise ValidationError("No active items in order.")
-
-            per_item_shipping = order.shipping_charge / active_items_count
-
+            # Update stock
             self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
+
+            # Mark as cancelled
             self.status = "cancelled"
             self.save()
 
-            order.calculate_final_total()
-            new_paid_amount = order.total_amount
-
-            if hasattr(order, 'payment') and order.payment.status == 'completed':
-                wallet, _ = Wallet.objects.get_or_create(user=order.user)
-           
-                refund = (old_paid_amount - new_paid_amount ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-                if refund > 0:
-                    wallet.add_amount(refund, reason="Order item cancelled - refund incl. shipping share")
-
- ### return item ###
-
-    def return_item(self, reason=""):
-        if self.status == "returned":
-            raise ValidationError("Item already returned.")
-        if not self.can_be_returned:
-            raise ValidationError("This item cannot be returned.")
-
-        with transaction.atomic():
-            order = self.order
-
-            old_paid_amount = order.total_amount
-
-            # Mark returned
-            self.status = "returned"
-            self.return_status = "approved"
-            self.save()
-
-            # Recalculate coupon + totals
+            # Recheck if coupon is still valid
             order.calculate_final_total()
 
-            new_paid_amount = order.total_amount
-            refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal('0.01'))
+            new_total = order.total_amount
+            refund_amount = (old_total - new_total).quantize(Decimal('0.01'))
 
-            print(f"Refund: ₹{refund_amount} (Old: {old_paid_amount}, New: {new_paid_amount})")
+            print(f"[CANCEL REFUND] Old: ₹{old_total}, New: ₹{new_total}, Refund: ₹{refund_amount}")
 
+            # Wallet refund
             if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
                 wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
+                wallet.add_amount(refund_amount, reason=reason or "Refund for cancelled item")
 
-            # Restock inventory
-            self.product_variant.quantity_in_stock += self.quantity
-            self.product_variant.save()
+    ### return item ###
+
+    def return_item(self, reason=""):
+            if self.status == "returned":
+                raise ValidationError("Item already returned.")
+            if not self.can_be_returned:
+                raise ValidationError("This item cannot be returned.")
+
+            with transaction.atomic():
+                order = self.order
+
+                old_paid_amount = order.total_amount
+
+                
+                self.status = "returned"
+                self.return_status = "approved"
+                self.save()
+
+
+                order.calculate_final_total()
+
+                new_paid_amount = order.total_amount
+                refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal('0.01'))
+
+                print(f"Refund: ₹{refund_amount} (Old: {old_paid_amount}, New: {new_paid_amount})")
+
+                if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
+                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                    wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
+
+                
+                self.product_variant.quantity_in_stock += self.quantity
+                self.product_variant.save()
 
 
 ###3

@@ -6,17 +6,17 @@
     <h2 class="fw-bold">Brands</h2>
     <a href="{% url 'customadmin:add_brands' %}" class="btn btn-primary">Add Brand</a>
   </div>
-{% if messages %}
-  <div id="messages-container">
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
 
+  {% if messages %}
+    <div id="messages-container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
   <!-- Breadcrumb -->
   <nav aria-label="breadcrumb">
@@ -68,7 +68,14 @@
           </td>
           <td>
             <a href="{% url 'customadmin:edit_brands' brand.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i></a>
-            <a href="{% url 'customadmin:soft_delete_brands' brand.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+            <button 
+              class="btn btn-outline-danger btn-sm" 
+              data-bs-toggle="modal" 
+              data-bs-target="#confirmDeleteModal" 
+              data-url="{% url 'customadmin:soft_delete_brands' brand.id %}" 
+              data-name="{{ brand.name }}">
+              <i class="bi bi-trash"></i>
+            </button>
           </td>
           <td>
             {% if brand.offer_percentage %}{{ brand.offer_percentage }}%{% else %}<span class="text-muted">--</span>{% endif %}
@@ -121,9 +128,28 @@
   </div>
 </div>
 
-<!-- Toggle Script -->
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the brand <span id="delete-brand-name" class="fw-bold text-danger"></span>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a id="confirmDeleteBtn" class="btn btn-danger">Yes, Delete</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // Toggle modal logic
   var confirmModal = document.getElementById('confirmToggleModal');
   var confirmBtn = document.getElementById('confirmToggleBtn');
   var actionSpan = document.getElementById('toggle-action-name');
@@ -157,21 +183,29 @@ document.addEventListener('DOMContentLoaded', function () {
       alert('Error toggling brand status.');
     });
   });
-});
 
+  // Delete modal logic
+  var deleteModal = document.getElementById('confirmDeleteModal');
+  var deleteBtn = document.getElementById('confirmDeleteBtn');
+  var deleteNameSpan = document.getElementById('delete-brand-name');
 
-  window.addEventListener('DOMContentLoaded', () => {
-    const alertList = document.querySelectorAll('.alert-dismissible');
-    alertList.forEach(alert => {
-      // Auto close after 3 seconds
-      setTimeout(() => {
-        // Bootstrap 5's alert instance to close alert
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-        bsAlert.close();
-      }, 3000); // 3000ms = 3 seconds
-    });
+  deleteModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var deleteUrl = button.getAttribute('data-url');
+    var brandName = button.getAttribute('data-name');
+
+    deleteNameSpan.textContent = brandName;
+    deleteBtn.setAttribute('href', deleteUrl);
   });
 
+  // Auto-close alert boxes
+  const alertList = document.querySelectorAll('.alert-dismissible');
+  alertList.forEach(alert => {
+    setTimeout(() => {
+      const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+      bsAlert.close();
+    }, 3000);
+  });
+});
 </script>
-
 {% endblock %}

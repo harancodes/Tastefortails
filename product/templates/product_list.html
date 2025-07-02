@@ -119,13 +119,16 @@
                 <img src="{{ product.thumbnail|default:'https://via.placeholder.com/256x256.png?text=No+Image' }}"
                      alt="{{ product.name }}" class="w-full h-64 object-cover">
 
-                {% if product_variant.get_discount_percentage > 0 %}
-  <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-    <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">
-      {{ product_variant.get_discount_percentage }}% OFF
-    </span>
-  </div>
-{% endif %}
+      {% with variant=product.variants.first %}
+  {% if variant and variant.get_discount_percentage > 0 %}
+    <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+      <span class="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded">
+        {{ variant.get_discount_percentage }}% OFF
+      </span>
+    </div>
+  {% endif %}
+{% endwith %}
+
 
 
                 <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
@@ -161,12 +164,12 @@
 
 
                 {% if product.variants.all %}
-                  {% comment %} <button
+                   <button
                     onclick="event.preventDefault(); addCartItem({{ product.variants.first.id }})"
                     class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2"
                     aria-label="Add {{ product.name }} to cart">
                     <i class="fas fa-shopping-cart"></i> Add
-                  </button> {% endcomment %}
+                  </button> 
                 {% else %}
                   <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full">Out of Stock</span>
                 {% endif %}
@@ -298,10 +301,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  window.addCartItem = function(variantId) {
-    console.log(`Add to cart: ${variantId}`);
-    showToast('Product added to cart!', 'success');
-  };
+ window.addCartItem = function(variantId, quantity = 1) {
+  if (!variantId) {
+    showToast("Invalid product variant", "error");
+    return;
+  }
+
+  fetch(`/cart/add_to_cart/${variantId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ quantity: quantity })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('Product added to cart!', 'success');
+      const cartCount = document.getElementById("cart-count");
+      if (cartCount) cartCount.textContent = data.cart_item_count;
+    } else {
+      showToast(data.error || "Failed to add to cart", "error");
+    }
+  })
+  .catch(error => {
+    console.error("Add to cart error:", error);
+    showToast("An error occurred. Please try again.", "error");
+  });
+};
 
   // Toast using Toastify
   function showToast(message, type = 'info', position = 'top-left') {
@@ -324,6 +352,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }).showToast();
   }
 });
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 </script>
 
 

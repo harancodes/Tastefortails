@@ -33,7 +33,7 @@ DEBUG = config('DEBUG', cast=bool)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 
 
 
-ALLOWED_HOSTS = ["localhost", '127.0.0.1', 'tastefortails.shop', '15.207.88.92']
+ALLOWED_HOSTS = ["localhost", '127.0.0.1', 'tastefortails.shop','www.tastefortails.shop', '15.207.88.92']
 AUTH_USER_MODEL = 'authentication.CustomUser'
 
 

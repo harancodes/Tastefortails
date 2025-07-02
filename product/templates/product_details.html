@@ -1005,43 +1005,52 @@
         }
     }
 
-    // Add to Cart
-    function handleAddToCart() {
-        const variantId = document.getElementById('selectedVariantId').value;
-        const quantity = document.getElementById('quantity').value;
+ function handleAddToCart() {
+    const variantId = document.getElementById('selectedVariantId').value;
+    const quantity = document.getElementById('quantity').value;
 
-        if (!variantId) {
-            showToast("Please select a variant first.", "error");
-            return;
-        }
-
-        fetch(`/cart/add_to_cart/${variantId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ quantity: quantity || 1 })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                showToast("Added to Cart!", "success");
-                const cartCount = document.getElementById("cartCount");
-                if (cartCount) {
-                    cartCount.textContent = data.cart_count;
-                    cartCount.classList.add("animate-bounce");
-                    setTimeout(() => cartCount.classList.remove("animate-bounce"), 1000);
-                }
-            } else {
-                showToast(data.error || "Failed to add to cart", "error");
-            }
-        })
-        .catch(err => {
-            console.error("Add to cart failed", err);
-            showToast("Something went wrong", "error");
-        });
+    if (!variantId) {
+        showToast("Please select a variant first.", "error");
+        return;
     }
+
+    fetch(`/cart/add_to_cart/${variantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ quantity: quantity || 1 })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast("Added to Cart!", "success");
+
+            const cartCount = document.getElementById("cartCount");
+            if (cartCount) {
+                cartCount.textContent = data.cart_count;
+                cartCount.classList.add("animate-bounce");
+                setTimeout(() => cartCount.classList.remove("animate-bounce"), 1000);
+            }
+
+            // ✅ Remove from wishlist (if it's in wishlist)
+            const heart = document.getElementById('heart-' + variantId);
+            if (heart) {
+                heart.classList.remove('fas', 'text-red-500');
+                heart.classList.add('far', 'text-gray-400');
+            }
+
+            updateCounts(); // ✅ update wishlist + cart badge
+        } else {
+            showToast(data.error || "Failed to add to cart", "error");
+        }
+    })
+    .catch(err => {
+        console.error("Add to cart failed", err);
+        showToast("Something went wrong", "error");
+    });
+}
 
     
     document.addEventListener("DOMContentLoaded", () => {

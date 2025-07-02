@@ -209,7 +209,7 @@ def order_list_view(request):
         grouped_items = defaultdict(list)
         for item in order.items.all():
             grouped_items[item.product_variant.product].append(item)
-        order.grouped_items = grouped_items.items()  # list of (Product, [OrderItem])
+        order.grouped_items = grouped_items.items()  
 
     return render(request, 'order_list.html', {'orders': orders})
 
@@ -228,6 +228,8 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import inch
+
+
 @block_superuser_navigation
 @never_cache
 @login_required
@@ -289,16 +291,14 @@ def generate_order_invoice(request, order_id):
 
     for item in valid_items:
         variant = item.product_variant
-        price_after_coupon = item.price_after_coupon
-        total_paid = (price_after_coupon * item.quantity).quantize(Decimal("0.01"))
 
         item_data.append([
             Paragraph(f"{variant.product.name} ({variant.weight})", normal_style),
             str(item.quantity),
             item.status.capitalize(),
-            f"Rs {variant.sales_price}",
-            f"Rs {price_after_coupon}",
-            f"Rs {total_paid}",
+            f"Rs {item.ordered_unit_price}",
+            f"Rs {item.ordered_price_after_coupon}",
+            f"Rs {item.ordered_total_price}",
         ])
 
     item_table = Table(item_data, colWidths=[2.4 * inch, 0.6 * inch, 0.9 * inch, 1.0 * inch, 1.2 * inch, 1.2 * inch])
@@ -604,15 +604,15 @@ def submit_review(request, order_item_id):
             # Ensure the product exists
             product = get_object_or_404(Products, id=product_id)
 
-            # Check if the user has already reviewed this specific product
             existing_review = Review.objects.filter(user=request.user, product=product).exists()
             if not existing_review:
                 Review.objects.create(
-                    user=request.user,
-                    product=product,
-                    rating=int(rating),
-                    review=review_text
-                )
+    user=request.user,
+    product=product,
+    rating=int(rating),
+    comment=review_text
+)
+
                 messages.success(request, "Review submitted successfully!")
             else:
                 messages.error(request, "You have already reviewed this product.")

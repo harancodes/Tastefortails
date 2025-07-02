@@ -15,7 +15,7 @@
     {% if page_obj.object_list %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {% for item in page_obj %}
-          <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+          <div class="wishlist-card bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
                data-variant="{{ item.variant.id }}">
             <div class="relative">
               {% with item.variant.product.thumbnail as image_url %}
@@ -62,11 +62,12 @@
               <div class="mt-4 flex justify-between items-center">
                 <a href="{% url 'product:detail' item.variant.product.slug %}"
                    class="text-blue-600 hover:underline">View&nbsp;Details</a>
-{% comment %} 
-                <button onclick="addCartItem({{ item.variant.id }})"
-                        class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
-                  <i class="fas fa-shopping-cart"></i> Add to Cart
-                </button> {% endcomment %}
+
+          <button onclick="addCartItem('{{ item.variant.id }}')"
+        class="bg-blue-700 text-white px-3 py-2 rounded-full hover:bg-blue-800 text-sm flex items-center gap-2">
+  <i class="fas fa-shopping-cart"></i> Add to Cart
+</button>
+
               </div>
             </div>
           </div>
@@ -99,8 +100,8 @@
     </section>
   </div>
 </div>
+
 <script>
-// 1. CSRF token fetch
 function getCookie(name) {
   let result = null;
   document.cookie.split(';').forEach(cookie => {
@@ -113,7 +114,6 @@ function getCookie(name) {
 }
 const csrftoken = getCookie('csrftoken');
 
-// 2. Toast message display
 function showToast(message, type = 'success') {
   const toast = document.createElement("div");
   toast.className = `fixed top-20 left-20 z-50 px-4 py-3 rounded shadow text-white bg-${type === 'success' ? 'green' : 'red'}-600`;
@@ -122,7 +122,6 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
-// 3. Update cart and wishlist badge counts
 function updateCounts() {
   fetch("/user_profile/ajax/get-counts/")
     .then(response => response.json())
@@ -135,7 +134,6 @@ function updateCounts() {
     .catch(err => console.error("Count fetch error:", err));
 }
 
-// 4. Toggle wishlist (heart icon + toast + remove on wishlist page)
 function toggleWishlist(variantId) {
   const heart = document.getElementById('heart-' + variantId);
   const isFav = heart.classList.contains('fas');
@@ -157,8 +155,19 @@ function toggleWishlist(variantId) {
       heart.classList.toggle('text-gray-400');
 
       if (isFav && window.location.pathname.includes('/wishlist')) {
-          const card = document.querySelector(`[data-variant="${variantId}"]`);
+          const card = document.querySelector(`.wishlist-card[data-variant="${variantId}"]`);
+          console.log("Removing card after heart toggle:", variantId, card);
           if (card) card.remove();
+
+          if (document.querySelectorAll('.wishlist-card').length === 0) {
+              document.querySelector('section.mb-12').innerHTML = `
+                <div class="text-center py-12">
+                  <p class="text-gray-600 text-lg">Your wishlist is empty.</p>
+                  <a href="/products/" class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                    Shop&nbsp;Now
+                  </a>
+                </div>`;
+          }
       }
 
       showToast(isFav ? 'Removed from wishlist' : 'Added to wishlist', 'success');
@@ -170,7 +179,6 @@ function toggleWishlist(variantId) {
   });
 }
 
-// 5. Add to cart (also remove from wishlist)
 function addCartItem(variantId, qty = 1) {
   fetch(`/cart/add_to_cart/${variantId}/`, {
       method: 'POST',
@@ -187,8 +195,19 @@ function addCartItem(variantId, qty = 1) {
       const badge = document.getElementById('cart-count');
       if (badge) badge.textContent = d.cart_item_count;
 
-      const card = document.querySelector(`[data-variant="${variantId}"]`);
-      if (card) card.remove();  // optional: if you want to remove item from list
+      const card = document.querySelector(`.wishlist-card[data-variant="${variantId}"]`);
+      console.log("Removing card after Add to Cart:", variantId, card);
+      if (card) card.remove();
+
+      if (document.querySelectorAll('.wishlist-card').length === 0) {
+          document.querySelector('section.mb-12').innerHTML = `
+            <div class="text-center py-12">
+              <p class="text-gray-600 text-lg">Your wishlist is empty.</p>
+              <a href="/products/" class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                Shop&nbsp;Now
+              </a>
+            </div>`;
+      }
 
       const heart = document.getElementById('heart-' + variantId);
       if (heart) {
@@ -197,7 +216,7 @@ function addCartItem(variantId, qty = 1) {
       }
 
       showToast('Added to cart successfully!');
-      updateCounts(); // Refresh badge
+      updateCounts();
   })
   .catch(e => {
       console.error(e);
@@ -205,8 +224,6 @@ function addCartItem(variantId, qty = 1) {
   });
 }
 
-// 6. On load, update badge counts
 document.addEventListener('DOMContentLoaded', updateCounts);
 </script>
-
 {% endblock %}

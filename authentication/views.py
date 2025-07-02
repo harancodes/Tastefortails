@@ -160,6 +160,9 @@ def user_signup(request):
 
     return render(request, 'user_auth/signup.html')
 
+
+from cart.models import Transaction
+
 @never_cache
 def verify_otp(request):
     if request.method == 'POST':
@@ -180,37 +183,49 @@ def verify_otp(request):
         if entered_otp == otp:
             try:
                 with transaction.atomic():
-                
+                    
+                    referred_by_id = user_data.get('referrer_id')  # FIXED ✅
+
                     user = CustomUser(
                         full_name=user_data['full_name'],
                         email=user_data['email'],
                         phone_number=user_data['phone_number'],
-                        referred_by_id=user_data.get('referred_by_id'),
+                        referred_by_id=referred_by_id,
                         referral_code=CustomUser.generate_unique_referral_code(),  
                     )
                     user.set_password(user_data['password'])
                     user.save()
 
-                    wallet, _ = Wallet.objects.get_or_create(user=user)
-                    wallet.balance += 50
-                    wallet.save()
 
-                    # ✅ Credit ₹100 to referrer if applicable
-                    referred_by_id = user_data.get('referred_by_id')
+                    new_user_wallet, _ = Wallet.objects.get_or_create(user=user)
+                    new_user_credit = 100 if referred_by_id else 50
+                    new_user_wallet.balance += new_user_credit
+                    new_user_wallet.save()
+
+                    Transaction.objects.create(
+                        wallet=new_user_wallet,
+                        amount=new_user_credit,
+                        transaction_type="CREDIT",
+                        reason="Signup bonus via referral" if referred_by_id else "Signup bonus"
+                    )
+
+                    # ✅ Referrer gets ₹50
                     if referred_by_id:
-                        try:
-                            referrer = CustomUser.objects.get(id=referred_by_id)
-                            referrer_wallet, _ = Wallet.objects.get_or_create(user=referrer)
-                            referrer_wallet.balance += 100
-                            referrer_wallet.save()
-                        except CustomUser.DoesNotExist:
-                            pass
+                        referrer = CustomUser.objects.get(id=referred_by_id)
+                        referrer_wallet, _ = Wallet.objects.get_or_create(user=referrer)
+                        referrer_wallet.balance += 50
+                        referrer_wallet.save()
 
-                    # ✅ Finalize
+                        Transaction.objects.create(
+                            wallet=referrer_wallet,
+                            amount=50,
+                            transaction_type="CREDIT",
+                            reason=f"Referral bonus for inviting {user.full_name}"
+                        )
+
                     request.session.flush()
                     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-
-                    messages.success(request, "Account created successfully! ₹50 has been added to your wallet.")
+                    messages.success(request, f"Account created successfully! ₹{new_user_credit} has been added to your wallet.")
                     return redirect('user_login')
 
             except Exception as e:
@@ -221,7 +236,6 @@ def verify_otp(request):
 
     user_data = request.session.get('user_data')
     return render(request, 'user_auth/verify_otp.html', {'user_data': user_data})
-
 
 
 @never_cache

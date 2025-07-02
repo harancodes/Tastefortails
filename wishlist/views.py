@@ -17,12 +17,23 @@ from django.core.paginator import Paginator
 def wishlist_view(request):
 
     wishlist_items = WishlistItem.objects.filter(
-        wishlist__user=request.user,
-        variant__is_active=True,
-        variant__product__is_active=True,
-        variant__product__is_listed=True,
-        variant__product__deleted_at__isnull=True  
-    ).select_related('variant', 'variant__product', 'variant__product__brand')
+    wishlist__user=request.user,
+    variant__is_active=True,
+    variant__product__is_active=True,
+    variant__product__is_listed=True,
+    variant__product__deleted_at__isnull=True,
+    variant__product__category__deleted_at__isnull=True,
+    variant__product__category__is_active=True,
+    variant__product__category__is_listed=True,
+    variant__product__brand__is_active=True,
+    variant__product__brand__is_listed=True,
+).select_related(
+    'variant',
+    'variant__product',
+    'variant__product__brand',
+    'variant__product__category'
+)
+
 
 
     paginator = Paginator(wishlist_items, 6)

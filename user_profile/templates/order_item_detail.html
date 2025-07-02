@@ -70,12 +70,21 @@
                             <p class="text-sm text-gray-500">Quantity</p>
                             <p class="font-medium">{{ order_item.quantity }}</p>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Total Price</p>
-                            <p class="font-bold text-blue-600">{{ order_item.total_price}}</p>
-                           
-                              <p>After Coupon <span class="text-green-600 font-bold">₹{{ order_item.price_after_coupon|floatformat:2 }}</span> </p>
-                        </div>
+                      <div>
+  <p class="text-sm text-gray-500">Unit Price</p>
+
+
+  <p class="text-sm text-gray-500">After Coupon</p>
+  <p class="text-green-600 font-bold">
+    ₹{{ order_item.ordered_price_after_coupon|floatformat:2 }}
+  </p>
+
+  <p class="text-sm text-gray-500">Total Paid</p>
+  <p class="text-blue-600 font-semibold">
+    ₹{{ order_item.ordered_total_price|floatformat:2 }}
+  </p>
+</div>
+
                         <div>
                             <p class="text-sm text-gray-500">Date Ordered</p>
                             <p class="font-medium">{{ order_item.order.created_at|date:"F d, Y" }}</p>
