@@ -115,7 +115,7 @@ class UsedCoupon(models.Model):
     used_on = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'coupon')  # Ensures a user can use a coupon only once
+        unique_together = ('user', 'coupon')  
 
     def __str__(self):
         return f"{self.user.email} used {self.coupon.code}"

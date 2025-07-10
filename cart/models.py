@@ -161,6 +161,7 @@ class OrderItem(models.Model):
     ordered_unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ordered_total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ordered_price_after_coupon = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
 
     
 
@@ -273,6 +274,32 @@ class OrderItem(models.Model):
                 self.product_variant.save()
 
 
+    # def return_item(self, reason=""):
+    #     if self.status == "returned":
+    #         raise ValidationError("Item already returned.")
+    #     if not self.can_be_returned:
+    #         raise ValidationError("This item cannot be returned.")
+
+    #     with transaction.atomic():
+    #         order = self.order
+
+    #         self.status = "returned"
+    #         self.return_status = "approved"
+    #         self.save()
+
+    #         # Refund the frozen total paid for this item (with or without coupon)
+    #         refund_amount = self.ordered_total_price or self.total_after_coupon
+
+    #         if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
+    #             wallet, _ = Wallet.objects.get_or_create(user=order.user)
+    #             wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
+
+    #         # Add stock back
+    #         self.product_variant.quantity_in_stock += self.quantity
+    #         self.product_variant.save()
+
+
+
 ###3
 
     @property
@@ -369,7 +396,7 @@ class Payment(models.Model):
 
 
 class Wallet(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="wallet")
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     def add_amount(self, amount, reason="Credit"):

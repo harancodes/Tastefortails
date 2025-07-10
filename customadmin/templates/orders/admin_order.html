@@ -64,6 +64,12 @@
                     <h2 class="text-lg font-semibold text-gray-800">Customer Details</h2>
                     <p class="text-sm text-gray-600"><strong>Name:</strong> {{ order.user.full_name }}</p>
                     <p class="text-sm text-gray-600"><strong>Email:</strong> {{ order.user.email }}</p>
+                     <p class="text-sm text-gray-600"><strong>Address:</strong>
+                       {{ order.shipping_address.address_line }}, 
+                                {{ order.shipping_address.city }}, 
+                                {{ order.shipping_address.state }}, 
+                                {{ order.shipping_address.postal_code }}
+                                 </p>
                 </div>
 
                 <h2 class="text-lg font-semibold text-gray-800">Ordered Items</h2>
@@ -143,6 +149,13 @@
                       <span class="block text-xs text-gray-500">Quantity: {{ item.quantity }}</span>
                             <span class="block text-xs text-gray-500">Price: ₹{{ item.total_price }}</span>
                     <p class="text-sm text-gray-600"><strong>Final Amount:</strong> ₹{{ order.total_amount|floatformat:2 }}</p>
+
+                       <p class="text-sm text-gray-600"><strong>Address:</strong>
+                       {{ order.shipping_address.address_line }}, 
+                                {{ order.shipping_address.city }}, 
+                                {{ order.shipping_address.state }}, 
+                                {{ order.shipping_address.postal_code }}
+                                 </p>
                 </div>
 
                             </div>

@@ -62,18 +62,13 @@
                     <img src="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418804/TAILS_foR_TAILS__2_-removebg-preview_bkyrmx.png" alt="Tastefortails Logo" class="w-10 h-10 rounded-full">
                     <a href="{% url 'home' %}" class="text-2xl font-bold text-white">Tastefortails</a>
                 </div>
+<!-- Desktop Nav (visible on md and up) -->
+<ul class="hidden md:flex space-x-6">
+    <li><a href="{% url 'home' %}" class="text-white font-bold hover:text-yellow-200">Home</a></li>
+    <li><a href="{% url 'product:list' %}" class="text-white font-bold hover:text-yellow-200">Products</a></li>
+    <li><a href="{% url 'product:about' %}" class="text-white font-bold hover:text-yellow-200">About Us</a></li>
+</ul>
 
-                <ul class="nav justify-content-center">
-                    <li class="nav-item">
-                        <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active text-white font-bold" aria-current="page" href="{% url 'product:list' %}">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white font-bold" href="{% url 'product:about' %}">About Us</a>
-                    </li>
-                </ul>
 
                 <!-- Icons -->
                 <div class="flex items-center space-x-6">
@@ -181,7 +176,7 @@
                     <div class="flex space-x-4">
                         <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-facebook-f text-xl"></i></a>
                         <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-twitter text-xl"></i></a>
-                        <a href="https://www.instagram.com/ag_.nel/" target="_blank" class="text-gray-300 hover:text-white transition"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="https://www.instagram.com/thehiphope/" target="_blank" class="text-gray-300 hover:text-white transition"><i class="fab fa-instagram text-xl"></i></a>
                         <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-pinterest text-xl"></i></a>
                     </div>
                 </div>
@@ -296,7 +291,15 @@ document.addEventListener('DOMContentLoaded', function () {
     updateCounts();
 });
 </script>
+<script>
 
+document.getElementById('mobile-menu-button').addEventListener('click', function () {
+    const mobileMenu = document.getElementById('mobile-menu');
+    mobileMenu.classList.toggle('hidden');
+});
+
+
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}

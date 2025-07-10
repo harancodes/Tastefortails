@@ -22,88 +22,104 @@
       <p class="text-gray-600 max-w-2xl mx-auto">Premium nutrition for your canine companion</p>
     </div>
 
-    <!-- Search & Filters -->
-    <aside>
-      <form method="GET" class="bg-white rounded-xl shadow-lg p-6 mb-10">
-        <!-- Search Bar -->
-        <div class="relative mb-6">
-          <div class="flex items-center rounded-lg border-2 border-gray-200 overflow-hidden">
-            <input 
-              type="text" 
-              name="search" 
-              value="{{ search_query|default:'' }}" 
-              placeholder="Find the perfect food for your pet..." 
-              class="w-full px-6 py-4 text-gray-700 focus:outline-none"
-              aria-label="Search for dog food products"
-            >
-            <button type="submit" class="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2" aria-label="Submit search">
-              <i class="fas fa-search"></i><span class="hidden sm:inline">Search</span>
-            </button>
-            <a href="{% url 'products:list' %}" class="px-6 py-4 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-lg flex items-center gap-2" aria-label="Reset search and filters">
-              <i class="fas fa-sync-alt"></i><span class="hidden sm:inline">Reset</span>
-            </a>
-          </div>
-        </div>
+ <aside>
+  <form method="GET" class="bg-white rounded-xl shadow-lg p-6 space-y-6 mb-10">
 
-        <!-- Filter Toggle -->
-        <div class="flex justify-between items-center mb-5 pt-2">
-          <h2 class="text-xl font-semibold text-gray-800">Refine Results</h2>
-          <button id="toggleFilters" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
-            <i class="fas fa-filter"></i><span>Show Filters</span>
+    <!-- Search Bar -->
+    <div class="relative">
+      <div class="flex flex-col sm:flex-row items-stretch gap-3">
+        <input 
+          type="text" 
+          name="search" 
+          value="{{ search_query|default:'' }}" 
+          placeholder="Find the perfect food for your pet..." 
+          class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Search for dog food products"
+        >
+        
+        <div class="flex gap-2">
+          <button 
+            type="submit" 
+            class="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2"
+            aria-label="Submit search"
+          >
+            <i class="fas fa-search"></i>
+            <span class="hidden sm:inline">Search</span>
           </button>
+          <a 
+            href="{% url 'products:list' %}" 
+            class="px-5 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center gap-2"
+            aria-label="Reset search and filters"
+          >
+            <i class="fas fa-sync-alt"></i>
+            <span class="hidden sm:inline">Reset</span>
+          </a>
         </div>
+      </div>
+    </div>
 
-        <!-- Filters Section -->
-        <div id="filterSection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:block hidden">
-          <!-- Brand -->
-          <div>
-            <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-            <select id="brand" name="brand" class="w-full p-3 border-2 rounded-lg">
-              <option value="">All Brands</option>
-              {% for brand in brands %}
-                {% if brand.is_active and brand.is_listed %}
-                  <option value="{{ brand.id }}" {% if brand_filter == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
-                {% endif %}
-              {% endfor %}
-            </select>
-          </div>
+    <!-- Filter Header -->
+    <div class="flex justify-between items-center border-t pt-4">
+      <h2 class="text-lg font-semibold text-gray-800">Refine Results</h2>
+    </div>
 
-          <div>
-            <label for="category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-            <select id="category" name="category" class="w-full p-3 border-2 rounded-lg">
-              <option value="">All Categories</option>
-              {% for category in categories %}
-                {% if category.is_active and category.is_listed %}
-                  <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-                {% endif %}
-              {% endfor %}
-            </select>
-          </div>
+    <!-- Filters Section -->
+    <div id="filterSection" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-          <div>
-            <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Price</label>
-            <select id="price" name="price" class="w-full p-3 border-2 rounded-lg">
-              <option value="">All Prices</option>
-              <option value="0-100" {% if price_filter == "0-100" %}selected{% endif %}>Under ₹100</option>
-              <option value="100-500" {% if price_filter == "100-500" %}selected{% endif %}>₹100 - ₹500</option>
-              <option value="500-1000" {% if price_filter == "500-1000" %}selected{% endif %}>₹500 - ₹1000</option>
-              {% comment %} <option value="1000-" {% if price_filter == "1000-" %}selected{% endif %}>Over ₹1000</option> {% endcomment %}
-            </select>
-          </div>
+      <!-- Brand Filter -->
+      <div>
+        <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">Brand</label>
+        <select id="brand" name="brand" class="w-full p-3 border-2 rounded-lg focus:ring-blue-500">
+          <option value="">All Brands</option>
+          {% for brand in brands %}
+            {% if brand.is_active and brand.is_listed %}
+              <option value="{{ brand.id }}" {% if brand_filter == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
 
-          <div>
-            <label for="sort" class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-            <select id="sort" name="sort" class="w-full p-3 border-2 rounded-lg">
-              <option value="">Popular</option>
-              <option value="price_asc" {% if sort_by == "price_asc" %}selected{% endif %}>Price: Low to High</option>
-              <option value="price_desc" {% if sort_by == "price_desc" %}selected{% endif %}>Price: High to Low</option>
-              <option value="name_asc" {% if sort_by == "name_asc" %}selected{% endif %}>Name: A to Z</option>
-              <option value="name_desc" {% if sort_by == "name_desc" %}selected{% endif %}>Name: Z to A</option>
-            </select>
-          </div>
-        </div>
-      </form>
-    </aside>
+      <!-- Category Filter -->
+      <div>
+        <label for="category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+        <select id="category" name="category" class="w-full p-3 border-2 rounded-lg focus:ring-blue-500">
+          <option value="">All Categories</option>
+          {% for category in categories %}
+            {% if category.is_active and category.is_listed %}
+              <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Price Filter -->
+      <div>
+        <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+        <select id="price" name="price" class="w-full p-3 border-2 rounded-lg focus:ring-blue-500">
+          <option value="">All Prices</option>
+          <option value="0-100" {% if price_filter == "0-100" %}selected{% endif %}>Under ₹100</option>
+          <option value="100-500" {% if price_filter == "100-500" %}selected{% endif %}>₹100 - ₹500</option>
+          <option value="500-1000" {% if price_filter == "500-1000" %}selected{% endif %}>₹500 - ₹1000</option>
+                <option value="1000-5000" {% if price_filter == "1000-5000" %}selected{% endif %}>₹1000-5000 </option>
+        </select> 
+      </div>
+
+      <!-- Sort Filter -->
+      <div>
+        <label for="sort" class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+        <select id="sort" name="sort" class="w-full p-3 border-2 rounded-lg focus:ring-blue-500">
+          <option value="">Popular</option>
+          <option value="price_asc" {% if sort_by == "price_asc" %}selected{% endif %}>Price: Low to High</option>
+          <option value="price_desc" {% if sort_by == "price_desc" %}selected{% endif %}>Price: High to Low</option>
+          <option value="name_asc" {% if sort_by == "name_asc" %}selected{% endif %}>Name: A to Z</option>
+          <option value="name_desc" {% if sort_by == "name_desc" %}selected{% endif %}>Name: Z to A</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</aside>
+
+    
  <section class="mb-12">
     <div class="flex justify-between items-center mb-8">
       <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>

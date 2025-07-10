@@ -102,7 +102,7 @@
           <th style="width: 100px;">Image</th>
           <th>Product Name</th>
           <th>Category</th>
-          <th>Price</th>
+          {% comment %} <th>Price</th> {% endcomment %}
           <th>Stock</th>
           <th>Status</th>
           <th>Actions</th>
@@ -122,7 +122,7 @@
           </td>
           <td>{{ product.name }}</td>
           <td>{{ product.category.name|default:"-" }}</td>
-          <td class="text-end">₹{{ product.total_price|default:"0" }}</td>
+          {% comment %} <td class="text-end">₹{{ product.total_price|default:"0" }}</td> {% endcomment %}
           <td class="text-center">{{ product.total_stock }}</td>
         <!-- HTML: Product Toggle Button -->
 <td class="text-center">

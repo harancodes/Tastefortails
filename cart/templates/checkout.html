@@ -124,21 +124,20 @@
 
   <form id="checkoutForm" method="POST" action="{% url 'cart:checkout' %}{% if buy_now_item %}?variant_id={{ buy_now_item.id }}{% endif %}">
     {% csrf_token %}
-    <input type="hidden" name="original_total_price" id="original_total_price" value="{{ cart_total|floatformat:2 }}">
-    <input type="hidden" name="discounted_total_price" id="discounted_total_price" value="{{ total_price|floatformat:2 }}">
-    <input type="hidden" id="total_price_with_shipping" value="{{ total_price_with_shipping|floatformat:2 }}">
-    <input type="hidden" id="razorpay_key" value="{{ RAZORPAY_KEY_ID }}" >
-    <input type="hidden" id="verify_payment_url" value="{% url 'cart:verify_razorpay_payment' %}">
-   {% comment %} <input type="hidden" id="order_success_url" value="/order/success/{order_id}/"> {% endcomment %}
-   <input type="hidden" id="order_success_url" value="{% url 'cart:order_success' 0 %}">
-   <input type="hidden" id="order_failure_url" value="{% url 'cart:order_failure' %}">
+ <input type="hidden" id="original_total_price" value="{{ cart_total|floatformat:2 }}">
+<input type="hidden" id="discounted_total_price" value="{{ total_price|floatformat:2 }}">
+<input type="hidden" id="total_price_with_shipping" value="{{ total_price_with_shipping|floatformat:2 }}">
+<input type="hidden" id="shipping_charge" value="{{ shipping_charge|floatformat:2 }}">
 
-
- 
-
-    <input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
-    <input type="hidden" id="user_email" value="{{ user.email }}">
-    <input type="hidden" id="user_phone" value="{{ user.phone_number }}">
+<input type="hidden" id="razorpay_key" value="{{ RAZORPAY_KEY_ID }}">
+<input type="hidden" id="order_success_url" value="{% url 'cart:order_success' 0 %}">
+<input type="hidden" id="order_failure_url" value="{% url 'cart:order_failure' %}">
+<input type="hidden" id="cart_url" value="{% url 'cart:view_cart' %}">
+<input type="hidden" id="user_email" value="{{ user.email }}">
+<input type="hidden" id="user_phone" value="{{ user.phone_number }}">
+{% if buy_now_item %}
+  <input type="hidden" id="variant_id" value="{{ buy_now_item.id }}">
+{% endif %}
 
     <div class="container mx-auto p-4">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -443,7 +442,7 @@ function displayNotification(msg, type) {
   );
   note.textContent = msg;
   document.body.appendChild(note);
-  setTimeout(() => note.remove(), 3000);
+  setTimeout(() => note.remove(), 8000);
 }
 
 function openModal()      { document.getElementById('addressModal').classList.remove('hidden'); }
@@ -531,17 +530,13 @@ document.getElementById('cancelCouponBtn').addEventListener('click', async (ev)=
     headers: { 'X-CSRFToken': '{{ csrf_token }}' }
   });
 });
-
-
-
-/* ──────────────────────────────────────────────────────────────
-   4.  Razorpay Integration
-   ────────────────────────────────────────────────────────────── */
+</script>
+<script>
 (function loadRazorpay() {
   const s = document.createElement('script');
-  s.src   = 'https://checkout.razorpay.com/v1/checkout.js';
+  s.src = 'https://checkout.razorpay.com/v1/checkout.js';
   s.async = true;
-  s.onload  = () => console.log('✅ Razorpay loaded.');
+  s.onload = () => console.log('✅ Razorpay loaded.');
   s.onerror = () => displayNotification('Payment gateway load failed.', 'error');
   document.body.appendChild(s);
 })();
@@ -553,23 +548,14 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
   const pay = document.querySelector('input[name="payment_method"]:checked');
   const btn = document.getElementById('placeOrderBtn');
 
-  if (!addr) {
-    displayNotification('Select shipping address', 'error');
-    return;
-  }
-  if (!pay) {
-    displayNotification('Select payment method', 'error');
-    return;
-  }
-
-  if (pay.value !== 'online') {
-    return e.target.submit();
-  }
+  if (!addr) return displayNotification('Select shipping address', 'error');
+  if (!pay) return displayNotification('Select payment method', 'error');
+  if (pay.value !== 'online') return e.target.submit();
 
   btn.disabled = true;
 
   if (typeof Razorpay === 'undefined') {
-    displayNotification('Payment gateway not loaded.', 'error');
+    displayNotification('Razorpay script not loaded.', 'error');
     btn.disabled = false;
     return;
   }
@@ -578,8 +564,12 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
     const amountPaise = Math.round(
       parseFloat(document.getElementById('total_price_with_shipping').value) * 100
     );
+    const shippingCharge = parseFloat(document.getElementById('shipping_charge').value);
+    const originalTotal = parseFloat(document.getElementById('original_total_price').value);
+    const discountedTotal = parseFloat(document.getElementById('discounted_total_price').value);
+    const variantInput = document.getElementById('variant_id');
+    const variantId = variantInput ? variantInput.value : null;
 
-    // Create Razorpay order from backend
     const resp = await fetch("{% url 'cart:create_razorpay_order' %}", {
       method: 'POST',
       headers: {
@@ -590,18 +580,21 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
         amount: amountPaise,
         address_id: addr.value,
         order_notes: e.target.order_notes?.value || '',
-        original_total_price: parseFloat(e.target.original_total_price.value),
-        discounted_total_price: parseFloat(e.target.discounted_total_price.value),
-        shipping_charge: parseFloat('{{ shipping_charge|floatformat:2 }}')
+        original_total_price: originalTotal,
+        discounted_total_price: discountedTotal,
+        shipping_charge: shippingCharge,
+        variant_id: variantId
       })
     });
 
     const data = await resp.json();
+    console.log("📦 Razorpay order response:", data);
+
     if (!resp.ok || !data.success) {
-      throw new Error(data.error || 'Failed to create order');
+      throw new Error(data.error || 'Failed to create Razorpay order');
     }
 
-    const rzp = new Razorpay({
+    const razorpayOptions = {
       key: document.getElementById('razorpay_key').value,
       amount: data.amount,
       currency: 'INR',
@@ -626,57 +619,100 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
               order_id: data.order_id,
               razorpay_payment_id: res.razorpay_payment_id,
               razorpay_order_id: res.razorpay_order_id,
-              razorpay_signature: res.razorpay_signature
+              razorpay_signature: res.razorpay_signature,
+              variant_id: variantId
             })
           });
 
           const result = await verificationResp.json();
           console.log("📩 Verification Result:", result);
-          console.log("🧮 total_price_with_shipping:", document.getElementById('total_price_with_shipping').value);
-console.log("🧮 amountPaise:", amountPaise);
-
-    
-
 
           if (result.success && result.payment_success) {
-const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
-location.href = redirectUrl + '?payment_status=success';
-
-            location.href = redirectUrl + '?payment_status=success';
+            const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
+            window.location.href = redirectUrl + '?payment_status=success';
           } else {
             throw new Error(result.error || 'Payment verification failed');
           }
         } catch (err) {
           console.error("❌ Verification Error:", err);
-          displayNotification(err.message, 'error');
-          location.href = document.getElementById('order_failure_url').value + '?payment_status=failed';
-
+          displayNotification(err.message || 'Verification failed', 'error');
+          window.location.href = document.getElementById('order_failure_url').value + '?payment_status=failed';
         }
       },
       modal: {
         ondismiss: function () {
-          console.warn('Checkout dismissed');
-          location.href = document.getElementById('cart_url').value + '?payment_status=cancelled';
+          console.warn('🟡 Checkout dismissed');
+          window.location.href = document.getElementById('cart_url').value + '?payment_status=cancelled';
         }
       }
-    });
+    };
+
+    const rzp = new Razorpay(razorpayOptions);
 
     rzp.on('payment.failed', function (err) {
-      console.error("💥 Razorpay Failure:", err.error);
+      console.error("💥 Razorpay Payment Failed:", err);
       displayNotification(`Payment failed: ${err.error.description}`, 'error');
-      location.href = document.getElementById('cart_url').value + '?payment_status=failed';
+      window.location.href = document.getElementById('cart_url').value + '?payment_status=failed';
     });
 
+    console.log("📤 Opening Razorpay modal...");
     rzp.open();
+
   } catch (err) {
-    console.error("⚠️ JS Error:", err);
-    displayNotification(err.message || 'Payment initialization failed', 'error');
+    console.error("⚠️ Razorpay Init Error:", err);
+    displayNotification(err.message || 'Something went wrong', 'error');
     btn.disabled = false;
   }
 });
+
+function displayNotification(message, type = 'info', duration = 8000) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), duration);
+}
 </script>
+
 <script>
-  // Handle Add Address
+  function displayNotification(msg, type) {
+    const note = document.createElement('div');
+    note.classList.add(
+      'fixed', 'bottom-5', 'right-5', 'p-3', 'rounded-lg', 'shadow-lg', 'text-white',
+      type === 'success' ? 'bg-green-600' : 'bg-red-600'
+    );
+    note.textContent = msg;
+    document.body.appendChild(note);
+    setTimeout(() => note.remove(), 3000);
+  }
+
+  function closeModal() {
+    document.getElementById('addressModal').classList.add('hidden');
+    document.getElementById('addAddressForm').reset();
+  }
+
+  function closeEditModal() {
+    document.getElementById('editAddressModal').classList.add('hidden');
+    document.getElementById('editAddressForm').reset();
+  }
+
+  function openEditModal(id, name = '', phone = '', line = '', type = 'home',
+    city = '', state = '', pincode = '', country = '', isDefault = false) {
+    document.getElementById('editAddressId').value = id;
+    document.getElementById('editName').value = name;
+    document.getElementById('editPhone').value = phone;
+    document.getElementById('editAddressLine').value = line;
+    document.getElementById('editAddressType').value = type || 'home';
+    document.getElementById('editCity').value = city;
+    document.getElementById('editState').value = state;
+    document.getElementById('editPostalCode').value = pincode;
+    document.getElementById('editCountry').value = country;
+    document.getElementById('editIsDefault').checked = (isDefault === true || isDefault === 'true');
+    document.getElementById('editAddressForm').action = `/user_profile/edit-address/${id}/`;
+    document.getElementById('editAddressModal').classList.remove('hidden');
+  }
+
+  // ──────────────── ADD ADDRESS ────────────────
   document.getElementById('addAddressForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const form = e.target;
@@ -697,8 +733,45 @@ location.href = redirectUrl + '?payment_status=success';
         displayNotification("Address added successfully", "success");
         closeModal();
 
-        // Optional: dynamically add to the checkout address list
-        // Example: updateAddressList(result.address);
+        const address = result.address;
+
+        const addressTypeDisplay = {
+          home: 'Home',
+          work: 'Work'
+        }[address.address_type] || 'Other';
+
+        const html = `
+          <div class="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50">
+            <div class="flex items-start">
+              <input 
+                type="radio" 
+                id="address-${address.id}" 
+                name="address" 
+                value="${address.id}" 
+                class="mr-4 mt-1 address-radio"
+                ${address.is_default ? 'checked' : ''}
+                required>
+              <label for="address-${address.id}" class="text-md text-gray-700 cursor-pointer">
+                <p class="font-semibold text-gray-800">${address.name || 'Address'} ${address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
+                <p class="text-gray-600">${addressTypeDisplay}</p>
+                <p class="text-gray-600">${address.address_line}</p>
+                <p class="text-gray-600">${address.city}, ${address.state}</p>
+                <p class="text-gray-600">${address.country} - ${address.postal_code}</p>
+                ${address.phone ? `<p class="text-gray-600">Phone: ${address.phone}</p>` : ''}
+              </label>
+            </div>
+            <div class="ml-4 mt-1">
+              <button 
+                type="button" 
+                onclick="openEditModal(${address.id}, '${address.name}', '${address.phone}', '${address.address_line}', '${address.address_type}', '${address.city}', '${address.state}', '${address.postal_code}', '${address.country}', ${address.is_default})" 
+                class="text-sm text-blue-500 hover:underline">
+                ✏️ Edit
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('addressList').insertAdjacentHTML('beforeend', html);
 
       } else {
         const error = result.error || 'Something went wrong';
@@ -710,7 +783,7 @@ location.href = redirectUrl + '?payment_status=success';
     }
   });
 
-  // Handle Edit Address
+  // ──────────────── EDIT ADDRESS ────────────────
   document.getElementById('editAddressForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const form = e.target;
@@ -731,7 +804,45 @@ location.href = redirectUrl + '?payment_status=success';
         displayNotification("Address updated successfully", "success");
         closeEditModal();
 
-      
+        const address = result.address;
+        const existingInput = document.getElementById(`address-${address.id}`);
+
+        if (existingInput) {
+          const wrapper = existingInput.closest(".flex.justify-between");
+          const addressTypeDisplay = {
+            home: 'Home',
+            work: 'Work'
+          }[address.address_type] || 'Other';
+
+          wrapper.innerHTML = `
+            <div class="flex items-start">
+              <input 
+                type="radio" 
+                id="address-${address.id}" 
+                name="address" 
+                value="${address.id}" 
+                class="mr-4 mt-1 address-radio"
+                ${address.is_default ? 'checked' : ''}
+                required>
+              <label for="address-${address.id}" class="text-md text-gray-700 cursor-pointer">
+                <p class="font-semibold text-gray-800">${address.name || 'Address'} ${address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
+                <p class="text-gray-600">${addressTypeDisplay}</p>
+                <p class="text-gray-600">${address.address_line}</p>
+                <p class="text-gray-600">${address.city}, ${address.state}</p>
+                <p class="text-gray-600">${address.country} - ${address.postal_code}</p>
+                ${address.phone ? `<p class="text-gray-600">Phone: ${address.phone}</p>` : ''}
+              </label>
+            </div>
+            <div class="ml-4 mt-1">
+              <button 
+                type="button" 
+                onclick="openEditModal(${address.id}, '${address.name}', '${address.phone}', '${address.address_line}', '${address.address_type}', '${address.city}', '${address.state}', '${address.postal_code}', '${address.country}', ${address.is_default})" 
+                class="text-sm text-blue-500 hover:underline">
+                ✏️ Edit
+              </button>
+            </div>
+          `;
+        }
 
       } else {
         const error = result.error || 'Failed to update address';

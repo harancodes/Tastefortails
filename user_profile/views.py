@@ -657,6 +657,21 @@ def update_profile_image(request):
         return JsonResponse({"success": True})
     return JsonResponse({"success": False, "error": "No image provided."}, status=400)
 
+import re
+import datetime
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from django.shortcuts import render, redirect
+
+from authentication.utils import (
+    is_valid_full_name,
+    is_valid_phone_number,
+    is_strong_password,
+)
+
+
+
 @block_superuser_navigation
 @never_cache
 @login_required
@@ -689,7 +704,12 @@ def account_overview(request):
 
         # Validate Full Name
         if full_name:
-            user.full_name = full_name
+            name_error = is_valid_full_name(full_name)
+            if name_error:
+                messages.error(request, name_error)
+                errors = True
+            else:
+                user.full_name = full_name
 
         # Validate Date of Birth
         if dob:
@@ -706,27 +726,27 @@ def account_overview(request):
 
         # Validate Phone Number
         if phone_number:
-            cleaned_phone = re.sub(r'\D', '', phone_number)
-            if not re.match(r'^\d{9,15}$', cleaned_phone):
-                messages.error(request, "Phone number must be 9-15 digits.")
+            phone_error = is_valid_phone_number(phone_number)
+            if phone_error:
+                messages.error(request, phone_error)
                 errors = True
             else:
-                user.phone_number = cleaned_phone
+                user.phone_number = phone_number
         else:
             user.phone_number = None
 
         # Validate Alternate Phone Number
         if alternate_phone_number:
-            cleaned_alt_phone = re.sub(r'\D', '', alternate_phone_number)
-            if not re.match(r'^\d{9,15}$', cleaned_alt_phone):
-                messages.error(request, "Alternate phone number must be 9-15 digits.")
+            alt_phone_error = is_valid_phone_number(alternate_phone_number)
+            if alt_phone_error:
+                messages.error(request, alt_phone_error)
                 errors = True
             else:
-                user.alternate_phone_number = cleaned_alt_phone
+                user.alternate_phone_number = alternate_phone_number
         else:
             user.alternate_phone_number = None
 
-        ### Validate Profile Image
+        # Validate Profile Image
         if profile_image:
             if not profile_image.content_type.startswith("image"):
                 messages.error(request, "Invalid file type! Please upload an image.")
@@ -747,14 +767,16 @@ def account_overview(request):
             if new_password != confirm_password:
                 messages.error(request, "Passwords do not match.")
                 errors = True
-            elif len(new_password) < 8:
-                messages.error(request, "Password must be at least 8 characters long.")
-                errors = True
             elif not user.check_password(current_password):
                 messages.error(request, "Current password is incorrect.")
                 errors = True
             else:
-                user.set_password(new_password)
+                password_error = is_strong_password(new_password)
+                if password_error:
+                    messages.error(request, password_error)
+                    errors = True
+                else:
+                    user.set_password(new_password)
 
         if not errors:
             try:
@@ -774,6 +796,7 @@ def account_overview(request):
         "full_name": user.full_name or "",
     }
     return render(request, "account_overview.html", context)
+ 
 
 @block_superuser_navigation
 @never_cache

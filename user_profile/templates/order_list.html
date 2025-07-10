@@ -81,13 +81,14 @@
           {% endif %}
 <hr>
         {% else %}
-          <!-- No Discount -->
+          
           <span class="text-gray-800 font-bold">₹{{ item.product_variant.variant_price|floatformat:2 }}</span>
         {% endif %}
           {% comment %} <p> Varint Total Before Coupon:  <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p> {% endcomment %}
-         {% comment %} <p>After  <span class="text-green-600 font-bold">₹{{ item.price_after_coupon|floatformat:2 }}</span> </p> {% endcomment %}
+          {% comment %} <p>After  <span class="text-green-600 font-bold">₹{{ item.price_after_coupon|floatformat:2 }}</span> </p> {% endcomment %}
+          {% comment %} <p> Total Price <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p> {% endcomment %}
  
-    {%if item.ordered_price_after_coupon%}      {% comment %} <p> Total Price <span class="font-bold text-blue-600"> ₹{{ item.total_price}}</span> </p> {% endcomment %}
+    {%if item.ordered_price_after_coupon%}     
 <p class="text-sm text-gray-500">After Coupon</p>
   <p class="text-green-600 font-bold">
     ₹{{ item.ordered_price_after_coupon|floatformat:2 }}

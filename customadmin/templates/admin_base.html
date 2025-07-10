@@ -2,193 +2,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Taste For Tails{% endblock %}</title>
-    <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Taste For Tails{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token }}"/>
 
-    <link rel="icon" href="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418790/TAILS_foR_TAILS_3_dlade8.png">
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .sidebar {
-            background-color: #ffffff;
-            height: 100vh;
-            position: fixed;
-            width: 260px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
-            z-index: 1000;
-        }
-        
-        .sidebar .logo {
-            margin: 1.5rem auto;
-            display: block;
-            max-width: 80px;
-        }
-        
-        .content-area {
-            margin-left: 260px;
-            padding: 30px;
-        }
-        
-        .nav-link {
-            color: #212529;
-            padding: 0.75rem 1.25rem;
-            display: flex;
-            align-items: center;
-        }
-        
-        .nav-link i {
-            margin-right: 10px;
-            font-size: 1.2rem;
-        }
-        
-        .nav-link.active {
-            background-color: rgba(0, 0, 0, 0.05);
-            font-weight: 500;
-        }
-        
-        .nav-link:hover {
-            background-color: rgba(0, 0, 0, 0.03);
-        }
-        
-        .btn-primary {
-            background-color: #1a1f71;
-            border-color: #1a1f71;
-        }
-        
-        .btn-primary:hover {
-            background-color: #141857;
-            border-color: #141857;
-        }
-        
-        .table thead th {
-            background-color: #1a1f71;
-            color: white;
-        }
-        
-        .breadcrumb-item a {
-            text-decoration: none;
-            color: #1a1f71;
-        }
-        
-        .form-switch .form-check-input:checked {
-            background-color: #28a745;
-            border-color: #28a745;
-        }
-        
-        .rounded-pill.bg-success {
-            background-color: #28a745 !important;
-        }
-        
-        .rounded-pill.bg-danger {
-            background-color: #dc3545 !important;
-        }
-        
-        .account-footer {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            padding: 0 15px;
-        }
-        
-        .page-link {
-            color: #1a1f71;
-        }
-        
-        .page-item.active .page-link {
-            background-color: #1a1f71;
-            border-color: #1a1f71;
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
+  <link rel="icon" href="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418790/TAILS_foR_TAILS_3_dlade8.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"/>
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: #fff;
+      height: 100vh;
+      position: fixed;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      z-index: 1030;
+    }
+
+    .sidebar .nav-link {
+      color: #212529;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar .nav-link i {
+      margin-right: 10px;
+    }
+
+    .sidebar .nav-link.active {
+      background-color: rgba(0, 0, 0, 0.05);
+      font-weight: 500;
+    }
+
+    .content-area {
+      margin-left: 260px;
+      padding: 30px;
+    }
+
+    @media (max-width: 767.98px) {
+      .sidebar {
+        display: none;
+      }
+
+      .content-area {
+        margin-left: 0;
+        padding: 1rem;
+        padding-bottom: 4rem;
+      }
+
+      .bottom-nav {
+        display: flex;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .bottom-nav {
+        display: none !important;
+      }
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #fff;
+      border-top: 1px solid #dee2e6;
+      justify-content: space-around;
+      padding: 0.5rem 0;
+      z-index: 1040;
+    }
+
+    .bottom-nav a {
+      text-align: center;
+      font-size: 1.4rem;
+      color: #212529;
+    }
+
+    .bottom-nav a.active {
+      color: #1a1f71;
+    }
+
+    .bottom-nav a span {
+      display: block;
+      font-size: 0.7rem;
+    }
+
+    .logo {
+      max-width: 100px;
+      margin: 1rem auto;
+      display: block;
+    }
+
+    .account-footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      padding: 0 15px;
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="sidebar">
-        <div class="text-center">
-            <img src="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418804/TAILS_foR_TAILS__2_-removebg-preview_bkyrmx.png" alt="Pets For Pets" class="logo">
-        </div>
-        
-        <div class="nav flex-column">
-            <a href="{% url 'customadmin:admin_dashboard' %}" class="nav-link {% if active_tab == 'dashboard' %}active{% endif %}">
-                <i class="bi bi-speedometer2"></i> Dashboard
-            </a>
-            
-            <a href="{% url 'customadmin:product_list' %}" class="nav-link {% if active_tab == 'products' %}active{% endif %}">
-                <i class="bi bi-box-seam"></i> Products
-            </a>
-            
-            <a href="{% url 'customadmin:admin_order_list_view' %}" class="nav-link {% if active_tab == 'order_list' %}active{% endif %}">
-                <i class="bi bi-list-check"></i> Order List
-            </a>
-            
-            <a href="{% url 'customadmin:user_list'%}" class="nav-link {% if active_tab == 'customer' %}active{% endif %}">
-                <i class="bi bi-person"></i> Customer
-            </a>
-            
-            <a href="{% url 'customadmin:sales'%}" class="nav-link {% if active_tab == 'sales' %}active{% endif %}">
-                <i class="bi bi-graph-up"></i> Sales
-            </a>
-            
-            <a href="{% url 'customadmin:category_list' %}" class="nav-link {% if active_tab == 'category' %}active{% endif %}">
-                <i class="bi bi-grid"></i> Category
-            </a>
-            
-            <a href="{% url 'customadmin:coupon_management' %}" class="nav-link {% if active_tab == 'coupons' %}active{% endif %}">
-                <i class="bi bi-ticket-perforated"></i> Coupons
-            </a>
-            
-            <a href="{% url 'customadmin:banner_list' %}" class="nav-link {% if active_tab == 'banner_list' %}active{% endif %}">
-                <i class="bi bi-image"></i> Banner
-            </a>
 
-            <a href="{% url 'customadmin:brands_list' %}" class="nav-link {% if active_tab == 'brands_list' %}active{% endif %}">
-                <i class="bi bi-speedometer2"></i> Brands
-            </a>
-        </div>
-        
-        <div class="account-footer">
-            <div class="d-grid gap-2">
-                <a href="#" class="btn btn-outline-dark">Account</a>
-                <a href="{% url 'customadmin:admin_logout' %}" class="btn btn-dark">Logout</a>
-            </div>
-        </div>
+<!-- Desktop Sidebar -->
+<div class="sidebar d-none d-md-block">
+  <div class="text-center">
+    <img src="https://res.cloudinary.com/dig0n3abt/image/upload/v1746418804/TAILS_foR_TAILS__2_-removebg-preview_bkyrmx.png" class="logo" alt="Logo"/>
+  </div>
+
+  <nav class="nav flex-column">
+    <a href="{% url 'customadmin:admin_dashboard' %}" class="nav-link {% if active_tab == 'dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+    <a href="{% url 'customadmin:product_list' %}" class="nav-link {% if active_tab == 'products' %}active{% endif %}">
+      <i class="bi bi-box-seam"></i> Products
+    </a>
+    <a href="{% url 'customadmin:admin_order_list_view' %}" class="nav-link {% if active_tab == 'order_list' %}active{% endif %}">
+      <i class="bi bi-list-check"></i> Order List
+    </a>
+    <a href="{% url 'customadmin:user_list' %}" class="nav-link {% if active_tab == 'customer' %}active{% endif %}">
+      <i class="bi bi-person"></i> Customer
+    </a>
+    <a href="{% url 'customadmin:sales' %}" class="nav-link {% if active_tab == 'sales' %}active{% endif %}">
+      <i class="bi bi-graph-up"></i> Sales
+    </a>
+    <a href="{% url 'customadmin:category_list' %}" class="nav-link {% if active_tab == 'category' %}active{% endif %}">
+      <i class="bi bi-grid"></i> Category
+    </a>
+    <a href="{% url 'customadmin:coupon_management' %}" class="nav-link {% if active_tab == 'coupons' %}active{% endif %}">
+      <i class="bi bi-ticket-perforated"></i> Coupons
+    </a>
+    <a href="{% url 'customadmin:banner_list' %}" class="nav-link {% if active_tab == 'banner_list' %}active{% endif %}">
+      <i class="bi bi-image"></i> Banner
+    </a>
+    <a href="{% url 'customadmin:brands_list' %}" class="nav-link {% if active_tab == 'brands_list' %}active{% endif %}">
+      <i class="bi bi-star"></i> Brands
+    </a>
+  </nav>
+
+  <div class="account-footer">
+    <div class="d-grid gap-2">
+      <a href="#" class="btn btn-outline-dark">Account</a>
+      <a href="{% url 'customadmin:admin_logout' %}" class="btn btn-dark">Logout</a>
     </div>
+  </div>
+</div>
 
-    <div class="content-area">
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb">
-                <!-- <li class="breadcrumb-item"><a href="{% url 'customadmin:admin_dashboard' %}">Dashboard</a></li> -->
-                {% block breadcrumb %}{% endblock %}
-            </ol>
-        </nav>
+<!-- Mobile Bottom Nav -->
+<div class="bottom-nav d-flex d-md-none">
+  <a href="{% url 'customadmin:admin_dashboard' %}" class="{% if active_tab == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+  </a>
+  <a href="{% url 'customadmin:product_list' %}" class="{% if active_tab == 'products' %}active{% endif %}">
+    <i class="bi bi-box-seam"></i><span>Products</span>
+  </a>
+  <a href="{% url 'customadmin:user_list' %}" class="{% if active_tab == 'customer' %}active{% endif %}">
+    <i class="bi bi-person"></i><span>Users</span>
+  </a>
+  <a href="{% url 'customadmin:sales' %}" class="{% if active_tab == 'sales' %}active{% endif %}">
+    <i class="bi bi-graph-up"></i><span>Sales</span>
+  </a>
+   <a href="{% url 'customadmin:category_list' %}" class="{% if active_tab == 'category' %}active{% endif %}">
+  <i class="bi bi-grid"></i><span>Category</span>
+</a>
+<a href="{% url 'customadmin:coupon_management' %}" class="{% if active_tab == 'coupons' %}active{% endif %}">
+  <i class="bi bi-ticket-perforated"></i><span>Coupons</span>
+</a>
+<a href="{% url 'customadmin:banner_list' %}" class="{% if active_tab == 'banner_list' %}active{% endif %}">
+  <i class="bi bi-image"></i><span>Banner</span>
+</a>
+<a href="{% url 'customadmin:brands_list' %}" class="{% if active_tab == 'brands_list' %}active{% endif %}">
+  <i class="bi bi-star"></i><span>Brands</span>
+</a>
 
-        {% block content %}{% endblock %}
-    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    {% block scripts %}{% endblock %}
+<!-- Content Area -->
+<div class="content-area">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      {% block breadcrumb %}{% endblock %}
+    </ol>
+  </nav>
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>
-      
-      
-      
-      
-      
-      <!-- <nav class="px-4 py-6 space-y-4">
-        <a href=" class="block text-gray-700 font-medium hover:text-blue-600">Dashboard</a>
-        <a href="{% url 'customadmin:user_list' %}" class="block text-gray-700 font-medium hover:text-blue-600">User List</a>
-        <a href="{% url 'customadmin:category_list'%}" class="block text-gray-7000 font-medium hover:text-blue-600">Category</a> -->
-        <!-- <a href="{% url 'customadmin:product_list'%}" class="block text-gray-7000 font-medium hover:text-blue-600">Products</a> -->
-        
-        
-    

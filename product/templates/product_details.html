@@ -295,7 +295,6 @@
         </div>
     </div>
 </div>
-
 <section class="mb-16">
   <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center mb-6">
@@ -305,60 +304,63 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {% for sp in similar_products %}
         {% if sp.is_active and sp.is_listed %}
-        <a href="{% url 'product:detail' sp.slug %}" class="group block">
-          <div class="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-[1.02]">
-            <div class="relative">
-              {% if sp.thumbnail %}
-              <img src="{{ sp.thumbnail }}" alt="{{ sp.name }}" class="w-full h-60 object-cover">
-              {% else %}
-              <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-60 object-cover">
-              {% endif %}
+          {% with variant=sp.variants.first %}
+            <div class="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-[1.02]">
 
-              {% if sp.offer_percentage > 0 %}
-              <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
-                <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">{{ sp.offer_percentage }}% OFF</span>
-              </div>
-              {% endif %}
+              <!-- Product Image and Overlay -->
+              <a href="{% url 'product:detail' sp.slug %}" class="group block">
+                <div class="relative">
+                  {% if sp.thumbnail %}
+                    <img src="{{ sp.thumbnail }}" alt="{{ sp.name }}" class="w-full h-60 object-cover">
+                  {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" alt="No image available" class="w-full h-60 object-cover">
+                  {% endif %}
 
-              <div class="absolute top-3 right-3 z-10">
-                <button 
-                  class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
-                  onclick="event.stopPropagation(); event.preventDefault(); toggleWishlist({{ sp.variants.first.id }})"
-                  data-variant-id="{{ sp.variants.first.id }}"
-                  data-in-wishlist="false"
-                >
-                  <i class="far fa-heart text-red-500 text-lg"></i>
-                </button> 
-              </div>
+                  {% if sp.offer_percentage > 0 %}
+                    <div class="absolute top-3 left-3 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                      <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">{{ sp.offer_percentage }}% OFF</span>
+                    </div>
+                  {% endif %}
 
-              <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <div class="bg-white bg-opacity-90 px-4 py-2 rounded-md text-sm text-gray-800 font-medium">
-                  View Details
+                  <!-- Wishlist Button -->
+                  {% if variant %}
+                    <div class="absolute top-3 right-3 z-10">
+                      <button 
+                        class="wishlist-btn bg-white p-3 rounded-full shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-300"
+                        onclick="event.stopPropagation(); event.preventDefault(); toggleWishlist({{ variant.id }})"
+                        data-variant-id="{{ variant.id }}"
+                        data-in-wishlist="{% if variant.id in wishlist_variant_ids %}true{% else %}false{% endif %}"
+                      >
+                        <i class="{% if variant.id in wishlist_variant_ids %}fas{% else %}far{% endif %} fa-heart text-red-500 text-lg"></i>
+                      </button>
+                    </div>
+                  {% endif %}
+
+                  <!-- Overlay -->
+                  <div class="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div class="bg-white bg-opacity-90 px-4 py-2 rounded-md text-sm text-gray-800 font-medium">
+                      View Details
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div class="p-4 space-y-2">
-              {% if sp.brand %}
-              <p class="text-blue-600 text-xs uppercase font-semibold">{{ sp.brand.name }}</p>
-              {% endif %}
-              <h3 class="text-base font-semibold text-gray-800 group-hover:text-blue-700 truncate">{{ sp.name }}</h3>
+                <!-- Product Details -->
+                <div class="p-4 space-y-2">
+                  {% if sp.brand %}
+                    <p class="text-blue-600 text-xs uppercase font-semibold">{{ sp.brand.name }}</p>
+                  {% endif %}
+                  <h3 class="text-base font-semibold text-gray-800 group-hover:text-blue-700 truncate">{{ sp.name }}</h3>
 
-              <div class="flex items-center text-yellow-400 text-sm">
-                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-                <span class="ml-2 text-gray-500 text-xs">(24)</span>
-              </div>
+                  <div class="flex items-center text-yellow-400 text-sm">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                    <span class="ml-2 text-gray-500 text-xs">(24)</span>
+                  </div>
 
-              <div class="flex justify-between items-center pt-2">
-                {% with variant=sp.variants.first %}
                   {% if variant %}
                     {% if variant.sales_price < variant.variant_price %}
                       <div class="flex flex-col gap-0.5">
                         <p class="text-lg font-bold text-gray-900">₹{{ variant.sales_price }}</p>
                         <p class="text-sm line-through text-gray-500">₹{{ variant.variant_price }}</p>
-                        <p class="text-xs text-green-600 font-medium">
-                          {% comment %} You save ₹{{ variant.variant_price|floatformat:0|add:"-"|add:variant.sales_price|floatformat:0 }} {% endcomment %}
-                        </p>
                       </div>
                     {% else %}
                       <p class="text-lg font-bold text-gray-900">₹{{ variant.sales_price }}</p>
@@ -366,16 +368,29 @@
                   {% else %}
                     <span class="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full">Out of Stock</span>
                   {% endif %}
-                {% endwith %}
-              </div>
+                </div>
+              </a>
+
+              <!-- Add to Cart Button OUTSIDE the <a> -->
+              {% if variant %}
+                <div class="px-4 pb-4">
+                  <button
+                    type="button"
+                    onclick="addCartItem({{ variant.id }}, 1)"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm w-full flex justify-center items-center gap-2"
+                  >
+                    <i class="fas fa-shopping-cart"></i> Add to Cart
+                  </button>
+                </div>
+              {% endif %}
             </div>
-          </div>
-        </a>
+          {% endwith %}
         {% endif %}
       {% endfor %}
     </div>
   </div>
 </section>
+
 
       
 
@@ -1052,7 +1067,7 @@
     });
 }
 
-    
+   
     document.addEventListener("DOMContentLoaded", () => {
         const firstVariant = document.querySelector('.variant-option');
         if (firstVariant) {

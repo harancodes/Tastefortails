@@ -273,6 +273,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
                         <div class="relative">
                             <input type="text" name="username" value="{{ user.username|default:'' }}" id="username" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Your username">
+                            <small id="username_error" class="text-red-500 text-sm mt-1 hidden"></small>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <i class="fas fa-user text-gray-400"></i>
                             </div>
@@ -289,6 +290,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                         <div class="relative">
                             <input type="text" name="full_name" value="{{ user.full_name|default:'' }}" id="full_name" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Your full name">
+                            <small id="full_name_error" class="text-red-500 text-sm mt-1 hidden"></small>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <i class="fas fa-user text-gray-400"></i>
                             </div>
@@ -337,6 +339,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                         <div class="relative">
                             <input type="password" name="new_password" id="new_password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="New password">
+                            <small id="new_password_error" class="text-red-500 text-sm mt-1 hidden"></small>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <i class="fas fa-lock text-gray-400"></i>
                             </div>
@@ -362,6 +365,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                         <div class="relative">
                             <input type="text" name="phone_number" value="{{ user.phone_number|default:'' }}" id="phone_number" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="+1234567890">
+                            <small id="phone_number_error" class="text-red-500 text-sm mt-1 hidden"></small>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <i class="fas fa-phone text-gray-400"></i>
                             </div>
@@ -371,6 +375,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Alternate Phone Number</label>
                         <div class="relative">
                             <input type="text" name="alternate_phone_number" value="{{ user.alternate_phone_number|default:'' }}" id="alternate_phone_number" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="+1234567890">
+                            <small id="alternate_phone_number_error" class="text-red-500 text-sm mt-1 hidden"></small>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <i class="fas fa-phone text-gray-400"></i>
                             </div>
@@ -400,7 +405,7 @@
         {% endblock %}
     </div>
 </div>
-
+{% comment %} footer {% endcomment %}
 <footer class="bg-blue-700 text-white py-12">
     <div class="container mx-auto px-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -637,5 +642,92 @@
         });
     });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Username validation
+    const username = document.getElementById("username");
+    const usernameError = document.getElementById("username_error");
+    username.addEventListener("input", () => {
+        const value = username.value.trim();
+        if (!/^[a-zA-Z0-9_]{3,200}$/.test(value)) {
+            showError(usernameError, "3-200 chars, only letters, numbers, and underscores.");
+        } else {
+            hideError(usernameError);
+        }
+    });
+
+    // Full name validation
+    const fullName = document.getElementById("full_name");
+    const fullNameError = document.getElementById("full_name_error");
+    fullName.addEventListener("input", () => {
+        const value = fullName.value.trim();
+        if (!/^[A-Za-z]+(?: [A-Za-z]+)*$/.test(value)) {
+            showError(fullNameError, "Only letters and spaces allowed.");
+        } else {
+            hideError(fullNameError);
+        }
+    });
+
+    // Phone number validation
+    const phone = document.getElementById("phone_number");
+    const phoneError = document.getElementById("phone_number_error");
+    phone.addEventListener("input", () => {
+        const value = phone.value.trim();
+        if (!/^\d{10,15}$/.test(value) || /^(\d)\1+$/.test(value)) {
+            showError(phoneError, "Enter a valid phone number (10-15 digits).");
+        } else {
+            hideError(phoneError);
+        }
+    });
+
+    // Alternate phone number validation
+    const altPhone = document.getElementById("alternate_phone_number");
+    const altPhoneError = document.getElementById("alternate_phone_number_error");
+    altPhone.addEventListener("input", () => {
+        const value = altPhone.value.trim();
+        if (!/^\d{10,15}$/.test(value) || /^(\d)\1+$/.test(value)) {
+            showError(altPhoneError, "Enter a valid alternate phone number.");
+        } else {
+            hideError(altPhoneError);
+        }
+    });
+
+    // Password strength validation
+    const password = document.getElementById("new_password");
+    const passwordError = document.getElementById("new_password_error");
+    password.addEventListener("input", () => {
+        const val = password.value;
+        if (val.length < 8) {
+            showError(passwordError, "At least 8 characters.");
+        } else if (!/[A-Z]/.test(val)) {
+            showError(passwordError, "Include at least one uppercase letter.");
+        } else if (!/[a-z]/.test(val)) {
+            showError(passwordError, "Include at least one lowercase letter.");
+        } else if (!/\d/.test(val)) {
+            showError(passwordError, "Include at least one number.");
+        } else if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/]/.test(val)) {
+            showError(passwordError, "Include at least one special character.");
+        } else if (/(\d)\1{2,}/.test(val)) {
+            showError(passwordError, "No repeating numbers like 000 or 111.");
+        } else if (/012|123|234|345|456|567|678|789/.test(val)) {
+            showError(passwordError, "No sequential digits like 123456.");
+        } else {
+            hideError(passwordError);
+        }
+    });
+
+    function showError(element, message) {
+        element.innerText = message;
+        element.classList.remove("hidden");
+    }
+
+    function hideError(element) {
+        element.innerText = "";
+        element.classList.add("hidden");
+    }
+});
+</script>
+
 </body>
 </html>

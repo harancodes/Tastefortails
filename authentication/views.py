@@ -83,6 +83,20 @@ def user_login(request):
                     return redirect('home')
 
     return render(request, 'user_auth/login.html', {'login_error': login_error})
+import re
+from django.contrib import messages
+from django.contrib.auth.hashers import make_password
+from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
+
+from .models import CustomUser
+from .utils import (
+    send_otp,
+    is_strong_password,
+    is_valid_full_name,
+    is_valid_phone_number,
+)
 
 
 @never_cache
@@ -99,27 +113,34 @@ def user_signup(request):
         confirm_password = request.POST.get('confirm_password', '')
         referral_code = request.POST.get('referral_code', '').strip().upper()
 
-        # Validate inputs
-        if len(full_name) < 3:
-            messages.error(request, "Full name must be at least 3 characters long.")
+        # Full name validation
+        name_error = is_valid_full_name(full_name)
+        if name_error:
+            messages.error(request, name_error)
             return redirect('user_signup')
 
+        # Email validation
         if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email):
             messages.error(request, "Please enter a valid email address.")
             return redirect('user_signup')
 
-        if not re.match(r'^\+?1?\d{9,15}$', phone_number):
-            messages.error(request, "Please enter a valid phone number (up to 15 digits).")
+        # Phone number validation
+        phone_error = is_valid_phone_number(phone_number)
+        if phone_error:
+            messages.error(request, phone_error)
             return redirect('user_signup')
 
-        if len(password) < 8:
-            messages.error(request, "Password must be at least 8 characters long.")
+        # Password validation
+        password_error = is_strong_password(password)
+        if password_error:
+            messages.error(request, password_error)
             return redirect('user_signup')
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
             return redirect('user_signup')
 
+        # Uniqueness checks
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, "An account with this email already exists.")
             return redirect('user_signup')
@@ -128,7 +149,7 @@ def user_signup(request):
             messages.error(request, "An account with this phone number already exists.")
             return redirect('user_signup')
 
-        # Referral code validation
+        # Referral code check
         referrer = None
         if referral_code:
             try:
@@ -137,14 +158,12 @@ def user_signup(request):
                 messages.error(request, "Invalid referral code.")
                 return redirect('user_signup')
 
-        # Flush any previous session
+        # Flush session and send OTP
         request.session.flush()
-
-        # Send OTP
         otp = send_otp(email)
 
-        # Store user data temporarily in session
-        user_data = {
+        # Store temporary data in session
+        request.session['user_data'] = {
             'full_name': full_name,
             'email': email,
             'phone_number': phone_number,
@@ -153,8 +172,6 @@ def user_signup(request):
             'password': make_password(password),
             'referrer_id': referrer.id if referrer else None,
         }
-
-        request.session['user_data'] = user_data
 
         return redirect('verify_otp')
 
@@ -184,7 +201,7 @@ def verify_otp(request):
             try:
                 with transaction.atomic():
                     
-                    referred_by_id = user_data.get('referrer_id')  # FIXED ✅
+                    referred_by_id = user_data.get('referrer_id')  
 
                     user = CustomUser(
                         full_name=user_data['full_name'],
@@ -329,41 +346,47 @@ def resend_reset_otp(request):
     messages.success(request, "A new OTP has been sent to your email.")
     return redirect('verify_reset_otp')
 
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.views.decorators.cache import never_cache
+from django.utils import timezone
+from .models import CustomUser
+from .utils import is_strong_password
 
 @never_cache
 def reset_password(request):
     reset_data = request.session.get('reset_data')
-    
-    if not reset_data or not reset_data.get('otp_verified'):
-        messages.error(request, "Please verify your OTP first")
+
+    if not reset_data or not reset_data.get('is_password_reset'):
+        messages.error(request, "Your reset session has expired. Please try again.")
         return redirect('forgot_password')
-        
+
     if request.method == 'POST':
-        new_password = request.POST.get('new_password')
-        confirm_password = request.POST.get('confirm_password')
-        
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
         if new_password != confirm_password:
-            messages.error(request, 'Passwords do not match')
-            return render(request, 'user_auth/password/reset_password.html')
-            
-        if len(new_password) < 8:
-            messages.error(request, 'Password must be at least 8 characters long')
-            return render(request, 'user_auth/password/reset_password.html')
-            
+            messages.error(request, "Passwords do not match.")
+            return redirect('reset_password')
+
+        if not is_strong_password(new_password):
+            messages.error(request, "Password must be strong: min 8 characters, include uppercase, lowercase, number, special character, and avoid sequences like 123 or 000.")
+            return redirect('reset_password')
+
         try:
             user = CustomUser.objects.get(email=reset_data['email'])
             user.set_password(new_password)
             user.save()
-            
-            request.session.flush()
-            
-            messages.success(request, 'Password has been reset successfully')
+
+            del request.session['reset_data']
+            messages.success(request, "Password reset successful. Please log in.")
             return redirect('user_login')
         except CustomUser.DoesNotExist:
-            messages.error(request, 'Something went wrong. Please try again.')
+            messages.error(request, "No account found for this email.")
             return redirect('forgot_password')
-            
+
     return render(request, 'user_auth/password/reset_password.html')
+
 
 
 

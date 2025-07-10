@@ -100,6 +100,10 @@ LOGOUT_URL = '/user_logout/'
 ACCOUNT_LOGIN_REDIRECT_URL = '/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/'
 # LOGOUT_REDIRECT_URL = '/user_login/'
+# settings.py
+
+# LOGOUT_REDIRECT_URL = '/customadmin/admin/login/'
+
 
 
 

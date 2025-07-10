@@ -583,6 +583,9 @@ def create_wallet(sender, instance, created, **kwargs):
         Wallet.objects.create(user=instance)
 
 ##### Razorpay Starts ####
+
+
+##### Razorpay Starts ####
 import json
 import logging
 from django.http import JsonResponse
@@ -606,7 +609,7 @@ def create_razorpay_order(request):
             discounted_total_price = data.get("discounted_total_price", 0)
             shipping_charge = data.get("shipping_charge", 0)
 
-            # Validate amount
+            
             try:
                 amount = int(amount)
             except (TypeError, ValueError):
@@ -623,21 +626,19 @@ def create_razorpay_order(request):
                 logger.error("No address selected")
                 return JsonResponse({"success": False, "error": "No address selected"}, status=400)
 
-            # Check for Razorpay keys
             if not hasattr(settings, 'RAZORPAY_KEY_ID') or not hasattr(settings, 'RAZORPAY_KEY_SECRET'):
                 logger.error("Razorpay authentication keys are not configured")
                 return JsonResponse({"success": False, "error": "Authentication keys missing"}, status=500)
 
-            # Initialize Razorpay client
             try:
                 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
             except Exception as e:
                 logger.error("Failed to initialize Razorpay client: %s", str(e))
                 return JsonResponse({"success": False, "error": "Payment gateway initialization failed"}, status=500)
 
-            # Create Razorpay order
+       
             razorpay_order = razorpay_client.order.create({
-                "amount": amount,  # Already in paise
+                "amount": amount,  
                 "currency": "INR",
                 "payment_capture": "1"
             })
@@ -646,7 +647,7 @@ def create_razorpay_order(request):
 
             order = Order.objects.create(
                 user=request.user,
-                total_amount=amount / 100,  # Convert to rupees
+                total_amount=amount / 100,  
                 razorpay_order_id=razorpay_order["id"],
                 shipping_address_id=address_id,
                 notes=order_notes,
@@ -654,7 +655,7 @@ def create_razorpay_order(request):
                 shipping_charge=shipping_charge
             )
 
-            payment_amount = amount / 100  # Convert to rupees
+            payment_amount = amount / 100  
             if payment_amount <= 0:
                 logger.error("Invalid payment amount: %s", payment_amount)
                 return JsonResponse({"success": False, "error": "Invalid payment amount"}, status=400)
@@ -691,6 +692,7 @@ from django.db import transaction
 import razorpay
 
 from .models import Order, Payment, OrderItem, CartItem
+from product.models import Variant  # Ensure this matches your app name
 
 logger = logging.getLogger(__name__)
 
@@ -707,6 +709,7 @@ def verify_razorpay_payment(request):
         razorpay_order_id = data.get("razorpay_order_id")
         payment_id = data.get("razorpay_payment_id")
         signature = data.get("razorpay_signature")
+        variant_id = data.get("variant_id")  # for Buy Now
 
         logger.info("Verifying payment for order_id: %s, razorpay_order_id: %s, user: %s",
                     order_id, razorpay_order_id, request.user)
@@ -714,7 +717,7 @@ def verify_razorpay_payment(request):
         try:
             order = Order.objects.get(id=order_id, razorpay_order_id=razorpay_order_id)
         except Order.DoesNotExist:
-            logger.error("Order not found for order_id: %s, razorpay_order_id: %s", order_id, razorpay_order_id)
+            logger.error("Order not found for order_id: %s", order_id)
             return JsonResponse({"success": False, "error": "Order not found"}, status=404)
 
         payment, _ = Payment.objects.get_or_create(
@@ -730,80 +733,110 @@ def verify_razorpay_payment(request):
             logger.error("Razorpay authentication keys are not configured")
             return JsonResponse({"success": False, "error": "Authentication keys missing"}, status=500)
 
-        try:
-            razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        except Exception as e:
-            logger.error("Failed to initialize Razorpay client: %s", str(e))
-            return JsonResponse({"success": False, "error": "Payment gateway initialization failed"}, status=500)
+        razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
         payment_successful = False
         if payment_id and signature:
-            params_dict = {
-                "razorpay_order_id": razorpay_order_id,
-                "razorpay_payment_id": payment_id,
-                "razorpay_signature": signature,
-            }
             try:
-                razorpay_client.utility.verify_payment_signature(params_dict)
+                razorpay_client.utility.verify_payment_signature({
+                    "razorpay_order_id": razorpay_order_id,
+                    "razorpay_payment_id": payment_id,
+                    "razorpay_signature": signature,
+                })
                 payment_successful = True
-                logger.info("Payment signature verified for payment_id: %s", payment_id)
+                logger.info("✔️ Signature verified for payment_id: %s", payment_id)
             except razorpay.errors.SignatureVerificationError as e:
-                logger.error("Signature verification failed: %s", str(e))
-                payment_successful = False
+                logger.error("❌ Signature verification failed: %s", str(e))
         else:
-            logger.warning("Payment not completed or cancelled for order_id: %s", order_id)
+            logger.warning("❗ Payment not completed or missing for order_id: %s", order_id)
 
         with transaction.atomic():
             if payment_successful:
+                payment.payment_method = "razorpay"
                 payment.status = "completed"
                 payment.transaction_id = payment_id
 
-                cart_items = CartItem.objects.filter(cart__user=order.user)
-                if not cart_items.exists():
-                    logger.warning("No cart items found for user: %s", order.user)
-                    return JsonResponse({"success": False, "error": "Cart is empty"}, status=400)
-
-                # Calculate total cart price for discount ratio calculation
-                cart_total = sum(
-                    (item.product_variant.sales_price or item.product_variant.variant_price) * item.quantity
-                    for item in cart_items
-                )
-
                 discount = order.discount or Decimal('0.00')
+                cart_total = Decimal('0.00')
 
-                for cart_item in cart_items:
-                    variant = cart_item.product_variant
-                    quantity = cart_item.quantity
+                if variant_id:
+                    
+                    variant = Variant.objects.get(id=variant_id)
+
+                    if variant.quantity_in_stock < 1:
+                        return JsonResponse({"success": False, "error": "Insufficient stock"}, status=400)
+
                     unit_price = variant.sales_price or variant.variant_price
-                    item_total = unit_price * quantity
                     price_after_coupon = unit_price
-                    total_after_coupon = item_total
+                    total_after_coupon = unit_price
 
-                    if discount > 0 and cart_total > 0:
-                        item_ratio = item_total / cart_total
-                        item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
-                        total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
-                        price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
+                    if discount > 0:
+                        total_after_coupon = (unit_price - discount).quantize(Decimal("0.01"))
+                        price_after_coupon = total_after_coupon
 
                     OrderItem.objects.create(
                         order=order,
                         product_variant=variant,
-                        quantity=quantity,
+                        quantity=1,
                         status="processing",
                         ordered_unit_price=unit_price,
                         ordered_price_after_coupon=price_after_coupon,
                         ordered_total_price=total_after_coupon
                     )
 
-                    variant.quantity_in_stock -= quantity
+                    variant.quantity_in_stock -= 1
                     variant.save()
 
-                cart_items.delete()
+                else:
+                    # 🛒 CART Flow
+                    cart_items = CartItem.objects.filter(cart__user=order.user)
+                    if not cart_items.exists():
+                        logger.warning("Cart is empty for user: %s", order.user)
+                        return JsonResponse({"success": False, "error": "Cart is empty"}, status=400)
+
+                    # Calculate cart total for proportional discount
+                    cart_total = sum(
+                        (item.product_variant.sales_price or item.product_variant.variant_price) * item.quantity
+                        for item in cart_items
+                    )
+
+                    for cart_item in cart_items:
+                        variant = cart_item.product_variant
+                        quantity = cart_item.quantity
+                        unit_price = variant.sales_price or variant.variant_price
+                        item_total = unit_price * quantity
+                        price_after_coupon = unit_price
+                        total_after_coupon = item_total
+
+                        if discount > 0 and cart_total > 0:
+                            item_ratio = item_total / cart_total
+                            item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
+                            total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                            price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
+
+                        OrderItem.objects.create(
+                            order=order,
+                            product_variant=variant,
+                            quantity=quantity,
+                            status="processing",
+                            ordered_unit_price=unit_price,
+                            ordered_price_after_coupon=price_after_coupon,
+                            ordered_total_price=total_after_coupon
+                        )
+
+                        variant.quantity_in_stock -= quantity
+                        variant.save()
+
+                    cart_items.delete()
+
+                order.status = "processing"  # Optional if you use order status
+                order.save()
             else:
-                payment.status = "payment_not_received"
+                payment.status = "failed"
+                order.status = "failed"
+                order.save()
 
             payment.save()
-            order.save()
 
         return JsonResponse({
             "success": True,
@@ -811,15 +844,22 @@ def verify_razorpay_payment(request):
             "payment_success": payment_successful
         })
 
+    except Variant.DoesNotExist:
+        logger.error("Variant not found for id: %s", variant_id)
+        return JsonResponse({"success": False, "error": "Invalid product"}, status=404)
+
     except Payment.DoesNotExist:
         logger.error("Payment not found for order_id: %s", order_id)
         return JsonResponse({"success": False, "error": "Payment not found"}, status=404)
+
     except razorpay.errors.BadRequestError as e:
         logger.error("Razorpay API error: %s", str(e))
         return JsonResponse({"success": False, "error": str(e)}, status=400)
+
     except Exception as e:
-        logger.error("Payment verification failed: %s", str(e)) 
+        logger.error("Payment verification failed: %s", str(e))
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 
 

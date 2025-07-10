@@ -23,7 +23,7 @@ path('products/edit/<int:product_id>/', views.edit_product, name='edit_product')
 
     
     
-    path('admin/logout/', views.admin_logout, name='admin_logout'),
+    path('admin/login/', views.admin_logout, name='admin_logout'),
      path('categories/toggle/<int:category_id>/', views.toggle_list_category, name='toggle_list_category'),
       path('categories/delete/<int:category_id>/', views.soft_delete_category, name='soft_delete_category'),
 

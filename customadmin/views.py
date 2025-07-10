@@ -48,7 +48,7 @@ def block_superuser_navigation(view_func):
 def admin_required(view_func):
     return user_passes_test(
         lambda u: u.is_authenticated and u.is_staff,
-        login_url='admin_login',  # ensure this matches your URL name
+        login_url='admin_login',  # 
         redirect_field_name=None  # remove ?next= from URL
     )(view_func)
 
@@ -690,7 +690,7 @@ def soft_delete_product(request, product_id):
 def admin_logout(request):
     logout(request)
     request.session.flush()
-    response = redirect('admin_login')  # or use render if you don't want redirect
+    response = redirect('admin_login')  
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'

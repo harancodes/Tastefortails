@@ -529,7 +529,7 @@
     document.querySelectorAll('.remove-item').forEach(button => {
       button.addEventListener('click', function () {
         const itemId = this.getAttribute('data-item-id');
-        fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {
+        fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {     
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

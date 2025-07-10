@@ -8,6 +8,8 @@ from django.core.validators import MinLengthValidator, RegexValidator
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from cloudinary.models import CloudinaryField
+from decimal import Decimal
+
 
 
 class CustomUserManager(BaseUserManager):
@@ -87,6 +89,20 @@ class CustomUser(AbstractUser):
             # You can use uuid or generate a friendly code
             self.referral_code = get_random_string(6).upper()
         super().save(*args, **kwargs)
+
+        # in authentication.models.CustomUser
+    @property
+    def orders_count(self):
+        return self.orders.count()
+
+    def balance(self):
+        try:
+            from cart.models import Wallet  # ✅ move import here to avoid circular import
+            wallet = getattr(self, 'wallet', None)
+            return wallet.balance if wallet else Decimal('0.00')
+        except Exception:
+            return Decimal('0.00')
+
 
 
 
