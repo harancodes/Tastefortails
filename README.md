@@ -91,27 +91,13 @@ It allows users to **explore, learn about, and purchase high-quality dog food pr
 
 
 
----
- 📂 Project Structure (Optional)
-
-```
-taste-for-tails/
-│
-├── manage.py
-├── tastefortails/      # Project settings
-├── shop/                # Main app (products, cart, orders)
-├── templates/           # HTML templates
-├── static/              # Static files (CSS, JS, images)
-├── media/               # Uploaded product images
-└── requirements.txt
-```
 
 
 
 
-### ✅ Optional: Next Steps / To-Do (If applicable)
+### ✅ Payment
 
-* Payment gateway integration (e.g., Stripe, PayPal)
+* Payment gateway integration (Razorapy)
 * Order tracking system
 * Product reviews & ratings
 * Deployment setup guide (Heroku, AWS, etc.)
