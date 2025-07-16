@@ -115,4 +115,4 @@ It allows users to **explore, learn about, and purchase high-quality dog food pr
 
 ---
 
-If you'd like, I can provide this in a **Markdown (.md) file** ready for download. Would you like me to generate that?
+
