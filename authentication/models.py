@@ -97,7 +97,7 @@ class CustomUser(AbstractUser):
 
     def balance(self):
         try:
-            from cart.models import Wallet  # ✅ move import here to avoid circular import
+            from cart.models import Wallet  
             wallet = getattr(self, 'wallet', None)
             return wallet.balance if wallet else Decimal('0.00')
         except Exception:

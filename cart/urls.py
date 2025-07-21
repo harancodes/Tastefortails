@@ -28,5 +28,7 @@ urlpatterns = [
       path('update-variant/', views.update_variant, name='update_variant'),
       path('apply_coupon/', views.apply_coupon, name="apply_coupon"),
       path('remove_coupon/', views.remove_coupon, name="remove_coupon"),
+    
+
       
 ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -19,6 +19,8 @@ urlpatterns = [
     path('admin/', views.admin_login, name='admin_login'),
     path('', views.home, name='home'),
     path('logout/', views.user_logout, name="user_logout"),
+    path('contact/', views.contact_view, name='contact'),
+
 
     # path('product', views.product, name='product')
     # path('product/<int:id>/', views.product_detail_view, name='product_detail_view'),

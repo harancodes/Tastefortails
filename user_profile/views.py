@@ -498,8 +498,6 @@ def cancel_product_items(request, order_id):
 
     return redirect('user_profile:order_list')
 
-
-
 @block_superuser_navigation
 @never_cache
 @login_required
@@ -510,22 +508,37 @@ def return_order_item(request, item_id):
 
     order_item = get_object_or_404(OrderItem, id=item_id)
 
+    # Permission check
     if order_item.order.user != request.user:
         messages.error(request, "You don't have permission to return this order item.")
         return redirect('user_profile:order_list')
 
-    try:
-        if not order_item.can_be_returned:
-            messages.error(request, "This item is not eligible for return.")
-            return redirect('user_profile:order_item_detail', item_id=item_id)
+    # Check if return is already requested or processed
+    if order_item.return_status == 'requested':
+        messages.error(request, "Return request already sent and is pending admin approval.")
+        return redirect('user_profile:order_item_detail', item_id=item_id)
 
-        reason = request.POST.get('reason', '')
+    if order_item.return_status == 'approved':
+        messages.error(request, "This item has already been returned.")
+        return redirect('user_profile:order_item_detail', item_id=item_id)
+
+    if order_item.return_status == 'rejected':
+        messages.error(request, "Return request was already rejected. You cannot request again.")
+        return redirect('user_profile:order_item_detail', item_id=item_id)
+
+    # Check if the item is eligible for return
+    if not order_item.can_be_returned:
+        messages.error(request, "This item is not eligible for return.")
+        return redirect('user_profile:order_item_detail', item_id=item_id)
+
+    try:
+        reason = request.POST.get('reason', '').strip()
         order_item.return_status = "requested"
         order_item.return_reason = reason
         order_item.save()
 
         messages.success(request, "Return request submitted successfully. Waiting for admin approval.")
-    
+
     except Exception as e:
         print(f"Exception: {e}")  
         messages.error(request, "An error occurred while processing your return request.")
@@ -678,6 +691,9 @@ from authentication.utils import (
 def account_overview(request):
     user = request.user
 
+    notifications = user.notifications.filter(is_read=False).order_by('-created_at')
+
+
     if request.method == "POST":
         dob = request.POST.get("dob")
         phone_number = request.POST.get("phone_number", "").strip()
@@ -794,6 +810,7 @@ def account_overview(request):
         "alternate_phone_number": user.alternate_phone_number or "",
         "username": user.username or "",
         "full_name": user.full_name or "",
+        "notifications" : notifications
     }
     return render(request, "account_overview.html", context)
  
@@ -870,7 +887,6 @@ def referral_profile_view(request):
 
 
 
-
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from cart.models import Cart
@@ -880,8 +896,8 @@ from wishlist.models import Wishlist
 def ajax_get_counts(request):
     user = request.user
 
-    cart = getattr(user, 'cart', None)
-    wishlist = getattr(user, 'wishlist', None)
+    cart = Cart.objects.filter(user=user).first()
+    wishlist = Wishlist.objects.filter(user=user).first()
 
     cart_count = cart.items.count() if cart else 0
     wishlist_count = wishlist.items.count() if wishlist else 0
@@ -890,3 +906,82 @@ def ajax_get_counts(request):
         'cart_count': cart_count,
         'wishlist_count': wishlist_count
     })
+
+
+
+
+from customadmin.models import Notification
+
+@login_required
+def notification_list(request):
+    notifications = request.user.notifications.all().order_by('-created_at')
+    notifications.update(is_read=True)
+    return render(request, 'notifications.html', {
+        'notifications': notifications
+    })
+
+@login_required
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.is_read = True
+    notification.save()
+    return redirect('user_profile:user_notifications')  # Or wherever you want to redirect
+
+
+
+@login_required
+def toggle_notification(request, notification_id):
+    notif = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notif.is_read = not notif.is_read
+    notif.save()
+    return redirect('user_profile:user_notifications')
+
+@login_required
+def delete_notification(request, notification_id):
+    notif = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notif.delete()
+    return redirect('user_profile:user_notifications')
+
+
+@login_required
+def add_money_to_wallet(request):
+    if request.method == "POST":
+        amount = request.POST.get("amount")
+        try:
+            amount = Decimal(amount)
+            if amount <= 0:
+                raise ValueError("Amount must be positive.")
+            
+            wallet, _ = Wallet.objects.get_or_create(user=request.user)
+            wallet.add_amount(amount, reason="Manual Top-Up")
+            messages.success(request, f"₹{amount} has been added to your wallet.")
+            return redirect('user_profile:wallet_page')  # Change this to your actual wallet page URL
+
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+            return redirect('wallet_add_money')
+
+    return render(request, "wallet_page.html")
+
+
+
+@login_required
+def deduct_money_from_wallet(request):
+    if request.method == "POST":
+        amount = request.POST.get("deduct_amount")
+        try:
+            amount = Decimal(amount)
+            if amount <= 0:
+                raise ValueError("Amount must be positive.")
+
+            wallet, _ = Wallet.objects.get_or_create(user=request.user)
+            success = wallet.deduct_amount(amount, reason="Manual Deduction by User")
+
+            if success:
+                messages.success(request, f"₹{amount} deducted from your wallet.")
+            else:
+                messages.error(request, "Insufficient balance.")
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
+    return redirect('user_profile:wallet_page')

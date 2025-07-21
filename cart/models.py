@@ -8,6 +8,7 @@ from customadmin.models import Coupon
 from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
 from customadmin.models import UsedCoupon
+from customadmin.models import Notification
 
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -77,45 +78,112 @@ class CartItem(models.Model):
 
 
 
+from django.db import models
+from decimal import Decimal
+
 class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")
     shipping_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
     applied_coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
+    applied_coupon_code_frozen = models.CharField(max_length=50, null=True, blank=True)
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
-    shipping_charge = models.DecimalField(max_digits=10, decimal_places=2, default=100)
-    notes = models.TextField(blank=True, null=True) 
+
+    shipping_charge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('100.00'))
+    notes = models.TextField(blank=True, null=True)
+
     is_paid = models.BooleanField(default=False)
 
-
-
+    @property
     def calculate_total_amount(self):
+        """
+        Calculate total amount without considering coupon discounts.
+        """
         items_total = sum(item.total_price for item in self.items.all())
         self.total_amount = items_total + self.shipping_charge
         self.save()
+
+   
+    def calculate_final_total(self):
+        """
+        Calculate final total considering coupon discounts, shipping and active items.
+        """
+        subtotal = sum(item.total_price for item in self.items.exclude(status__in=['cancelled', 'returned']))
+
+        self.total_amount = subtotal + self.shipping_charge
+
+        if self.applied_coupon and subtotal >= self.applied_coupon.min_cart_value:
+            self.discount = self.applied_coupon.calculate_discount(subtotal)
+            self.applied_coupon_code_frozen = self.applied_coupon.code  # Store code
+        else:
+            self.discount = Decimal('0.00')
+            self.applied_coupon = None
+
+        self.total_amount -= self.discount
+        self.save()
+
+    @property
+    def applied_coupon_code(self):
+        if self.applied_coupon:
+            return self.applied_coupon.code
+        return self.applied_coupon_code_frozen
+
+    @property
+    def can_be_cancelled(self):
+        """
+        Check if at least one item can still be cancelled.
+        """
+        return any(item.can_be_cancelled for item in self.items.all())
 
     def __str__(self):
         return f"Order {self.id} - {self.user.email}"
     
 
-    def calculate_final_total(self):
-        subtotal = sum(item.total_price for item in self.items.exclude(status__in=['cancelled', 'returned']))
+    @property
+    def can_download_invoice(self):
+        active_items = self.items.exclude(status='cancelled')
+        if not active_items.exists():
+            return False  # No active items, so can't download invoice
 
-        self.total_amount = subtotal + self.shipping_charge
-        if self.applied_coupon and subtotal >= self.applied_coupon.min_cart_value:
-            self.discount = self.applied_coupon.calculate_discount(subtotal)
-        else:
-            self.discount = 0
-            self.applied_coupon = None
-        self.total_amount -= self.discount
-        self.save()
+        return all(item.status in ['delivered', 'returned'] for item in active_items)
+
+        
+    @property
+    def subtotal(self):
+        return sum(item.total_price for item in self.items.exclude(status__in=['cancelled', 'returned']))
 
     @property
-    def can_be_cancelled(self):
-        return any(item.can_be_cancelled for item in self.items.all())
+    def total_shipping(self):
+        return self.shipping_charge
+
+    @property
+    def total_discount(self):
+        return self.discount or Decimal('0.00')
+
+    @property
+    def total_saved(self):
+        return self.discount if self.discount else Decimal('0.00')
+
+    @property
+    def grand_total(self):
+        return self.total_amount
+
+    @property
+    def refunded_amount(self):
+        refunded = sum(item.get_estimated_amount for item in self.items.filter(status='returned'))
+        return refunded
+        
+    @property
+    def raw_items_total(self):
+        return sum(item.total_price for item in self.items.all())
+
+
+
 
 
 
@@ -179,8 +247,10 @@ class OrderItem(models.Model):
         if self.status != "delivered":
             return False
         time_elapsed = timezone.now() - self.updated_at  
-        return time_elapsed.total_seconds() <= (self.RETURN_WINDOW_DAYS * 86400)  
+        return time_elapsed.total_seconds() <= (self.RETURN_WINDOW_DAYS * 86400) 
+     
     
+
 
     @property
     def get_estimated_amount(self):
@@ -210,68 +280,52 @@ class OrderItem(models.Model):
         return self.price_after_coupon * self.quantity
 
 
+
     def cancel_item(self, reason=""):
         if not self.can_be_cancelled:
             raise ValidationError("This item cannot be cancelled.")
 
         with transaction.atomic():
-            order = self.order
-            old_total = order.total_amount
-
-            # Update stock
+            
             self.product_variant.quantity_in_stock += self.quantity
             self.product_variant.save()
 
-            # Mark as cancelled
             self.status = "cancelled"
             self.save()
 
-            # Recheck if coupon is still valid
-            order.calculate_final_total()
+            refund_amount = (self.ordered_price_after_coupon * self.quantity).quantize(Decimal('0.01'))
 
-            new_total = order.total_amount
-            refund_amount = (old_total - new_total).quantize(Decimal('0.01'))
-
-            print(f"[CANCEL REFUND] Old: ₹{old_total}, New: ₹{new_total}, Refund: ₹{refund_amount}")
-
-            # Wallet refund
+            order = self.order
             if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
                 wallet, _ = Wallet.objects.get_or_create(user=order.user)
                 wallet.add_amount(refund_amount, reason=reason or "Refund for cancelled item")
 
+
+
     ### return item ###
 
     def return_item(self, reason=""):
-            if self.status == "returned":
-                raise ValidationError("Item already returned.")
-            if not self.can_be_returned:
-                raise ValidationError("This item cannot be returned.")
+        if self.status == "returned":
+            raise ValidationError("Item already returned.")
+        if not self.can_be_returned:
+            raise ValidationError("This item cannot be returned.")
 
-            with transaction.atomic():
-                order = self.order
+        with transaction.atomic():
+            self.status = "returned"
+            self.return_status = "approved"
+            self.save()
 
-                old_paid_amount = order.total_amount
+            # Refund based on ordered price after coupon (fixed at order time)
+            refund_amount = (self.ordered_price_after_coupon * self.quantity).quantize(Decimal('0.01'))
 
-                
-                self.status = "returned"
-                self.return_status = "approved"
-                self.save()
+            order = self.order
+            if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
+                wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
 
-
-                order.calculate_final_total()
-
-                new_paid_amount = order.total_amount
-                refund_amount = (old_paid_amount - new_paid_amount).quantize(Decimal('0.01'))
-
-                print(f"Refund: ₹{refund_amount} (Old: {old_paid_amount}, New: {new_paid_amount})")
-
-                if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
-                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                    wallet.add_amount(refund_amount, reason=reason or "Refund for returned item")
-
-                
-                self.product_variant.quantity_in_stock += self.quantity
-                self.product_variant.save()
+            # Restock the item
+            self.product_variant.quantity_in_stock += self.quantity
+            self.product_variant.save()
 
 
     # def return_item(self, reason=""):
@@ -364,14 +418,83 @@ class OrderItem(models.Model):
     def allowed_transitions(self):
         return self.ALLOWED_STATUS_TRANSITIONS.get(self.status, [])
 
+    # def approve_return(self):
+    #     if self.return_status != "requested":
+    #         raise ValueError("This return request is not in a valid state.")
+
+    #     # Handle stock and refund logic here
+
+    #     self.return_status = "approved"
+    #     self.status = "returned"
+    #     self.save()
+
+
+    # def reject_return(self, rejection_reason=""):
+    #     if self.return_status != "requested":
+    #         raise ValueError("This return request is not in a valid state to reject.")
+
+    #     self.return_status = "rejected"
+    #     self.return_reason = rejection_reason
+    #     self.save()
 
 
     # @property
     # def total_price(self):
     #     return self.product_variant.sales_price* self.quantity
 
-    def __str__(self):
-        return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"
+    def approve_return(self):
+        if self.return_status != "requested":
+            raise ValueError("This return request is not in a valid state.")
+
+        order_user = self.order.user  # Save user reference early (avoid accessing self.order.user later)
+
+        with transaction.atomic():
+            # Update statuses
+            self.status = "returned"
+            self.return_status = "approved"
+            self.save()
+
+            # Refund logic
+            refund_amount = (self.ordered_price_after_coupon * self.quantity).quantize(Decimal('0.01'))
+
+            order = self.order
+            if hasattr(order, 'payment') and order.payment.status == 'completed' and refund_amount > 0:
+                wallet, _ = Wallet.objects.get_or_create(user=order_user)
+                wallet.add_amount(refund_amount, reason="Refund for approved return")
+
+            # Restock the item
+            self.product_variant.quantity_in_stock += self.quantity
+            self.product_variant.save()
+
+        
+        Notification.objects.create(
+            user=order_user,
+            message=f"Refund Accepted: Your refund for '{self.product_variant.product.name}' has been processed successfully.",
+            is_read=False
+        )
+
+
+    def reject_return(self, rejection_reason=""):
+        if self.return_status != "requested":
+            raise ValueError("This return request is not in a valid state to reject.")
+
+        order_user = self.order.user
+
+        with transaction.atomic():
+            self.return_status = "rejected"
+            self.return_reason = rejection_reason
+            self.save()
+
+  
+        Notification.objects.create(
+            user=order_user,
+            message=f"Refund Rejected: Your refund for '{self.product_variant.product.name}' was rejected. Reason: {rejection_reason}",
+            is_read=False
+        )
+
+
+        def __str__(self):
+            return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"
 
 
 class Payment(models.Model):

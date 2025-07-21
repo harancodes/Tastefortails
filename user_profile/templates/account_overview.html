@@ -113,17 +113,19 @@
                 <a href="{% url 'product:about' %}" class="nav-link text-white font-bold hover:text-yellow-200 transition">About Us</a>
             </nav>
             <div class="flex items-center space-x-6">
-                <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition">
-                    <i class="far fa-heart text-xl"></i>
-                </a>
-                <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
-                    <i class="fas fa-shopping-cart text-xl"></i>
-                    {% if cart_item_count > 0 %}
-                    <span class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {{ cart_item_count }}
-                    </span>
-                    {% endif %}
-                </a>
+                 <a href="{% url 'wishlist:wishlist' %}" class="text-white hover:text-yellow-200 transition relative">
+                        <i class="far fa-heart text-xl"></i>
+                            <span id="wishlist-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            {{ wishlist_item_count }}
+                        </span> 
+                    </a>
+
+                    <a href="{% url 'cart:view_cart' %}" class="text-white hover:text-yellow-200 transition relative">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        <span id="cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-blue-800 text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            {{ cart_item_count }}
+                        </span> 
+                    </a>
                 {% if user.is_authenticated %}
                 <div class="relative group">
                     <button class="flex items-center text-white hover:text-yellow-200 transition">
@@ -175,6 +177,7 @@
     </div>
 </header> 
 
+
 <div id="toast-container" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 space-y-2"></div>
 
 <div class="flex flex-col md:flex-row min-h-screen">
@@ -186,7 +189,7 @@
                     <img id="profileImagePreview" src="{{ user.profile_image.url }}" alt="Profile"
                         class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
                     {% else %}
-                    <img id="profileImagePreview" src="#" alt="Profile"
+                    <img id="profileImagePreview" src="https://res.cloudinary.com/dig0n3abt/image/upload/v1752223223/image-icon-front-side-with-white-background_criai3.jpg" alt="Profile"
                         class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 transition-transform group-hover:scale-105">
                     {% endif %}
                     <div class="absolute inset-0 rounded-full bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -228,6 +231,11 @@
                 <i class="fas fa-wallet w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                 Wallet
             </a>
+            <a href="{% url 'user_profile:user_notifications' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+    <i class="fas fa-bell w-5 h-5 mr-3 group-hover:text-blue-600"></i>
+    Notifications
+</a>
+
             <a href="{% url 'user_logout' %}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors group mt-auto border-t">
                 <i class="fas fa-sign-out-alt w-5 h-5 mr-3 group-hover:text-blue-600"></i>
                 Logout
@@ -248,14 +256,14 @@
                         {% if user.profile_image and user.profile_image.url %}
                             <img id="profileImage" src="{{ user.profile_image.url }}" alt="Profile" class="w-32 h-32 rounded-lg object-cover">
                         {% else %}
-                            <img id="profileImage" src="{% static 'default_profile.png' %}" alt="Profile" class="w-32 h-32 rounded-lg object-cover">
+                            <img id="profileImage" src="https://res.cloudinary.com/dig0n3abt/image/upload/v1752223223/image-icon-front-side-with-white-background_criai3.jpg" alt="Profile" class="w-32 h-32 rounded-lg object-cover">
                         {% endif %}
                         <div class="absolute inset-0 rounded-lg bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <i class="fas fa-camera text-white text-xl"></i>
                         </div>
                     </div>
                     <div class="flex-1">
-                        <p class="text-sm text-gray-600 mb-3">Upload a new profile picture. Recommended size: 400x400px</p>
+                        <p class="text-sm text-gray-600 mb-3">Upload a new profile picture. Recommended size: 400x400 px</p>
                         <input type="file" name="profile_image" class="hidden" id="profile-upload" accept="image/*">
                         <button type="button" onclick="document.getElementById('profile-upload').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
                             <i class="fas fa-upload mr-2"></i>
@@ -727,6 +735,28 @@ document.addEventListener("DOMContentLoaded", function () {
         element.classList.add("hidden");
     }
 });
+</script>
+<script>
+function updateCounts() {
+    fetch("/user_profile/ajax/get-counts/")
+        .then(response => {
+            if (!response.ok) throw new Error("Network error");
+            return response.json();
+        })
+        .then(data => {
+            const cartSpan = document.getElementById("cart-count");
+            const wishlistSpan = document.getElementById("wishlist-count");
+            if (cartSpan) cartSpan.innerText = data.cart_count;
+            if (wishlistSpan) wishlistSpan.innerText = data.wishlist_count;
+        })
+        .catch(err => console.error("Error fetching counts:", err));
+}
+
+
+updateCounts();
+
+
+setInterval(updateCounts, 2000);
 </script>
 
 </body>

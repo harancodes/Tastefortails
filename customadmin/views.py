@@ -1068,6 +1068,31 @@ def admin_return_requests(request):
     return_requests = OrderItem.objects.filter(return_status="requested")
     return render(request, 'orders/admin_return_requests.html', {'return_requests': return_requests})
 
+# @admin_required
+# @never_cache
+# def admin_handle_return_request(request, item_id):
+#     if request.method != 'POST':
+#         messages.error(request, "Invalid request method.")
+#         return redirect('customadmin:admin_return_requests')
+
+#     order_item = get_object_or_404(OrderItem, id=item_id)
+#     action = request.POST.get('action')
+
+#     try:
+#         if action == 'approve':
+#             order_item.return_item(reason="Return approved by admin")
+#             messages.success(request, "Return request approved and refund processed.")
+#         elif action == 'reject':
+#             order_item.return_status = "rejected"
+#             order_item.save()
+#             messages.success(request, "Return request rejected.")
+#         else:
+#             messages.error(request, "Invalid action.")
+#     except Exception as e:
+#         print(f"Return Error: {e}")
+#         messages.error(request, "An error occurred while processing the return request.")
+
+#     return redirect('customadmin:admin_return_requests')
 @admin_required
 @never_cache
 def admin_handle_return_request(request, item_id):
@@ -1080,19 +1105,25 @@ def admin_handle_return_request(request, item_id):
 
     try:
         if action == 'approve':
-            order_item.return_item(reason="Return approved by admin")
+            order_item.approve_return()  
             messages.success(request, "Return request approved and refund processed.")
+
         elif action == 'reject':
-            order_item.return_status = "rejected"
-            order_item.save()
-            messages.success(request, "Return request rejected.")
+            rejection_reason = request.POST.get('rejection_reason', 'No specific reason provided.')
+            order_item.reject_return(rejection_reason)  
+            messages.success(request, "Return request rejected and user notified.")
+
         else:
             messages.error(request, "Invalid action.")
+
     except Exception as e:
         print(f"Return Error: {e}")
-        messages.error(request, "An error occurred while processing the return request.")
+        messages.error(request, f"An error occurred while processing the return request: {e}")
 
     return redirect('customadmin:admin_return_requests')
+
+
+
 
 
 
@@ -1303,6 +1334,9 @@ def generate_excel(request):
     response['Content-Disposition'] = 'attachment; filename="sales_report.xlsx"'
     return response
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 @admin_required
 @never_cache
@@ -1378,8 +1412,12 @@ def sales_data(request):
         values = []
 
     orders_in_range = Order.objects.filter(created_at__date__gte=start_date)
-    total_orders = total_orders = Order.objects.count()
+    total_orders = orders_in_range.count()
+
     total_revenue = orders_in_range.aggregate(total=Sum("total_amount"))["total"] or 0
+    
+    users_in_range = User.objects.filter(date_joined__date__gte=start_date)
+    total_users = users_in_range.count()
 
     top_selling_products = (
         OrderItem.objects.filter(order__created_at__date__gte=start_date)
@@ -1407,6 +1445,7 @@ def sales_data(request):
         "total_revenue": round(total_revenue, 2),
         "labels": labels,
         "values": values,
+         "total_users": total_users,
         "top_selling_products": list(top_selling_products),
         "top_selling_categories": list(top_selling_categories),
         "top_selling_brands": list(top_selling_brands),
@@ -1417,16 +1456,15 @@ def sales_data(request):
 
 
 
+from django.db import IntegrityError
+from django.db.models import Q
 
 @admin_required
 @never_cache   
 def coupon_management(request):
-
-    coupons = Coupon.objects.all()
     coupons_list = Coupon.objects.all()
-
     page = request.GET.get('page', 1)
-    paginator = Paginator(coupons_list, 10)  #
+    paginator = Paginator(coupons_list, 10)
 
     try:
         coupons = paginator.page(page)
@@ -1437,44 +1475,62 @@ def coupon_management(request):
 
     if request.method == "POST":
         coupon_id = request.POST.get("coupon_id")
-        code = request.POST.get("code")
-        discount_percentage = request.POST.get("discount_percentage")  # Updated field name
+        code = request.POST.get("code").strip()
+        discount_percentage = request.POST.get("discount_percentage")
         min_cart_value = request.POST.get("min_cart_value")
         start_date = request.POST.get("start_date")
         expiry_date = request.POST.get("expiry_date") or None
         is_active = request.POST.get("is_active") == "on"
 
-        
+        # Validate discount percentage
         try:
             discount_percentage = float(discount_percentage)
             if not (1 <= discount_percentage <= 100):
                 raise ValueError("Discount percentage must be between 1 and 100.")
         except ValueError as e:
             messages.error(request, str(e))
-            return redirect("coupon_management")
+            return redirect("customadmin:coupon_management")
 
-        if coupon_id:  
-            coupon = get_object_or_404(Coupon, id=coupon_id)
-            coupon.code = code
-            coupon.discount_percentage = discount_percentage  
-            coupon.min_cart_value = min_cart_value
-            coupon.start_date = start_date
-            coupon.expiry_date = expiry_date
-            coupon.is_active = is_active
-            coupon.save()
-        else:  
-            Coupon.objects.create(
-                code=code,
-                discount_percentage=discount_percentage,  
-                min_cart_value=min_cart_value,
-                start_date=start_date,
-                expiry_date=expiry_date,
-                is_active=is_active
-            )
+        # Check for duplicate coupon code
+        existing_coupon = Coupon.objects.filter(code__iexact=code)
+        if coupon_id:
+            existing_coupon = existing_coupon.exclude(id=coupon_id)
+
+        if existing_coupon.exists():
+            messages.error(request, f"Coupon code '{code}' already exists.")
+            return redirect("customadmin:coupon_management")
+
+        # Save or update the coupon
+        try:
+            if coupon_id:
+                coupon = get_object_or_404(Coupon, id=coupon_id)
+                coupon.code = code
+                coupon.discount_percentage = discount_percentage
+                coupon.min_cart_value = min_cart_value
+                coupon.start_date = start_date
+                coupon.expiry_date = expiry_date
+                coupon.is_active = is_active
+                coupon.save()
+                messages.success(request, "Coupon updated successfully.")
+            else:
+                Coupon.objects.create(
+                    code=code,
+                    discount_percentage=discount_percentage,
+                    min_cart_value=min_cart_value,
+                    start_date=start_date,
+                    expiry_date=expiry_date,
+                    is_active=is_active
+                )
+                messages.success(request, "Coupon added successfully.")
+
+        except IntegrityError:
+            messages.error(request, "A coupon with this code already exists.")
+            return redirect("customadmin:coupon_management")
 
         return redirect("customadmin:coupon_management")
 
     return render(request, "coupon/manage_coupons.html", {"coupons": coupons})
+
 
 
 @admin_required
@@ -1501,6 +1557,7 @@ def delete_coupon(request, coupon_id):
         coupon.delete()
         messages.success(request, "Coupon deleted successfully.")
     return redirect('customadmin:coupon_management')
+from django.http import JsonResponse
 
 @admin_required
 @never_cache
@@ -1515,32 +1572,47 @@ def edit_coupon(request, coupon_id):
         expiry_date = request.POST.get('expiry_date')
         is_active = request.POST.get('is_active') == 'on'
 
-        has_error = False
+        errors = {}
 
+        # Validate code
         if not code:
-            messages.error(request, "Coupon code cannot be empty.")
-            has_error = True
+            errors['code'] = "Coupon code cannot be empty."
         elif Coupon.objects.filter(code__iexact=code).exclude(id=coupon_id).exists():
-            messages.error(request, f"A coupon with the code '{code}' already exists.")
-            has_error = True
-        else:
-            coupon.code = code
+            errors['code'] = f"A coupon with the code '{code}' already exists."
 
+        # Validate numbers
         try:
-            coupon.discount_percentage = float(discount_percentage)
-            coupon.min_cart_value = float(min_cart_value)
-            coupon.start_date = start_date
-            coupon.expiry_date = expiry_date or None
-            coupon.is_active = is_active
+            discount_percentage = float(discount_percentage)
+            if not (1 <= discount_percentage <= 100):
+                errors['discount_percentage'] = "Discount must be between 1 and 100."
+            min_cart_value = float(min_cart_value)
         except ValueError:
-            messages.error(request, "Please enter valid numbers for percentage and cart value.")
-            has_error = True
+            errors['numbers'] = "Please enter valid numbers for discount and cart value."
 
-        if not has_error:
-            coupon.save()
-            messages.success(request, "Coupon updated successfully.")
-            return redirect('customadmin:coupon_list')
+        if errors:
+            return JsonResponse({'status': 'error', 'errors': errors}, status=400)
 
-    return render(request, 'coupon/manage_coupons.html', {'coupon': coupon})
+        
+        coupon.code = code
+        coupon.discount_percentage = discount_percentage
+        coupon.min_cart_value = min_cart_value
+        coupon.start_date = start_date
+        coupon.expiry_date = expiry_date or None
+        coupon.is_active = is_active
+        coupon.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Coupon updated successfully.'})
+
+    
+    return JsonResponse({
+        'id': coupon.id,
+        'code': coupon.code,
+        'discount_percentage': coupon.discount_percentage,
+        'min_cart_value': coupon.min_cart_value,
+        'start_date': str(coupon.start_date),
+        'expiry_date': str(coupon.expiry_date) if coupon.expiry_date else '',
+        'is_active': coupon.is_active
+    })
+
 
  

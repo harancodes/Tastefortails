@@ -5,16 +5,14 @@
     <h1 class="text-3xl font-bold text-gray-900 mb-6">Return Requests</h1>
 
     {% if messages %}
-  <div id="messages-container">
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
-
+        <div id="messages-container">
+            {% for message in messages %}
+                <div class="p-4 mb-4 text-sm text-green-800 bg-green-100 rounded-lg" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
     {% if return_requests %}
         <div class="space-y-4">
@@ -47,21 +45,28 @@
                                 </div>
                                 <div>
                                     <span class="block text-xs text-gray-500">Reason</span>
-                                    <span class="text-sm text-gray-600">{{ item.return_reason }}</span>
+                                    <span class="text-sm text-gray-600 break-words max-w-sm block">
+                                        {{ item.return_reason }}
+                                    </span>
                                 </div>
                             </li>
                         </ul>
 
-                        <div class="mt-4">
-                            <form action="{% url 'customadmin:admin_handle_return_request' item.id %}" method="POST" class="inline-flex">
-                                {% csrf_token %}
-                                <button type="submit" name="action" value="approve" class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                                    Approve
-                                </button>
-                                <button type="submit" name="action" value="reject" class="ml-2 px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                                    Reject
-                                </button>
-                            </form>
+                        <div class="mt-4 space-x-2">
+                            <button 
+                                type="button"
+                                onclick="openActionModal('{{ item.id }}', 'approve')"
+                                class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                            >
+                                Approve
+                            </button>
+                            <button 
+                                type="button"
+                                onclick="openActionModal('{{ item.id }}', 'reject')"
+                                class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                            >
+                                Reject
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -71,4 +76,64 @@
         <p class="text-gray-500">No return requests found.</p>
     {% endif %}
 </div>
+
+<!-- Action Confirmation Modal -->
+<div id="action-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-96 p-6">
+    <h2 id="modal-title" class="text-lg font-semibold mb-4 text-gray-800">Confirm Action</h2>
+    <p id="modal-message" class="text-sm text-gray-600 mb-4">Are you sure you want to perform this action?</p>
+    
+    <form id="action-form" method="POST" data-base-url="{% url 'customadmin:admin_handle_return_request' 0 %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" id="modal-action-value" value="">
+      <div class="flex justify-end space-x-3">
+        <button 
+          type="button" 
+          onclick="closeActionModal()"
+          class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+        >
+          Cancel
+        </button>
+        <button 
+          type="submit"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Confirm
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openActionModal(itemId, actionType) {
+    const modal = document.getElementById('action-modal');
+    const form = document.getElementById('action-form');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const actionInput = document.getElementById('modal-action-value');
+
+    const baseUrl = form.dataset.baseUrl;
+    form.action = baseUrl.replace("0", itemId);
+    actionInput.value = actionType;
+
+    if (actionType === 'approve') {
+      modalTitle.textContent = 'Approve Return Request';
+      modalMessage.textContent = 'Are you sure you want to approve this return request?';
+    } else {
+      modalTitle.textContent = 'Reject Return Request';
+      modalMessage.textContent = 'Are you sure you want to reject this return request?';
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeActionModal() {
+    const modal = document.getElementById('action-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+</script>
+
 {% endblock %}

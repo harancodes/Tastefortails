@@ -14,7 +14,16 @@
       <li class="breadcrumb-item active" aria-current="page">Banner</li>
     </ol>
   </nav>
-
+ {% if messages %}
+    <div id="messages-container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
   <!-- Search and Sort -->
   <form method="get" class="row mb-3">
     <div class="col-md-4">

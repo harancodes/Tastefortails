@@ -71,7 +71,11 @@
                             <p class="font-medium">{{ order_item.quantity }}</p>
                         </div>
                       <div>
-  <p class="text-sm text-gray-500">Unit Price</p>
+  <p class="text-sm text-gray-500">Coupon Used</p>
+  {% if order_item.order.applied_coupon_code %}
+    <p class="text-sm text-blue-500"> {{ order_item.order.applied_coupon_code }}</p>
+{% endif %}
+
 
 
   <p class="text-sm text-gray-500">After Coupon</p>
@@ -84,6 +88,22 @@
     ₹{{ order_item.ordered_total_price|floatformat:2 }}
   </p>
 </div>
+
+<div class="text-sm text-gray-700 space-y-1">
+    {% comment %} <p>Subtotal: ₹{{ order_item.calculate_total_amount|floatformat:2 }}</p> {% endcomment %}
+    <p>Shipping: ₹{{ order_item.order.total_shipping|floatformat:2 }}</p>
+
+    {% if order_item.total_discount > 0 %}
+        <p class="text-green-600">Discount: -₹{{ order_item.order.total_discount|floatformat:2 }}</p>
+    {% endif %}
+
+    <p class="font-bold text-gray-800">Grand Total: ₹{{ order_item.order.grand_total|floatformat:2 }}</p>
+
+    {% if order_item.refunded_amount > 0 %}
+        <p class="text-red-500">Refunded: ₹{{ order_item.order.refunded_amount|floatformat:2 }}</p>
+    {% endif %}
+</div>
+
 
                         <div>
                             <p class="text-sm text-gray-500">Date Ordered</p>
@@ -110,90 +130,112 @@
                         </div>
                     </div>
 
-                    
-                    <div class="mt-8">
-                        <h4 class="text-lg font-semibold mb-4">Delivery Status</h4>
-                        <div class="relative">
-                            <!-- Status Line -->
-                            <div class="absolute top-5 left-5 h-full w-0.5 bg-gray-200"></div>
-                            
-                            <!-- Status Steps -->
-                            <div class="space-y-8">
-                                <!-- Ordered Step -->
-                                <div class="flex items-start relative">
-                                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
-                                        <i class="fas fa-clipboard-check"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <h5 class="font-medium text-gray-800">Order Placed</h5>
-                                    </div>
-                                </div>
-                                
-                                <!-- Processing Step -->
-                                <div class="flex items-start relative">
-                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
-                                        {% if order_item.status == 'processing' or order_item.status == 'shipped' or order_item.status == 'delivered' %}
-                                        bg-blue-500 text-white
-                                        {% else %}
-                                        bg-gray-200 text-gray-500
-                                        {% endif %}">
-                                        <i class="fas fa-box-open"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <h5 class="font-medium {% if order_item.status == 'processing' or order_item.status == 'shipped' or order_item.status == 'delivered' %}
-                                            text-gray-800
-                                            {% else %}
-                                            text-gray-500
-                                            {% endif %}">
-                                            Processing
-                                        </h5>
-                                    </div>
-                                </div>
-                                
-                                <!-- Shipped Step -->
-                                <div class="flex items-start relative">
-                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
-                                        {% if order_item.status == 'shipped' or order_item.status == 'delivered' %}
-                                        bg-purple-500 text-white
-                                        {% else %}
-                                        bg-gray-200 text-gray-500
-                                        {% endif %}">
-                                        <i class="fas fa-truck"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <h5 class="font-medium {% if order_item.status == 'shipped' or order_item.status == 'delivered' %}
-                                            text-gray-800
-                                            {% else %}
-                                            text-gray-500
-                                            {% endif %}">
-                                            Shipped
-                                        </h5>
-                                    </div>
-                                </div>
-                                
-                                <!-- Delivered Step -->
-                                <div class="flex items-start relative">
-                                    <div class="flex items-center justify-center w-10 h-10 rounded-full 
-                                        {% if order_item.status == 'delivered' %}
-                                        bg-green-500 text-white
-                                        {% else %}
-                                        bg-gray-200 text-gray-500
-                                        {% endif %}">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <h5 class="font-medium {% if order_item.status == 'delivered' %}
-                                            text-gray-800
-                                            {% else %}
-                                            text-gray-500
-                                            {% endif %}">
-                                            Delivered
-                                        </h5>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+     <div class="mt-8">
+    <h4 class="text-lg font-semibold mb-4">Delivery Status</h4>
+    <div class="relative">
+        <!-- Status Line -->
+        <div class="absolute top-5 left-5 h-full w-0.5 bg-gray-200"></div>
+
+        <div class="space-y-8">
+
+            <!-- Order Placed -->
+            <div class="flex items-start relative animate-fade-in">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium text-gray-800">Order Placed</h5>
+                </div>
+            </div>
+
+            <!-- Processing -->
+            <div class="flex items-start relative animate-fade-in delay-100">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                    {% if order_item.status in 'processing shipped delivered returned cancelled' %}
+                    bg-blue-500 text-white
+                    {% else %}
+                    bg-gray-200 text-gray-500
+                    {% endif %}">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium {% if order_item.status in 'processing shipped delivered returned cancelled' %}
+                        text-gray-800
+                        {% else %}
+                        text-gray-500
+                        {% endif %}">
+                        Processing
+                    </h5>
+                </div>
+            </div>
+
+            <!-- Shipped -->
+            <div class="flex items-start relative animate-fade-in delay-200">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                    {% if order_item.status in 'shipped delivered returned' %}
+                    bg-purple-500 text-white
+                    {% else %}
+                    bg-gray-200 text-gray-500
+                    {% endif %}">
+                    <i class="fas fa-truck"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium {% if order_item.status in 'shipped delivered returned' %}
+                        text-gray-800
+                        {% else %}
+                        text-gray-500
+                        {% endif %}">
+                        Shipped
+                    </h5>
+                </div>
+            </div>
+
+            <!-- Delivered -->
+            <div class="flex items-start relative animate-fade-in delay-300">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full 
+                    {% if order_item.status in 'delivered returned' %}
+                    bg-green-500 text-white
+                    {% else %}
+                    bg-gray-200 text-gray-500
+                    {% endif %}">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium {% if order_item.status in 'delivered returned' %}
+                        text-gray-800
+                        {% else %}
+                        text-gray-500
+                        {% endif %}">
+                        Delivered
+                    </h5>
+                </div>
+            </div>
+
+            <!-- Returned OR Cancelled Final Step -->
+            {% if order_item.status == 'returned' %}
+            <div class="flex items-start relative animate-bounce delay-500">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-red-500 text-white">
+                    <i class="fas fa-undo-alt"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium text-red-600">Returned</h5>
+                </div>
+            </div>
+            {% elif order_item.status == 'cancelled' %}
+            <div class="flex items-start relative animate-shake delay-500">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-400 text-white">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="ml-4">
+                    <h5 class="font-medium text-gray-600">Cancelled</h5>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
 
                     <div class="mt-8 flex flex-wrap gap-3 justify-end">
                         {% if order_item.status == 'shipped' %}

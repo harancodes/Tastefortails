@@ -251,26 +251,29 @@
             </div>
 
             <!-- Pricing Breakdown -->
-            <div class="mt-6 pt-4 border-t">
-              <div class="flex justify-between mb-2">
-                <span>Original Total</span>
-                <span class="font-semibold" id="original-total">₹{{ cart_total|floatformat:2 }}</span>
-              </div>
-              {% if discount > 0 %}
-              <div class="flex justify-between mb-2">
-                <span>Discount</span>
-                <span class="font-semibold text-green-600">-₹{{ discount|floatformat:2 }}</span>
-              </div>
-              {% endif %}
-              <div class="flex justify-between mb-2">
-                <span>Shipping Charges</span>
-                <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|floatformat:2 }}</span>
-              </div>
-              <div class="flex justify-between border-t pt-4">
-                <span class="font-bold">Total Due</span>
-                <span class="font-bold text-lg" id="totalDue">₹{{ total_price_with_shipping|floatformat:2 }}</span>
-              </div>
-            </div>
+        <div class="mt-6 pt-4 border-t">
+    <div class="flex justify-between mb-2">
+        <span>Subtotal</span>
+        <span class="font-semibold" id="original-total">₹{{ cart_total|floatformat:2 }}</span>
+    </div>
+
+    <div id="discountWrapper" class="flex justify-between mb-2 {% if discount == 0 %}hidden{% endif %}">
+  <span>Discount</span>
+  <span id="discountAmount" class="font-semibold text-green-600">-₹{{ discount|floatformat:2 }}</span>
+</div>
+
+
+    <div class="flex justify-between mb-2">
+        <span>Shipping Charges</span>
+        <span class="font-semibold" id="shipping-charge">₹{{ shipping_charge|floatformat:2 }}</span>
+    </div>
+
+    <div class="flex justify-between border-t pt-4">
+        <span class="font-bold">Total Due</span>
+        <span class="font-bold text-lg text-blue-700" id="totalDue">₹{{ total_price_with_shipping|floatformat:2 }}</span>
+    </div>
+</div>
+
 
             {% if error %}
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4" role="alert">
@@ -431,9 +434,8 @@
       </form>
     </div>
   </div>
-
 <script>
-
+// ───── Notification ─────
 function displayNotification(msg, type) {
   const note = document.createElement('div');
   note.classList.add(
@@ -442,12 +444,20 @@ function displayNotification(msg, type) {
   );
   note.textContent = msg;
   document.body.appendChild(note);
-  setTimeout(() => note.remove(), 8000);
+  setTimeout(() => note.remove(), 3000);
 }
 
-function openModal()      { document.getElementById('addressModal').classList.remove('hidden'); }
-function closeModal()     { document.getElementById('addressModal').classList.add('hidden'); }
-function closeEditModal() { document.getElementById('editAddressModal').classList.add('hidden'); }
+// ───── Modal Open/Close ─────
+function openModal() { document.getElementById('addressModal').classList.remove('hidden'); }
+function closeModal() { 
+  document.getElementById('addressModal').classList.add('hidden'); 
+  document.getElementById('addAddressForm').reset();
+}
+
+function closeEditModal() {
+  document.getElementById('editAddressModal').classList.add('hidden');
+  document.getElementById('editAddressForm').reset();
+}
 
 function openEditModal(id, name='', phone='', line='', type='home',
                        city='', state='', pincode='', country='', isDefault=false) {
@@ -465,16 +475,14 @@ function openEditModal(id, name='', phone='', line='', type='home',
   document.getElementById('editAddressModal').classList.remove('hidden');
 }
 
+// ───── Payment Method Selection ─────
 function selectPaymentMethod(method) {
-  document.querySelectorAll('.payment-method')
-          .forEach(pm => pm.classList.remove('selected'));
+  document.querySelectorAll('.payment-method').forEach(pm => pm.classList.remove('selected'));
   const sel = document.querySelector(`.payment-method input[value="${method}"]`).parentElement;
   sel.classList.add('selected');
 }
 
-/* ──────────────────────────────────────────────────────────────
-   2.  Coupon logic
-   ────────────────────────────────────────────────────────────── */
+// ───── Coupon Logic ─────
 function showMessage(msg, isErr=false) {
   const el = isErr ? document.getElementById('couponError')
                    : document.getElementById('couponMessage');
@@ -500,10 +508,17 @@ document.getElementById('applyCouponBtn').addEventListener('click', async (ev)=>
 
     const discTotal = total - data.discount_amount;
     const grand     = discTotal + ship;
+
+    // Update total and hidden fields
     document.getElementById('finalTotalPriceAmount').textContent = `₹${grand.toFixed(2)}`;
     document.getElementById('totalDue').textContent              = `₹${grand.toFixed(2)}`;
     document.getElementById('discounted_total_price').value      = discTotal.toFixed(2);
     document.getElementById('total_price_with_shipping').value   = grand.toFixed(2);
+
+    // New: Update discount visually
+    document.getElementById('discountAmount').textContent = `-₹${data.discount_amount.toFixed(2)}`;
+    document.getElementById('discountWrapper').classList.remove('hidden');
+
     document.getElementById('applyCouponBtn').disabled = true;
     document.getElementById('cancelCouponBtn').classList.remove('hidden');
     showMessage('Coupon applied successfully!');
@@ -518,20 +533,27 @@ document.getElementById('cancelCouponBtn').addEventListener('click', async (ev)=
   const total = parseFloat(document.getElementById('original_total_price').value);
   const ship  = parseFloat('{{ shipping_charge|floatformat:2 }}');
   const grand = total + ship;
+
   document.getElementById('finalTotalPriceAmount').textContent   = `₹${grand.toFixed(2)}`;
   document.getElementById('totalDue').textContent                = `₹${grand.toFixed(2)}`;
   document.getElementById('discounted_total_price').value        = total.toFixed(2);
   document.getElementById('total_price_with_shipping').value     = grand.toFixed(2);
-  document.getElementById('applyCouponBtn').disabled             = false;
+
+  // New: Reset discount visually
+  document.getElementById('discountAmount').textContent = '-₹0.00';
+  document.getElementById('discountWrapper').classList.add('hidden');
+
+  document.getElementById('applyCouponBtn').disabled = false;
   document.getElementById('cancelCouponBtn').classList.add('hidden');
-  document.getElementById('couponCode').value                    = '';
+  document.getElementById('couponCode').value = '';
+
   await fetch("{% url 'cart:remove_coupon' %}", {
     method : 'POST',
     headers: { 'X-CSRFToken': '{{ csrf_token }}' }
   });
 });
-</script>
-<script>
+
+// ───── Razorpay Logic ─────
 (function loadRazorpay() {
   const s = document.createElement('script');
   s.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -588,11 +610,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
     });
 
     const data = await resp.json();
-    console.log("📦 Razorpay order response:", data);
-
-    if (!resp.ok || !data.success) {
-      throw new Error(data.error || 'Failed to create Razorpay order');
-    }
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Failed to create Razorpay order');
 
     const razorpayOptions = {
       key: document.getElementById('razorpay_key').value,
@@ -607,7 +625,6 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
       },
       theme: { color: '#3399cc' },
       handler: async function (res) {
-        console.log('✔️ Payment Success:', res);
         try {
           const verificationResp = await fetch("{% url 'cart:verify_razorpay_payment' %}", {
             method: 'POST',
@@ -625,7 +642,6 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
           });
 
           const result = await verificationResp.json();
-          console.log("📩 Verification Result:", result);
 
           if (result.success && result.payment_success) {
             const redirectUrl = document.getElementById('order_success_url').value.replace('0', result.order_id);
@@ -634,225 +650,30 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
             throw new Error(result.error || 'Payment verification failed');
           }
         } catch (err) {
-          console.error("❌ Verification Error:", err);
-          displayNotification(err.message || 'Verification failed', 'error');
           window.location.href = document.getElementById('order_failure_url').value + '?payment_status=failed';
         }
       },
       modal: {
         ondismiss: function () {
-          console.warn('🟡 Checkout dismissed');
           window.location.href = document.getElementById('cart_url').value + '?payment_status=cancelled';
         }
       }
     };
 
     const rzp = new Razorpay(razorpayOptions);
-
     rzp.on('payment.failed', function (err) {
-      console.error("💥 Razorpay Payment Failed:", err);
       displayNotification(`Payment failed: ${err.error.description}`, 'error');
       window.location.href = document.getElementById('cart_url').value + '?payment_status=failed';
     });
 
-    console.log("📤 Opening Razorpay modal...");
     rzp.open();
 
   } catch (err) {
-    console.error("⚠️ Razorpay Init Error:", err);
+    console.error(err);
     displayNotification(err.message || 'Something went wrong', 'error');
     btn.disabled = false;
   }
 });
-
-function displayNotification(message, type = 'info', duration = 8000) {
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), duration);
-}
-</script>
-
-<script>
-  function displayNotification(msg, type) {
-    const note = document.createElement('div');
-    note.classList.add(
-      'fixed', 'bottom-5', 'right-5', 'p-3', 'rounded-lg', 'shadow-lg', 'text-white',
-      type === 'success' ? 'bg-green-600' : 'bg-red-600'
-    );
-    note.textContent = msg;
-    document.body.appendChild(note);
-    setTimeout(() => note.remove(), 3000);
-  }
-
-  function closeModal() {
-    document.getElementById('addressModal').classList.add('hidden');
-    document.getElementById('addAddressForm').reset();
-  }
-
-  function closeEditModal() {
-    document.getElementById('editAddressModal').classList.add('hidden');
-    document.getElementById('editAddressForm').reset();
-  }
-
-  function openEditModal(id, name = '', phone = '', line = '', type = 'home',
-    city = '', state = '', pincode = '', country = '', isDefault = false) {
-    document.getElementById('editAddressId').value = id;
-    document.getElementById('editName').value = name;
-    document.getElementById('editPhone').value = phone;
-    document.getElementById('editAddressLine').value = line;
-    document.getElementById('editAddressType').value = type || 'home';
-    document.getElementById('editCity').value = city;
-    document.getElementById('editState').value = state;
-    document.getElementById('editPostalCode').value = pincode;
-    document.getElementById('editCountry').value = country;
-    document.getElementById('editIsDefault').checked = (isDefault === true || isDefault === 'true');
-    document.getElementById('editAddressForm').action = `/user_profile/edit-address/${id}/`;
-    document.getElementById('editAddressModal').classList.remove('hidden');
-  }
-
-  // ──────────────── ADD ADDRESS ────────────────
-  document.getElementById('addAddressForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
-
-    try {
-      const response = await fetch(form.action, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        displayNotification("Address added successfully", "success");
-        closeModal();
-
-        const address = result.address;
-
-        const addressTypeDisplay = {
-          home: 'Home',
-          work: 'Work'
-        }[address.address_type] || 'Other';
-
-        const html = `
-          <div class="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-all bg-gray-50">
-            <div class="flex items-start">
-              <input 
-                type="radio" 
-                id="address-${address.id}" 
-                name="address" 
-                value="${address.id}" 
-                class="mr-4 mt-1 address-radio"
-                ${address.is_default ? 'checked' : ''}
-                required>
-              <label for="address-${address.id}" class="text-md text-gray-700 cursor-pointer">
-                <p class="font-semibold text-gray-800">${address.name || 'Address'} ${address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
-                <p class="text-gray-600">${addressTypeDisplay}</p>
-                <p class="text-gray-600">${address.address_line}</p>
-                <p class="text-gray-600">${address.city}, ${address.state}</p>
-                <p class="text-gray-600">${address.country} - ${address.postal_code}</p>
-                ${address.phone ? `<p class="text-gray-600">Phone: ${address.phone}</p>` : ''}
-              </label>
-            </div>
-            <div class="ml-4 mt-1">
-              <button 
-                type="button" 
-                onclick="openEditModal(${address.id}, '${address.name}', '${address.phone}', '${address.address_line}', '${address.address_type}', '${address.city}', '${address.state}', '${address.postal_code}', '${address.country}', ${address.is_default})" 
-                class="text-sm text-blue-500 hover:underline">
-                ✏️ Edit
-              </button>
-            </div>
-          </div>
-        `;
-
-        document.getElementById('addressList').insertAdjacentHTML('beforeend', html);
-
-      } else {
-        const error = result.error || 'Something went wrong';
-        displayNotification(error, "error");
-      }
-    } catch (err) {
-      console.error(err);
-      displayNotification("Network error while adding address", "error");
-    }
-  });
-
-  // ──────────────── EDIT ADDRESS ────────────────
-  document.getElementById('editAddressForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
-
-    try {
-      const response = await fetch(form.action, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        displayNotification("Address updated successfully", "success");
-        closeEditModal();
-
-        const address = result.address;
-        const existingInput = document.getElementById(`address-${address.id}`);
-
-        if (existingInput) {
-          const wrapper = existingInput.closest(".flex.justify-between");
-          const addressTypeDisplay = {
-            home: 'Home',
-            work: 'Work'
-          }[address.address_type] || 'Other';
-
-          wrapper.innerHTML = `
-            <div class="flex items-start">
-              <input 
-                type="radio" 
-                id="address-${address.id}" 
-                name="address" 
-                value="${address.id}" 
-                class="mr-4 mt-1 address-radio"
-                ${address.is_default ? 'checked' : ''}
-                required>
-              <label for="address-${address.id}" class="text-md text-gray-700 cursor-pointer">
-                <p class="font-semibold text-gray-800">${address.name || 'Address'} ${address.is_default ? '<span class="text-green-600 text-sm">(Default)</span>' : ''}</p>
-                <p class="text-gray-600">${addressTypeDisplay}</p>
-                <p class="text-gray-600">${address.address_line}</p>
-                <p class="text-gray-600">${address.city}, ${address.state}</p>
-                <p class="text-gray-600">${address.country} - ${address.postal_code}</p>
-                ${address.phone ? `<p class="text-gray-600">Phone: ${address.phone}</p>` : ''}
-              </label>
-            </div>
-            <div class="ml-4 mt-1">
-              <button 
-                type="button" 
-                onclick="openEditModal(${address.id}, '${address.name}', '${address.phone}', '${address.address_line}', '${address.address_type}', '${address.city}', '${address.state}', '${address.postal_code}', '${address.country}', ${address.is_default})" 
-                class="text-sm text-blue-500 hover:underline">
-                ✏️ Edit
-              </button>
-            </div>
-          `;
-        }
-
-      } else {
-        const error = result.error || 'Failed to update address';
-        displayNotification(error, "error");
-      }
-    } catch (err) {
-      console.error(err);
-      displayNotification("Network error while updating address", "error");
-    }
-  });
 </script>
 
 

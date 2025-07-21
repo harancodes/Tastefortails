@@ -294,12 +294,26 @@
                     <i class="fas fa-plus"></i>
                   </button>
                 </div>
-                <button class="bg-red-500 text-white px-3 py-1 rounded-lg remove-item" data-item-id="{{ item.id }}">Remove</button>
+<button 
+  class="bg-red-500 text-white px-3 py-1 rounded-lg remove-item" 
+  data-item-id="{{ item.id }}"
+>
+  Remove
+</button>
+
               </div>
             </div>
           {% endfor %}
         {% else %}
           <p class="text-gray-600">Your cart is empty.</p>
+           
+
+        <a href="{% url 'products:list' %}"
+           class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+          Shop&nbsp;Now
+        </a>
+      
+    
         {% endif %}
       </div>
       <div class="lg:col-span-1">
@@ -352,6 +366,29 @@
     100% { background-color: transparent; }
   }
 </style>
+
+
+
+  <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 class="text-lg font-semibold mb-4">Are you sure you want to remove this item?</h2>
+      <div class="flex justify-end space-x-3">
+        <button 
+          id="cancel-remove-btn" 
+          class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+        >
+          No
+        </button>
+        <button 
+          id="confirm-remove-btn" 
+          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Yes, Remove
+        </button>
+      </div>
+    </div>
+  </div>
+
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -526,36 +563,6 @@
     });
 
     
-    document.querySelectorAll('.remove-item').forEach(button => {
-      button.addEventListener('click', function () {
-        const itemId = this.getAttribute('data-item-id');
-        fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemId), {     
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.message) {
-            const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
-            if (cartItem) cartItem.remove();
-
-            const subtotal = document.getElementById('subtotal');
-            const totalCartPrice = document.getElementById('total_cart_price');
-            if (subtotal) subtotal.textContent = `₹${data.cart_total_price}`;
-            if (totalCartPrice) totalCartPrice.textContent = `₹${data.cart_total_price}`;
-
-            showToast(data.message);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          showToast('Failed to remove item. Please try again.', 'error');
-        });
-      });
-    });
 
     document.querySelectorAll('.cart-item').forEach(item => {
       const itemId = item.getAttribute('data-item-id');
@@ -568,7 +575,75 @@
       }
     });
   });
+
+  let itemIdToRemove = null;
+
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  let itemIdToRemove = null;
+
+  // Event delegation for remove button clicks
+  document.body.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-item')) {
+      const button = e.target.closest('.remove-item');
+      itemIdToRemove = button.getAttribute('data-item-id');
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+  });
+
+  // Cancel remove
+  document.getElementById('cancel-remove-btn').addEventListener('click', function() {
+    itemIdToRemove = null;
+    document.getElementById('confirm-modal').classList.add('hidden');
+  });
+
+  // Confirm remove
+  document.getElementById('confirm-remove-btn').addEventListener('click', function() {
+    if (!itemIdToRemove) return;
+
+    fetch("{% url 'cart:remove_cart_item' 0 %}".replace("0", itemIdToRemove), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message) {
+        const cartItem = document.querySelector(`.cart-item[data-item-id="${itemIdToRemove}"]`);
+        if (cartItem) cartItem.remove();
+
+        document.getElementById('subtotal').textContent = `₹${data.cart_total_price}`;
+        document.getElementById('total_cart_price').textContent = `₹${data.cart_total_price}`;
+
+        Toastify({
+          text: data.message,
+          backgroundColor: "#4CAF50",
+          close: true,
+          gravity: "top",
+          position: "right"
+        }).showToast();
+      }
+      itemIdToRemove = null;
+      document.getElementById('confirm-modal').classList.add('hidden');
+    })
+    .catch(err => {
+      console.error(err);
+      Toastify({
+        text: "Failed to remove item.",
+        backgroundColor: "#F44336",
+        close: true,
+        gravity: "top",
+        position: "right"
+      }).showToast();
+      itemIdToRemove = null;
+      document.getElementById('confirm-modal').classList.add('hidden');
+    });
+  });
+});
+</script>
 
 {% endblock %}

@@ -478,3 +478,26 @@ def user_logout(request):
 
 
 
+from django.core.mail import send_mail
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+def contact_view(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message = request.POST.get('message')
+
+        # Optional: Save to DB or send email
+        send_mail(
+            subject=f'Contact Form - {name}',
+            message=message,
+            from_email=email,
+            recipient_list=['hrihrnofficial@gmail.com'],  
+            fail_silently=False,
+        )
+
+        messages.success(request, 'Thank you for contacting us! We will get back to you soon.')
+        return redirect('home')  # or 'contact' if you have a dedicated page
+
+    return render(request, 'home.html')  # Optional if you want separate contact page

@@ -50,13 +50,21 @@ path('cancel-product/<int:order_id>/', views.cancel_product_items, name='cancel_
 path('invoice/a/<int:order_id>/', views.generate_order_invoice, name='generate_order_invoice'),
 path("ajax/get-counts/", views.ajax_get_counts, name="ajax_get_counts"),
 
-
-
-
-
-
-
+  path('notifications/', views.notification_list, name='user_notifications'),
+   path('notifications/mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
+     path('notifications/toggle/<int:notification_id>/', views.toggle_notification, name='toggle_notification'),
+    path('notifications/delete/<int:notification_id>/', views.delete_notification, name='delete_notification'),
+      path('wallet/add-money/', views.add_money_to_wallet, name='wallet_add_money'),
+       path("wallet/deduct-money/", views.deduct_money_from_wallet, name="wallet_deduct_money"),
 ]
+
+
+
+
+
+
+
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

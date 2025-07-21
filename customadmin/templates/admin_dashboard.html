@@ -126,6 +126,8 @@ function fetchSalesData(filter) {
         .then(data => {
             document.getElementById("total-orders").textContent = data.total_orders;
             document.getElementById("total-revenue").textContent = `₹${data.total_revenue}`;
+            document.getElementById("total-users").textContent = data.total_users;
+
 
             
             salesChart.data.labels = data.labels;

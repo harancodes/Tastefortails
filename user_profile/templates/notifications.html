@@ -1,0 +1,37 @@
+{% extends "account_overview.html" %}
+
+{% block user %}
+<div class="container mx-auto px-4 py-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Notifications</h2>
+
+    {% if notifications %}
+        <div class="space-y-4">
+            {% for notif in notifications %}
+                <div class="p-4 border rounded-lg flex justify-between items-center
+                    {% if not notif.is_read %}bg-blue-50{% else %}bg-white{% endif %}">
+                    <div>
+                        <p class="text-gray-800">{{ notif.message }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ notif.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+
+                    <div class="space-x-2">
+                        <form method="POST" action="{% url 'user_profile:toggle_notification' notif.id %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm text-blue-600 hover:underline">
+                                {% if notif.is_read %} Mark as Unread {% else %} Mark as Read {% endif %}
+                            </button>
+                        </form>
+
+                        <form method="POST" action="{% url 'user_profile:delete_notification' notif.id %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm text-red-600 hover:underline">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-500">No notifications yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

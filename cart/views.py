@@ -128,9 +128,8 @@ def remove_cart_item(request, item_id):
 
         cart_item.delete()
 
-       
         cart_total_price = sum(
-            item.quantity * item.product_variant.product.sales_price
+            item.quantity * item.product_variant.sales_price
             for item in cart.items.all()
         )
 
@@ -140,6 +139,7 @@ def remove_cart_item(request, item_id):
         }, status=200)
 
     return JsonResponse({'error': 'Invalid request method.'}, status=400)
+
 
 
 @block_superuser_navigation
@@ -191,8 +191,6 @@ def view_cart(request):
     })
 
 
-
-
 @block_superuser_navigation
 @never_cache
 @login_required_custom
@@ -217,30 +215,31 @@ def checkout(request):
                 return redirect("product:list")
             cart_total = user_cart.total_price
 
-        discount = 0
-        total_price = cart_total
+        discount = Decimal('0.00')
+        total_price = Decimal(cart_total)
         applied_coupon = None
 
+        # Coupon handling
         applied_coupon_data = request.session.get("applied_coupon")
         if applied_coupon_data and 'id' in applied_coupon_data:
             try:
                 coupon_id = applied_coupon_data['id']
                 applied_coupon = Coupon.objects.get(id=coupon_id, is_active=True)
 
-                if cart_total >= applied_coupon.min_cart_value:
-                    cart_total = Decimal(cart_total)
-                    discount = Decimal(
-                        applied_coupon_data.get('discount_amount', applied_coupon.calculate_discount(cart_total))
-                    )
-                    total_price = max(cart_total - discount, Decimal(0))
+                if total_price >= applied_coupon.min_cart_value:
+                    discount = applied_coupon.calculate_discount(total_price)
+                    total_price = (total_price - discount).quantize(Decimal("0.01"))
                 else:
                     request.session.pop("applied_coupon", None)
+                    messages.warning(request, f"Coupon {applied_coupon.code} removed: Cart total below minimum ₹{applied_coupon.min_cart_value}")
 
             except Coupon.DoesNotExist:
                 request.session.pop("applied_coupon", None)
 
-        shipping_charge = Decimal(100)
+        shipping_charge = Decimal('100.00')
+        total_price_with_shipping = (total_price + shipping_charge).quantize(Decimal("0.01"))
 
+        # POST handling (order creation)
         if request.method == "POST":
             address_id = request.POST.get("address")
             payment_method = request.POST.get("payment_method")
@@ -264,7 +263,7 @@ def checkout(request):
                 order = Order.objects.create(
                     user=request.user,
                     shipping_address=shipping_address,
-                    total_amount=total_price + shipping_charge,
+                    total_amount=total_price_with_shipping,
                     discount=discount,
                     applied_coupon=applied_coupon if applied_coupon else None,
                     shipping_charge=shipping_charge,
@@ -291,8 +290,7 @@ def checkout(request):
                     total_after_coupon = item_total
 
                     if applied_coupon and discount > 0:
-                        item_discount = discount.quantize(Decimal("0.01"))
-                        total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                        total_after_coupon = (item_total - discount).quantize(Decimal("0.01"))
                         price_after_coupon = (total_after_coupon / single_quantity).quantize(Decimal("0.01"))
 
                     OrderItem.objects.create(
@@ -322,7 +320,7 @@ def checkout(request):
                             return redirect("view_cart")
 
                         if applied_coupon and discount > 0 and cart_total > 0:
-                            item_ratio = item_total / cart_total
+                            item_ratio = item_total / Decimal(cart_total)
                             item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
                             total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
                             price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
@@ -340,9 +338,9 @@ def checkout(request):
                             ordered_total_price=total_after_coupon
                         )
 
+                # Handle payment
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
-                    total_price_with_shipping = total_price + shipping_charge
 
                     if wallet.deduct_amount(total_price_with_shipping, reason=f"Payment for Order {order.id}"):
                         Payment.objects.create(
@@ -365,7 +363,7 @@ def checkout(request):
                 elif payment_method == "cod":
                     Payment.objects.create(
                         order=order,
-                        amount=total_price + shipping_charge,
+                        amount=total_price_with_shipping,
                         transaction_id=f"cod_{order.id}",
                         payment_method="cod",
                         status="pending",
@@ -373,26 +371,27 @@ def checkout(request):
 
                     if not is_buy_now:
                         cart_items.delete()
+
                     return redirect("cart:order_success", order_id=order.id)
 
-        total_price_with_shipping = total_price + shipping_charge
-
+        # Render checkout page
         return render(
             request,
             "checkout.html",
             {
                 "cart_items": cart_items if not variant_id else [],
                 "cart_total": float(cart_total),
-                "discount": discount,
+                "discount": float(discount),
                 "total_price": float(total_price),
                 "shipping_charge": float(shipping_charge),
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
                 "buy_now_item": single_variant if variant_id else None,
-                "total_price_with_shipping": total_price_with_shipping,
+                "total_price_with_shipping": float(total_price_with_shipping),
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
             },
         )
+
     except Exception as e:
         print(f"Error in checkout: {str(e)}")
         messages.error(request, f"Error: {str(e)}")
@@ -403,7 +402,7 @@ def checkout(request):
             {
                 "cart_items": cart_items if not variant_id else [],
                 "cart_total": float(cart_total),
-                "discount": discount,
+                "discount": float(discount),
                 "total_price": float(total_price),
                 "shipping_charge": float(shipping_charge),
                 "wallet": wallet,
@@ -413,7 +412,6 @@ def checkout(request):
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
             },
         )
-
 
 @block_superuser_navigation
 @never_cache
@@ -923,3 +921,6 @@ def webhook(request):
         logger.info(f"Webhook received: {request.body}")
         return JsonResponse({"status": "received"})
     return JsonResponse({"error": "Invalid request"}, status=405)
+
+
+
