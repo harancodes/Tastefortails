@@ -81,6 +81,9 @@ MIDDLEWARE = [
     # 'social_django.middleware.SocialAuthExceptionMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     # 'whitenoise.middleware.WhiteNoiseMiddleware'
+    'tastefortails.middleware.BlockedUserMiddleware',
+
+    
 
 ]
 

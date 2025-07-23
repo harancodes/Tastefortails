@@ -230,6 +230,15 @@ class OrderItem(models.Model):
     ordered_total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ordered_price_after_coupon = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
+    # In OrderItem model
+
+    @property
+    def per_unit_discount(self):
+        return round(self.product_variant.sales_price - self.ordered_price_after_coupon, 2)
+
+    @property
+    def total_discount(self):
+        return round(self.per_unit_discount * self.quantity, 2)
 
     
 
@@ -315,7 +324,7 @@ class OrderItem(models.Model):
             self.return_status = "approved"
             self.save()
 
-            # Refund based on ordered price after coupon (fixed at order time)
+            
             refund_amount = (self.ordered_price_after_coupon * self.quantity).quantize(Decimal('0.01'))
 
             order = self.order
@@ -495,7 +504,8 @@ class OrderItem(models.Model):
 
         def __str__(self):
             return f"{self.quantity} x {self.product_variant.product.name} ({self.product_variant.price})"
-
+        
+       
 
 class Payment(models.Model):
     PAYMENT_STATUS_CHOICES = [

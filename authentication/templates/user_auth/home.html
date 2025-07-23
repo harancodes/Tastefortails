@@ -455,7 +455,7 @@
 
                         <!-- Add to Cart Button -->
                         <div class="flex justify-between items-center">
-                            {% if stock > 0 %}
+                            {% comment %} {% if stock > 0 %} {% endcomment %}
                             <button 
                                 id="addToCartBtn_{{ product.id }}"
                                 onclick="event.stopPropagation(); event.preventDefault(); addCartItem({{ first_variant.id }})"
@@ -465,9 +465,9 @@
                                 <i class="fas fa-shopping-cart text-lg"></i>
                                 <span class="text-sm font-medium">Add</span>
                             </button>
-                            {% else %}
+                            {% comment %} {% else %} {% endcomment %}
                             <!-- <span class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-full text-xs font-medium">Out of Stock</span> -->
-                            {% endif %}
+                            {% comment %} {% endif %} {% endcomment %}
                         </div>
                     </div>
                     {% endwith %}

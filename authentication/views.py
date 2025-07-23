@@ -443,7 +443,7 @@ def home(request):
         'user': request.user,
         'new_products': new_products [:4],
         'categories': categories,
-        'lowest_price_products' : lowest_price_products[:5],
+        'lowest_price_products' : lowest_price_products[:4],
         'banners': banners
     }
 

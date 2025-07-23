@@ -87,7 +87,7 @@ def product_list_view(request):
     else:
         products = products.order_by('-created_at')
 
-    paginator = Paginator(products, 8)
+    paginator = Paginator(products, 6)
     page_obj = paginator.get_page(page_number)
 
     wishlist_variant_ids = []

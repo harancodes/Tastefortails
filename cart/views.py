@@ -36,7 +36,6 @@ from wishlist.models import WishlistItem
 from product.models import Variant
 
 
-
 @block_superuser_navigation
 @never_cache
 @login_required_custom
@@ -56,20 +55,36 @@ def add_to_cart(request, variant_id):
     if not 1 <= qty <= 10:
         return JsonResponse({'success': False, 'error': 'Quantity must be between 1 and 10'}, status=400)
 
+
+    if variant.quantity_in_stock <= 0:
+      
+        other_variants = Variant.objects.filter(
+            product=variant.product,
+            quantity_in_stock__gt=0
+        ).exclude(id=variant.id).order_by('id')
+
+        if other_variants.exists():
+            variant = other_variants.first()
+        else:
+            return JsonResponse({'success': False, 'error': 'All variants of this product are out of stock'}, status=400)
+
     cart, _ = Cart.objects.get_or_create(user=request.user)
     item, created = CartItem.objects.get_or_create(cart=cart, product_variant=variant)
 
     new_qty = qty if created else item.quantity + qty
-    if new_qty > 10 or new_qty > variant.quantity_in_stock:
-        return JsonResponse({'success': False, 'error': 'Quantity exceeds allowed limit or stock'}, status=400)
+
+    if new_qty > 10:
+        return JsonResponse({'success': False, 'error': 'Quantity cannot exceed 10 per item'}, status=400)
+
+    if new_qty > variant.quantity_in_stock:
+        return JsonResponse({'success': False, 'error': 'Requested quantity exceeds available stock'}, status=400)
 
     item.quantity = new_qty
     item.save()
 
-
+  
     wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-    deleted, _ = WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
-    print(f"WishlistItem deleted: {deleted}")
+    WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
 
     return JsonResponse({
         'success': True,
@@ -239,7 +254,7 @@ def checkout(request):
         shipping_charge = Decimal('100.00')
         total_price_with_shipping = (total_price + shipping_charge).quantize(Decimal("0.01"))
 
-        # POST handling (order creation)
+       
         if request.method == "POST":
             address_id = request.POST.get("address")
             payment_method = request.POST.get("payment_method")
@@ -338,7 +353,7 @@ def checkout(request):
                             ordered_total_price=total_after_coupon
                         )
 
-                # Handle payment
+              
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
 
@@ -374,7 +389,7 @@ def checkout(request):
 
                     return redirect("cart:order_success", order_id=order.id)
 
-        # Render checkout page
+       
         return render(
             request,
             "checkout.html",
