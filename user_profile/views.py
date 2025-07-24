@@ -618,7 +618,7 @@ def submit_review(request, order_item_id):
         print(rating, review_text, product_id)
 
         if rating and review_text:
-            # Ensure the product exists
+            
             product = get_object_or_404(Products, id=product_id)
 
             existing_review = Review.objects.filter(user=request.user, product=product).exists()

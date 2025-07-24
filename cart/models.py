@@ -110,9 +110,7 @@ class Order(models.Model):
 
    
     def calculate_final_total(self):
-        """
-        Calculate final total considering coupon discounts, shipping and active items.
-        """
+      
         subtotal = sum(item.total_price for item in self.items.exclude(status__in=['cancelled', 'returned']))
 
         self.total_amount = subtotal + self.shipping_charge
@@ -181,6 +179,8 @@ class Order(models.Model):
     @property
     def raw_items_total(self):
         return sum(item.total_price for item in self.items.all())
+    
+    
 
 
 
@@ -235,6 +235,10 @@ class OrderItem(models.Model):
     @property
     def per_unit_discount(self):
         return round(self.product_variant.sales_price - self.ordered_price_after_coupon, 2)
+    
+    @property
+    def product_full(self):
+        return self.ordered_price_after_coupon * self.quantity
 
     @property
     def total_discount(self):

@@ -83,8 +83,8 @@ def add_to_cart(request, variant_id):
     item.save()
 
   
-    wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-    WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
+    # wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+    # WishlistItem.objects.filter(wishlist=wishlist, variant=variant).delete()
 
     return JsonResponse({
         'success': True,
