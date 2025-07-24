@@ -156,6 +156,8 @@ def remove_cart_item(request, item_id):
     return JsonResponse({'error': 'Invalid request method.'}, status=400)
 
 
+from django.db.models import Q
+from django.contrib import messages
 
 @block_superuser_navigation
 @never_cache
@@ -165,12 +167,16 @@ def view_cart(request):
     shipping_charge = 100
 
     if cart:
-        items = cart.items.select_related(
+        # All cart items
+        all_items = cart.items.select_related(
             "product_variant",
             "product_variant__product",
             "product_variant__product__category",
             "product_variant__product__brand"
-        ).filter(
+        )
+
+        # Valid items check
+        valid_items = all_items.filter(
             product_variant__is_active=True,
             product_variant__product__is_active=True,
             product_variant__product__is_listed=True,
@@ -182,15 +188,25 @@ def view_cart(request):
             product_variant__product__brand__is_listed=True,
         )
 
-        cart_total_price = sum(item.total_price for item in items)  
+        
+        invalid_items = all_items.exclude(id__in=valid_items.values_list("id", flat=True))
+        if invalid_items.exists():
+            removed_products = [item.product_variant.product.name for item in invalid_items]
+            invalid_items.delete()
+            messages.warning(
+                request,
+                f"The following items were removed from your cart because they are no longer available: {', '.join(removed_products)}"
+            )
+
+        cart_total_price = sum(item.total_price for item in valid_items)
         cart_original_total = sum(
-            item.product_variant.variant_price * item.quantity for item in items
-        ) 
+            item.product_variant.variant_price * item.quantity for item in valid_items
+        )
         cart_grand_total = cart_total_price + shipping_charge
 
         return render(request, 'cart.html', {
             'cart': cart,
-            'items': items,
+            'items': valid_items,
             'cart_total_price': cart_total_price,
             'cart_original_total': cart_original_total,
             'shipping_charge': shipping_charge,
@@ -205,7 +221,6 @@ def view_cart(request):
         'cart_grand_total': shipping_charge,
     })
 
-
 @block_superuser_navigation
 @never_cache
 @login_required_custom
@@ -214,27 +229,26 @@ def checkout(request):
         user_cart, _ = Cart.objects.get_or_create(user=request.user)
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
 
-        variant_id = request.GET.get("variant_id")
-        is_buy_now = bool(variant_id)
-        single_variant = None
-        single_quantity = 1
+        cart_items = CartItem.objects.filter(cart=user_cart)
+        if not cart_items.exists():
+            messages.error(request, "Your cart is empty!")
+            return redirect("product:list")
 
-        if is_buy_now:
-            single_variant = get_object_or_404(Variant, id=variant_id)
-            cart_items = []
-            cart_total = single_variant.sales_price or single_variant.variant_price
-        else:
-            cart_items = CartItem.objects.filter(cart=user_cart)
-            if not cart_items.exists():
-                messages.error(request, "Your cart is empty!")
-                return redirect("product:list")
-            cart_total = user_cart.total_price
+        
+        for cart_item in cart_items:
+            variant = cart_item.product_variant
+            product = variant.product
+            category = product.category
 
+            if not (product.is_active and product.is_listed and category.is_active and category.is_listed):
+                messages.error(request, f"Product '{product.name}' is unavailable or unlisted.")
+                return redirect("cart:view_cart")
+
+        cart_total = user_cart.total_price
         discount = Decimal('0.00')
         total_price = Decimal(cart_total)
         applied_coupon = None
 
-        # Coupon handling
         applied_coupon_data = request.session.get("applied_coupon")
         if applied_coupon_data and 'id' in applied_coupon_data:
             try:
@@ -246,15 +260,14 @@ def checkout(request):
                     total_price = (total_price - discount).quantize(Decimal("0.01"))
                 else:
                     request.session.pop("applied_coupon", None)
-                    messages.warning(request, f"Coupon {applied_coupon.code} removed: Cart total below minimum ₹{applied_coupon.min_cart_value}")
-
+                    messages.warning(request, f"Coupon {applied_coupon.code} removed: Cart total below ₹{applied_coupon.min_cart_value}")
             except Coupon.DoesNotExist:
                 request.session.pop("applied_coupon", None)
 
         shipping_charge = Decimal('100.00')
         total_price_with_shipping = (total_price + shipping_charge).quantize(Decimal("0.01"))
 
-       
+        razorpay_order = None
         if request.method == "POST":
             address_id = request.POST.get("address")
             payment_method = request.POST.get("payment_method")
@@ -280,7 +293,7 @@ def checkout(request):
                     shipping_address=shipping_address,
                     total_amount=total_price_with_shipping,
                     discount=discount,
-                    applied_coupon=applied_coupon if applied_coupon else None,
+                    applied_coupon=applied_coupon,
                     shipping_charge=shipping_charge,
                 )
 
@@ -288,75 +301,46 @@ def checkout(request):
                     UsedCoupon.objects.create(user=request.user, coupon=applied_coupon)
                     request.session.pop("applied_coupon", None)
 
-                if is_buy_now and single_variant:
-                    if single_variant.quantity_in_stock < single_quantity:
-                        messages.error(
-                            request,
-                            f"Not enough stock for {single_variant.product.name} ({single_variant.weight})",
-                        )
-                        return redirect("product_detail", pk=single_variant.product.id)
+                for cart_item in cart_items:
+                    variant = cart_item.product_variant
+                    product = variant.product
+                    category = product.category
 
-                    single_variant.quantity_in_stock -= single_quantity
-                    single_variant.save()
+                    # Redundant safety check (already done above, but safe inside atomic block)
+                    if not (product.is_active and product.is_listed and category.is_active and category.is_listed):
+                        raise Exception(f"Product '{product.name}' is unavailable or unlisted.")
 
-                    unit_price = single_variant.sales_price or single_variant.variant_price
-                    item_total = unit_price * single_quantity
+                    quantity = cart_item.quantity
+                    unit_price = variant.sales_price or variant.variant_price
+                    item_total = unit_price * quantity
                     price_after_coupon = unit_price
                     total_after_coupon = item_total
 
-                    if applied_coupon and discount > 0:
-                        total_after_coupon = (item_total - discount).quantize(Decimal("0.01"))
-                        price_after_coupon = (total_after_coupon / single_quantity).quantize(Decimal("0.01"))
+                    if variant.quantity_in_stock < quantity:
+                        messages.error(request, f"Not enough stock for {variant.product.name} ({variant.weight})")
+                        return redirect("view_cart")
+
+                    if applied_coupon and discount > 0 and cart_total > 0:
+                        item_ratio = item_total / Decimal(cart_total)
+                        item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
+                        total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
+                        price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
+
+                    variant.quantity_in_stock -= quantity
+                    variant.save()
 
                     OrderItem.objects.create(
                         order=order,
-                        product_variant=single_variant,
-                        quantity=single_quantity,
+                        product_variant=variant,
+                        quantity=quantity,
                         status="processing",
                         ordered_unit_price=unit_price,
                         ordered_price_after_coupon=price_after_coupon,
                         ordered_total_price=total_after_coupon
                     )
 
-                else:
-                    for cart_item in cart_items:
-                        variant = cart_item.product_variant
-                        quantity = cart_item.quantity
-                        unit_price = variant.sales_price or variant.variant_price
-                        item_total = unit_price * quantity
-                        price_after_coupon = unit_price
-                        total_after_coupon = item_total
-
-                        if variant.quantity_in_stock < quantity:
-                            messages.error(
-                                request,
-                                f"Not enough stock for {variant.product.name} ({variant.weight})",
-                            )
-                            return redirect("view_cart")
-
-                        if applied_coupon and discount > 0 and cart_total > 0:
-                            item_ratio = item_total / Decimal(cart_total)
-                            item_discount = (discount * item_ratio).quantize(Decimal("0.01"))
-                            total_after_coupon = (item_total - item_discount).quantize(Decimal("0.01"))
-                            price_after_coupon = (total_after_coupon / quantity).quantize(Decimal("0.01"))
-
-                        variant.quantity_in_stock -= quantity
-                        variant.save()
-
-                        OrderItem.objects.create(
-                            order=order,
-                            product_variant=variant,
-                            quantity=quantity,
-                            status="processing",
-                            ordered_unit_price=unit_price,
-                            ordered_price_after_coupon=price_after_coupon,
-                            ordered_total_price=total_after_coupon
-                        )
-
-              
                 if payment_method == "wallet":
                     wallet.refresh_from_db()
-
                     if wallet.deduct_amount(total_price_with_shipping, reason=f"Payment for Order {order.id}"):
                         Payment.objects.create(
                             order=order,
@@ -365,14 +349,11 @@ def checkout(request):
                             payment_method="wallet",
                             status="completed",
                         )
-
-                        if not is_buy_now:
-                            cart_items.delete()
-
+                        cart_items.delete()
                         messages.success(request, "Payment successful! Your order has been placed.")
                         return redirect("cart:order_success", order_id=order.id)
                     else:
-                        messages.error(request, "Insufficient wallet balance. Please choose another payment method.")
+                        messages.error(request, "Insufficient wallet balance.")
                         return redirect("cart:checkout")
 
                 elif payment_method == "cod":
@@ -383,27 +364,50 @@ def checkout(request):
                         payment_method="cod",
                         status="pending",
                     )
-
-                    if not is_buy_now:
-                        cart_items.delete()
-
+                    cart_items.delete()
                     return redirect("cart:order_success", order_id=order.id)
 
-       
+                elif payment_method == "razorpay":
+                    import razorpay
+                    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                    razorpay_order = client.order.create({
+                        "amount": int(total_price_with_shipping * 100),  # Amount in paise
+                        "currency": "INR",
+                        "receipt": f"order_rcptid_{order.id}",
+                        "payment_capture": 1
+                    })
+
+                    Payment.objects.create(
+                        order=order,
+                        amount=total_price_with_shipping,
+                        payment_method="razorpay",
+                        status="initiated",
+                        transaction_id=razorpay_order['id']
+                    )
+
+                    cart_items.delete()
+                    return render(request, "payment/razorpay_payment.html", {
+                        "order": order,
+                        "razorpay_order_id": razorpay_order['id'],
+                        "razorpay_amount": total_price_with_shipping,
+                        "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
+                        "user": request.user,
+                    })
+
         return render(
             request,
             "checkout.html",
             {
-                "cart_items": cart_items if not variant_id else [],
+                "cart_items": cart_items,
                 "cart_total": float(cart_total),
                 "discount": float(discount),
                 "total_price": float(total_price),
                 "shipping_charge": float(shipping_charge),
+                "total_price_with_shipping": float(total_price_with_shipping),
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
-                "buy_now_item": single_variant if variant_id else None,
-                "total_price_with_shipping": float(total_price_with_shipping),
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
+                "applied_coupon": applied_coupon,
             },
         )
 
@@ -415,18 +419,18 @@ def checkout(request):
             request,
             "checkout.html",
             {
-                "cart_items": cart_items if not variant_id else [],
-                "cart_total": float(cart_total),
-                "discount": float(discount),
-                "total_price": float(total_price),
-                "shipping_charge": float(shipping_charge),
+                "cart_items": [],
+                "cart_total": 0,
+                "discount": 0,
+                "total_price": 0,
+                "shipping_charge": 0,
                 "wallet": wallet,
                 "addresses": Address.objects.filter(user=request.user),
-                "buy_now_item": single_variant if variant_id else None,
                 "error": str(e),
                 "RAZORPAY_KEY_ID": settings.RAZORPAY_KEY_ID,
             },
         )
+
 
 @block_superuser_navigation
 @never_cache
@@ -815,6 +819,15 @@ def verify_razorpay_payment(request):
 
                     for cart_item in cart_items:
                         variant = cart_item.product_variant
+                        product = variant.product
+
+                        if not (
+                            product.is_active and product.is_listed and
+                            product.category.is_active and product.category.is_listed
+                        ):
+                            messages.error(request, f"Product {product.name} is unavailable or unlisted.")
+                            return redirect("cart:view_cart")
+
                         quantity = cart_item.quantity
                         unit_price = variant.sales_price or variant.variant_price
                         item_total = unit_price * quantity

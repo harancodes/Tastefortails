@@ -42,21 +42,21 @@
                             </div>
 
                             <hr class="my-4">
+<div class="text-sm text-gray-700 space-y-1 mt-4">
+  <p>Subtotal: ₹{{ order.subtotal|floatformat:2 }}</p>
+  <p>Shipping: ₹{{ order.shipping_charge|floatformat:2 }}</p>
 
-<div class="text-sm text-gray-700 space-y-1">
-    <p>Subtotal: ₹{{ order.subtotal|floatformat:2 }}</p>
-    <p>Shipping: ₹{{ order.total_shipping|floatformat:2 }}</p>
+  {% if order.discount > 0 %}
+    <p class="text-green-600">Discount: − ₹{{ order.discount|floatformat:2 }}</p>
+  {% endif %}
 
-    {% if order.total_discount > 0 %}
-        <p class="text-green-600">Discount: -₹{{ order.total_discount|floatformat:2 }}</p>
-    {% endif %}
+  <p class="font-bold text-gray-800">Grand Total: ₹{{ order.total_amount|floatformat:2 }}</p>
 
-    <p class="font-bold text-gray-800">Grand Total: ₹{{ order.grand_total|floatformat:2 }}</p>
-
-    {% if order.refunded_amount > 0 %}
-        <p class="text-red-500">Refunded: ₹{{ order.refunded_amount|floatformat:2 }}</p>
-    {% endif %}
+  {% if order.refunded_amount > 0 %}
+    <p class="text-red-500">Refunded: ₹{{ order.refunded_amount|floatformat:2 }}</p>
+  {% endif %}
 </div>
+
 
                             
                             <div class="flex items-center space-x-4 mt-2 md:mt-0">
