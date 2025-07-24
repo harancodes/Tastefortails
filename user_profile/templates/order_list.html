@@ -152,12 +152,12 @@
                                            <a href="{% url 'user_profile:order_item_detail' item_id=items.0.id %}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm">Order Details</a>
 
                                      
-{% if order.can_download_invoice %}
+{% comment %} {% if order.can_download_invoice %}
 <button class="download-invoice-btn bg-green-500 text-white px-4 py-2 rounded-lg text-sm"
     data-url="{% url 'user_profile:generate_order_invoice' order_id=order.id %}">
     Download Invoice
 </button>
-{% endif %}
+{% endif %} {% endcomment %}
 
 
 
@@ -186,6 +186,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 
                             {% endfor %}
 {% if order.can_be_cancelled %}
@@ -203,6 +204,12 @@
 
         
                         </div>
+                                                        {% if order.can_download_invoice %}
+<button class="download-invoice-btn bg-green-500 text-white px-4 py-2 rounded-lg text-sm"
+    data-url="{% url 'user_profile:generate_order_invoice' order_id=order.id %}">
+    Download Invoice
+</button>
+{% endif %}
                     </div>
                 </div>
                 

@@ -229,7 +229,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import inch
 
-
 @block_superuser_navigation
 @never_cache
 @login_required
@@ -244,14 +243,17 @@ def generate_order_invoice(request, order_id):
     from reportlab.lib import colors
     from reportlab.lib.units import inch
     from decimal import Decimal
+    from django.http import HttpResponse, JsonResponse
+    from django.shortcuts import get_object_or_404, redirect
+    from django.contrib import messages
 
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    valid_items = order.items.filter(status__in=["delivered", "returned"])
+    order_items = order.items.all()
 
-    if not valid_items.exists():
+    if not order_items.exists():
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'error': 'Invoice is only available after items are delivered or returned.'}, status=403)
-        messages.error(request, "Invoice is only available after items are delivered or returned.")
+            return JsonResponse({'error': 'No items available to generate invoice.'}, status=403)
+        messages.error(request, "Invoice cannot be generated as there are no items in the order.")
         return redirect('orders:order_detail', order_id=order.id)
 
     user = order.user
@@ -284,13 +286,18 @@ def generate_order_invoice(request, order_id):
             Paragraph(f"{address.city}, {address.state} {address.postal_code}", normal_style),
             Paragraph(f"{address.country}", normal_style)
         ]
+
     content.append(Spacer(1, 12))
-
     content.append(Paragraph("Order Items", header_style))
-    item_data = [["Product", "Qty", "Status", "Unit Price", "After Discount", "Total Paid"]]
 
-    for item in valid_items:
+    item_data = [["Product", "Qty", "Status", "Unit Price", "After Discount", "Total Paid", "Refunded"]]
+
+    total_paid = Decimal("0.00")
+    total_refunded = Decimal("0.00")
+
+    for item in order_items:
         variant = item.product_variant
+        refunded_amount = item.ordered_total_price if item.status.lower() in ["cancelled", "returned"] else Decimal("0.00")
 
         item_data.append([
             Paragraph(f"{variant.product.name} ({variant.weight})", normal_style),
@@ -299,9 +306,18 @@ def generate_order_invoice(request, order_id):
             f"Rs {item.ordered_unit_price}",
             f"Rs {item.ordered_price_after_coupon}",
             f"Rs {item.ordered_total_price}",
+            f"Rs {refunded_amount}",
         ])
 
-    item_table = Table(item_data, colWidths=[2.4 * inch, 0.6 * inch, 0.9 * inch, 1.0 * inch, 1.2 * inch, 1.2 * inch])
+        total_paid += item.ordered_total_price
+        total_refunded += refunded_amount
+
+    net_amount = total_paid - total_refunded
+
+    item_table = Table(item_data, colWidths=[
+        2.2 * inch, 0.6 * inch, 0.9 * inch, 1.0 * inch,
+        1.1 * inch, 1.1 * inch, 1.1 * inch
+    ])
     item_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -319,7 +335,9 @@ def generate_order_invoice(request, order_id):
         ["Coupon Used", order.applied_coupon.code if order.applied_coupon else "None"],
         ["Order Discount", f"Rs {order.discount}"],
         ["Shipping Charge", f"Rs {order.shipping_charge}"],
-        ["Final Order Total", f"Rs {order.total_amount}"],
+        ["Total Paid (before refunds)", f"Rs {total_paid}"],
+        ["Total Refunded", f"Rs {total_refunded}"],
+        ["Net Amount Paid", f"Rs {net_amount}"],
     ]
 
     summary_table = Table(summary_data, colWidths=[2.2 * inch, 4.2 * inch])

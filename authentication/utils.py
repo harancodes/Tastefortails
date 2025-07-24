@@ -44,14 +44,26 @@ def is_strong_password(password):
         return str(e)
     return None
 
+import re
+
 def is_valid_full_name(name):
-    if not re.fullmatch(r'[A-Za-z]+(?: [A-Za-z]+)*', name.strip()):
+    name = name.strip()
+    
+
+    if len(name) < 3:
+        return "Name must be at least 3 characters long."
+
+    
+    if not re.fullmatch(r'[A-Za-z]+(?: [A-Za-z]+)*', name):
         return "Name must contain only letters and spaces (e.g., Hari or Hari Haran)."
+
     return None
 
 
+
+
 def is_valid_phone_number(number):
-    # Must be digits only
+    
     if not re.fullmatch(r'\d{10,15}', number):
         return "Enter a valid phone number with 10 to 15 digits."
 

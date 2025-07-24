@@ -113,7 +113,7 @@ def user_signup(request):
         confirm_password = request.POST.get('confirm_password', '')
         referral_code = request.POST.get('referral_code', '').strip().upper()
 
-        # Full name validation
+        
         name_error = is_valid_full_name(full_name)
         if name_error:
             messages.error(request, name_error)
