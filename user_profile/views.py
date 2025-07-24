@@ -106,20 +106,7 @@ def add_address(request):
             
             logger.info(f"Address saved successfully with ID: {address.id}")
             
-            return JsonResponse({
-                "success": True,
-                "address": {
-                    "id": address.id,
-                    "name": address.name,
-                    "phone": address.phone,
-                    "address_line": address.address_line,
-                    "address_type": address.address_type,
-                    "city": address.city,
-                    "state": address.state,
-                    "postal_code": address.postal_code,
-                    "country": address.country
-                }
-            }, status=201)
+            return redirect("cart:checkout")
             
         except Exception as e:
             logger.error(f"Error in add_address: {str(e)}")
@@ -154,7 +141,7 @@ def edit_address(request, address_id):
 
         try:
             address.save() 
-            return JsonResponse({"success": True}, status=200) 
+            return redirect("cart:checkout")
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)  
 
@@ -349,7 +336,6 @@ def generate_order_invoice(request, order_id):
     content.append(summary_table)
     content.append(Spacer(1, 12))
     content.append(Paragraph("Thank you for your purchase!", normal_style))
-
     pdf.build(content)
     return response
 

@@ -676,5 +676,32 @@ document.getElementById('checkoutForm').addEventListener('submit', async (e) => 
 });
 </script>
 
+<script>
+document.getElementById('addAddressForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  
+  try {
+    const response = await fetch(form.action, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      displayNotification('Address added successfully', 'success');
+      window.location.reload();  // ✅ Force reload to update the page
+    } else {
+      displayNotification(result.error || 'Failed to add address', 'error');
+    }
+  } catch (err) {
+    displayNotification('An error occurred while saving address', 'error');
+    console.error(err);
+  }
+});
+</script>
 
 {% endblock %}

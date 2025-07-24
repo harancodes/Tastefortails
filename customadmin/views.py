@@ -48,8 +48,8 @@ def block_superuser_navigation(view_func):
 def admin_required(view_func):
     return user_passes_test(
         lambda u: u.is_authenticated and u.is_staff,
-        login_url='admin_login',  # 
-        redirect_field_name=None  # remove ?next= from URL
+        login_url='admin_login',  
+        redirect_field_name=None  
     )(view_func)
 
 

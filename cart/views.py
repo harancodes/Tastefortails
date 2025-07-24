@@ -167,7 +167,7 @@ def view_cart(request):
     shipping_charge = 100
 
     if cart:
-        # All cart items
+        
         all_items = cart.items.select_related(
             "product_variant",
             "product_variant__product",
@@ -175,7 +175,7 @@ def view_cart(request):
             "product_variant__product__brand"
         )
 
-        # Valid items check
+
         valid_items = all_items.filter(
             product_variant__is_active=True,
             product_variant__product__is_active=True,
@@ -306,7 +306,6 @@ def checkout(request):
                     product = variant.product
                     category = product.category
 
-                    # Redundant safety check (already done above, but safe inside atomic block)
                     if not (product.is_active and product.is_listed and category.is_active and category.is_listed):
                         raise Exception(f"Product '{product.name}' is unavailable or unlisted.")
 
